@@ -1,0 +1,23 @@
+name: C++ Lint CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  psf-black:
+    name: psf-black
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+      - name: Install Black
+        run: pip install black
+      - name: Format Python Code
+        run: git ls-files -z | grep -z '\.py$' | xargs -0 python3 -m black --quiet
+      - name: Check Differences After Formatting
+        run: git diff --ignore-submodules=all --color --exit-code .
