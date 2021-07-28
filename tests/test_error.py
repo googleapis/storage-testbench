@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +23,7 @@ import unittest
 from unittest.mock import ANY, Mock
 
 
-class TestObject(unittest.TestCase):
+class TestError(unittest.TestCase):
     def test_csek(self):
         with self.assertRaises(error.RestException) as rest:
             error.csek(None)
@@ -81,3 +82,7 @@ class TestObject(unittest.TestCase):
         with self.assertRaises(error.RestException) as rest:
             error.notallowed(None)
         self.assertEqual(rest.exception.code, 405)
+
+
+if __name__ == "__main__":
+    unittest.main()
