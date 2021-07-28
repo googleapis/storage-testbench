@@ -96,7 +96,7 @@ def mismatch(
     rest_code=412,
     grpc_code=grpc.StatusCode.FAILED_PRECONDITION,
 ):
-    """"The error returned when if*Match or If-Match pre-conditions fail."""
+    """The error returned when if*Match or If-Match pre-conditions fail."""
     msg = "%s validation failed. Expected = %s vs Actual = %s." % (
         msg,
         str(expect),
