@@ -1,0 +1,11 @@
+*.md
+*.yaml
+.dockerignore
+.git/
+.github
+.gitignore
+.idea/
+Dockerfile
+LICENSE
+renovate.json
+tests/
