@@ -26,6 +26,25 @@ from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 
 
 class TestACL(unittest.TestCase):
+    def test_get_canonical_entity(self):
+        cases = {
+            "allUsers": lambda x: self.assertEqual(x, "allUsers"),
+            "allAuthenticatedUsers": lambda x: self.assertEqual(
+                x, "allAuthenticatedUsers"
+            ),
+            "project-editors-": lambda x: self.assertTrue(
+                x.startswith("project-editors-")
+            ),
+            "project-owners-": lambda x: self.assertTrue(
+                x.startswith("project-owners-")
+            ),
+            "project-viewers-": lambda x: self.assertTrue(
+                x.startswith("project-viewers-")
+            ),
+        }
+        for input, checker in cases.items():
+            checker(testbench.acl.get_canonical_entity(input))
+
     def test_extract_predefined_default_object_acl(self):
         request = storage_pb2.InsertBucketRequest()
         predefined_default_object_acl = (
@@ -97,27 +116,71 @@ class TestACL(unittest.TestCase):
         self.assertEqual(predefined_acl, "bucketOwnerFullControl")
 
     def test_compute_predefined_bucket_acl(self):
-        acls = testbench.acl.compute_predefined_bucket_acl(
-            "bucket", "authenticatedRead", None
-        )
-        entities = [acl.entity for acl in acls]
-        self.assertListEqual(
-            entities,
-            [testbench.acl.get_project_entity("owners", None), "allAuthenticatedUsers"],
-        )
+        cases = {
+            "authenticatedRead": [
+                testbench.acl.get_project_entity("owners", None),
+                "allAuthenticatedUsers",
+            ],
+            "private": [testbench.acl.get_project_entity("owners", None)],
+            "projectPrivate": [
+                testbench.acl.get_project_entity("owners", None),
+                testbench.acl.get_project_entity("editors", None),
+                testbench.acl.get_project_entity("viewers", None),
+            ],
+            "publicRead": [
+                testbench.acl.get_project_entity("owners", None),
+                "allUsers",
+            ],
+            "publicReadWrite": [
+                testbench.acl.get_project_entity("owners", None),
+                "allUsers",
+            ],
+            "test-only-invalid": [],
+        }
+        for predefined, expected in cases.items():
+            acls = testbench.acl.compute_predefined_bucket_acl(
+                "bucket", predefined, None
+            )
+            entities = [acl.entity for acl in acls]
+            self.assertListEqual(entities, expected, msg=predefined)
 
     def test_compute_predefined_default_object_acl(self):
-        acls = testbench.acl.compute_predefined_default_object_acl(
-            "bucket", "authenticatedRead", None
-        )
-        entities = [acl.entity for acl in acls]
-        self.assertEqual(
-            entities,
-            [testbench.acl.get_object_entity("OWNER", None), "allAuthenticatedUsers"],
-        )
-
-        object_names = [acl.object for acl in acls]
-        self.assertEqual(object_names, 2 * [""])
+        cases = {
+            "authenticatedRead": [
+                testbench.acl.get_object_entity("OWNER", None),
+                "allAuthenticatedUsers",
+            ],
+            "bucketOwnerFullControl": [
+                testbench.acl.get_object_entity("OWNER", None),
+                testbench.acl.get_project_entity("owners", None),
+            ],
+            "bucketOwnerRead": [
+                testbench.acl.get_object_entity("OWNER", None),
+                testbench.acl.get_project_entity("owners", None),
+            ],
+            "private": [
+                testbench.acl.get_object_entity("OWNER", None),
+            ],
+            "projectPrivate": [
+                testbench.acl.get_object_entity("OWNER", None),
+                testbench.acl.get_project_entity("owners", None),
+                testbench.acl.get_project_entity("editors", None),
+                testbench.acl.get_project_entity("viewers", None),
+            ],
+            "publicRead": [
+                testbench.acl.get_object_entity("OWNER", None),
+                "allUsers",
+            ],
+            "test-only-invalid": [],
+        }
+        for predefined, expected in cases.items():
+            acls = testbench.acl.compute_predefined_default_object_acl(
+                "bucket", predefined, None
+            )
+            entities = [acl.entity for acl in acls]
+            self.assertEqual(entities, expected, msg=predefined)
+            object_names = [acl.object for acl in acls]
+            self.assertEqual(object_names, len(acls) * [""], msg=predefined)
 
     def test_compute_predefined_object_acl(self):
         acls = testbench.acl.compute_predefined_object_acl(
