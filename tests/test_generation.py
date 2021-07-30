@@ -111,6 +111,37 @@ class TestGeneration(unittest.TestCase):
         generation = testbench.generation.extract_generation(request, True, None)
         self.assertEqual(generation, 2)
 
+    def test_check_precondition_generation_matches_trivial(self):
+        testbench.generation.check_precondition(
+            1234, match=None, not_match=None, is_meta=None, context=None
+        )
+
+    def test_check_precondition_generation_matches_failure(self):
+        cases = {
+            True: "metageneration",
+            False: "generation",
+        }
+        for is_meta, expected in cases.items():
+            with self.assertRaises(testbench.error.RestException) as rest:
+                testbench.generation.check_precondition(
+                    1234, match=2345, not_match=None, is_meta=is_meta, context=None
+                )
+            self.assertEqual(rest.exception.code, 412)
+            self.assertRegex(rest.exception.msg, r"\W" + expected)
+
+    def test_check_precondition_generation_notmatches_failure(self):
+        cases = {
+            True: "metageneration",
+            False: "generation",
+        }
+        for is_meta, expected in cases.items():
+            with self.assertRaises(testbench.error.RestException) as rest:
+                testbench.generation.check_precondition(
+                    1234, match=None, not_match=1234, is_meta=is_meta, context=None
+                )
+            self.assertEqual(rest.exception.code, 304)
+            self.assertRegex(rest.exception.msg, r"\W" + expected)
+
 
 if __name__ == "__main__":
     unittest.main()
