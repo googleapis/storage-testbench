@@ -17,18 +17,36 @@
 import datetime
 import hashlib
 import json
+import random
 import re
 import scalpl
 
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 from google.iam.v1 import policy_pb2
-from google.protobuf import json_format
+from google.protobuf import field_mask_pb2, json_format
 
 import testbench
 
 
 class Bucket:
+    modifiable_fields = [
+        "acl",
+        "default_object_acl",
+        "lifecycle",
+        "cors",
+        "storage_class",
+        "default_event_based_hold",
+        "labels",
+        "website",
+        "versioning",
+        "logging",
+        "encryption",
+        "billing",
+        "retention_policy",
+        "location_type",
+        "iam_configuration",
+    ]
     rest_only_fields = ["iamConfiguration.publicAccessPrevention"]
 
     def __init__(self, metadata, notifications, iam_policy, rest_only):
@@ -66,6 +84,23 @@ class Bucket:
             if field in proxy:
                 rest_only[field] = proxy.pop(field)
         return proxy.data, rest_only
+
+    @classmethod
+    def __postprocess_rest(cls, data, rest_only):
+        proxy = scalpl.Cut(data)
+        keys = testbench.common.nested_key(data)
+        for key in keys:
+            if key.endswith("createdBefore"):
+                proxy[key] = proxy[key].replace("T00:00:00Z", "")
+        proxy["kind"] = "storage#bucket"
+        if "acl" in data:
+            for entry in data["acl"]:
+                entry["kind"] = "storage#bucketAccessControl"
+        if "defaultObjectAcl" in data:
+            for entry in data["defaultObjectAcl"]:
+                entry["kind"] = "storage#objectAccessControl"
+        proxy.update(rest_only)
+        return proxy.data
 
     @classmethod
     def __insert_predefined_acl(cls, metadata, predefined_acl, context):
@@ -211,3 +246,259 @@ class Bucket:
             bindings=bindings,
             etag=datetime.datetime.now().isoformat().encode("utf-8"),
         )
+
+    def get_iam_policy(self, request, context):
+        return self.iam_policy
+
+    def set_iam_policy(self, request, context):
+        policy = None
+        if context is not None:
+            policy = request.iam_request.policy
+        else:
+            data = json.loads(request.data)
+            if "iam_request" in data:
+                data = data["iam_request"]["policy"]
+            data.pop("kind", None)
+            data.pop("etag", None)
+            data.pop("resourceId", None)
+            policy = json_format.ParseDict(data, policy_pb2.Policy())
+        self.iam_policy = policy
+        self.iam_policy.etag = datetime.datetime.now().isoformat().encode("utf-8")
+        return self.iam_policy
+
+    # === METADATA === #
+
+    def __update_metadata(self, source, update_mask):
+        if update_mask is None:
+            update_mask = field_mask_pb2.FieldMask(paths=Bucket.modifiable_fields)
+        update_mask.MergeMessage(source, self.metadata, True, True)
+        self.metadata.metageneration += 1
+        self.metadata.updated.FromDatetime(datetime.datetime.now())
+
+    def update(self, request, context):
+        metadata = None
+        if context is not None:
+            metadata = request.metadata
+        else:
+            metadata, rest_only = self.__preprocess_rest(json.loads(request.data))
+            self.rest_only.update(rest_only)
+            metadata = json_format.ParseDict(metadata, resources_pb2.Bucket())
+        self.__update_metadata(metadata, None)
+        self.__insert_predefined_acl(
+            metadata,
+            testbench.acl.extract_predefined_acl(request, False, context),
+            context,
+        )
+        self.__insert_predefined_default_object_acl(
+            metadata,
+            testbench.acl.extract_predefined_default_object_acl(request, context),
+            context,
+        )
+
+    def patch(self, request, context):
+        update_mask = field_mask_pb2.FieldMask()
+        metadata = None
+        if context is not None:
+            metadata = request.metadata
+            update_mask = request.update_mask
+        else:
+            data = json.loads(request.data)
+            if "labels" in data:
+                if data["labels"] is None:
+                    self.metadata.labels.clear()
+                else:
+                    for key, value in data["labels"].items():
+                        if value is None:
+                            self.metadata.labels.pop(key, None)
+                        else:
+                            self.metadata.labels[key] = value
+            data.pop("labels", None)
+            data, rest_only = self.__preprocess_rest(data)
+            self.rest_only.update(rest_only)
+            metadata = json_format.ParseDict(data, resources_pb2.Bucket())
+            paths = set()
+            for key in testbench.common.nested_key(data):
+                key = testbench.common.to_snake_case(key)
+                head = key
+                for i, c in enumerate(key):
+                    if c == "." or c == "[":
+                        head = key[0:i]
+                        break
+                if head in Bucket.modifiable_fields:
+                    if "[" in key:
+                        paths.add(head)
+                    else:
+                        paths.add(key)
+            update_mask = field_mask_pb2.FieldMask(paths=list(paths))
+        self.__update_metadata(metadata, update_mask)
+        self.__insert_predefined_acl(
+            metadata,
+            testbench.acl.extract_predefined_acl(request, False, context),
+            context,
+        )
+        self.__insert_predefined_default_object_acl(
+            metadata,
+            testbench.acl.extract_predefined_default_object_acl(request, context),
+            context,
+        )
+
+    # === ACL === #
+
+    def __search_acl(self, entity, must_exist, context):
+        entity = testbench.acl.get_canonical_entity(entity)
+        for i in range(len(self.metadata.acl)):
+            if self.metadata.acl[i].entity == entity:
+                return i
+        if must_exist:
+            testbench.error.notfound("ACL %s" % entity, context)
+
+    def __upsert_acl(self, entity, role, context):
+        # For simplicity, we treat `insert`, `update` and `patch` ACL the same way.
+        index = self.__search_acl(entity, False, context)
+        acl = testbench.acl.create_bucket_acl(self.metadata.name, entity, role, context)
+        if index is not None:
+            self.metadata.acl[index].CopyFrom(acl)
+            return self.metadata.acl[index]
+        else:
+            self.metadata.acl.append(acl)
+            return acl
+
+    def get_acl(self, entity, context):
+        index = self.__search_acl(entity, True, context)
+        return self.metadata.acl[index]
+
+    def insert_acl(self, request, context):
+        entity, role = "", ""
+        if context is not None:
+            entity, role = (
+                request.bucket_access_control.entity,
+                request.bucket_access_control.role,
+            )
+        else:
+            payload = json.loads(request.data)
+            entity, role = payload["entity"], payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def update_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.bucket_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def patch_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.bucket_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def delete_acl(self, entity, context):
+        del self.metadata.acl[self.__search_acl(entity, True, context)]
+
+    # === DEFAULT OBJECT ACL === #
+
+    def __search_default_object_acl(self, entity, must_exist, context):
+        entity = testbench.acl.get_canonical_entity(entity)
+        for i in range(len(self.metadata.default_object_acl)):
+            if self.metadata.default_object_acl[i].entity == entity:
+                return i
+        if must_exist:
+            testbench.error.notfound("Default Object ACL %s" % entity, context)
+
+    def __upsert_default_object_acl(self, entity, role, context):
+        # For simplicity, we treat `insert`, `update` and `patch` Default Object ACL the same way.
+        index = self.__search_default_object_acl(entity, False, context)
+        acl = testbench.acl.create_default_object_acl(
+            self.metadata.name, entity, role, context
+        )
+        if index is not None:
+            self.metadata.default_object_acl[index].CopyFrom(acl)
+            return self.metadata.default_object_acl[index]
+        else:
+            self.metadata.default_object_acl.append(acl)
+            return acl
+
+    def get_default_object_acl(self, entity, context):
+        index = self.__search_default_object_acl(entity, True, context)
+        return self.metadata.default_object_acl[index]
+
+    def insert_default_object_acl(self, request, context):
+        entity, role = "", ""
+        if context is not None:
+            entity, role = (
+                request.object_access_control.entity,
+                request.object_access_control.role,
+            )
+        else:
+            payload = json.loads(request.data)
+            entity, role = payload["entity"], payload["role"]
+        return self.__upsert_default_object_acl(entity, role, context)
+
+    def update_default_object_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.object_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_default_object_acl(entity, role, context)
+
+    def patch_default_object_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.object_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_default_object_acl(entity, role, context)
+
+    def delete_default_object_acl(self, entity, context):
+        del self.metadata.default_object_acl[
+            self.__search_default_object_acl(entity, True, context)
+        ]
+
+    # === NOTIFICATIONS === #
+
+    def insert_notification(self, request, context):
+        notification = {
+            "kind": "storage#notification",
+            "id": "notification-%d" % random.getrandbits(16),
+        }
+        data = json.loads(request.data)
+        for required_key in {"topic", "payload_format"}:
+            value = data.pop(required_key, None)
+            if value is not None:
+                notification[required_key] = value
+            else:
+                testbench.error.invalid(
+                    "Missing field in notification %s" % required_key, context
+                )
+        for key in {"event_types", "custom_attributes", "object_name_prefix"}:
+            value = data.pop(key, None)
+            if value is not None:
+                notification[key] = value
+        self.notifications[notification["id"]] = notification
+        return notification
+
+    def get_notification(self, notification_id, context):
+        return self.notifications[notification_id]
+
+    def delete_notification(self, notification_id, context):
+        del self.notifications[notification_id]
+
+    def list_notifications(self, context):
+        response = {"kind": "storage#notifications", "items": []}
+        for notification in self.notifications.values():
+            response["items"].append(notification)
+        return response
+
+    # === RESPONSE === #
+
+    def rest(self):
+        response = json_format.MessageToDict(self.metadata)
+        return Bucket.__postprocess_rest(response, self.rest_only)
