@@ -17,13 +17,20 @@
 import base64
 import datetime
 import hashlib
+import json
+import random
+import re
+import struct
+import sys
+import time
 
 import crc32c
+import flask
 import testbench
 
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
-from google.protobuf import json_format
+from google.protobuf import field_mask_pb2, json_format
 
 
 class Object:
@@ -240,6 +247,140 @@ class Object:
         blob, _ = cls.init_dict(fake_request, metadata, media, bucket, False)
         return blob, fake_request
 
+    # === METADATA === #
+
+    def __update_metadata(self, source, update_mask):
+        if update_mask is None:
+            update_mask = field_mask_pb2.FieldMask(paths=Object.modifiable_fields)
+        update_mask.MergeMessage(source, self.metadata, True, True)
+        self.metadata.metageneration += 1
+        self.metadata.updated.FromDatetime(datetime.datetime.now())
+
+    def update(self, request, context):
+        metadata = None
+        if context is not None:
+            metadata = request.metadata
+        else:
+            data = json.loads(request.data)
+            rest_only = self.__extract_rest_only(data)
+            self.rest_only.update(rest_only)
+            metadata = json_format.ParseDict(data, resources_pb2.Object())
+        self.__update_metadata(metadata, None)
+        self.__insert_predefined_acl(
+            metadata,
+            self.bucket,
+            testbench.acl.extract_predefined_acl(request, False, context),
+            context,
+        )
+
+    def patch(self, request, context):
+        update_mask = field_mask_pb2.FieldMask()
+        metadata = None
+        if context is not None:
+            metadata = request.metadata
+            update_mask = request.update_mask
+        else:
+            data = json.loads(request.data)
+            rest_only = self.__extract_rest_only(data)
+            self.rest_only.update(rest_only)
+            if "metadata" in data:
+                if data["metadata"] is None:
+                    self.metadata.metadata.clear()
+                else:
+                    for key, value in data["metadata"].items():
+                        if value is None:
+                            self.metadata.metadata.pop(key, None)
+                        else:
+                            self.metadata.metadata[key] = value
+            data.pop("metadata", None)
+            metadata = json_format.ParseDict(data, resources_pb2.Object())
+            paths = set()
+            for key in testbench.common.nested_key(data):
+                key = testbench.common.to_snake_case(key)
+                head = key
+                for i, c in enumerate(key):
+                    if c == "." or c == "[":
+                        head = key[0:i]
+                        break
+                if head in Object.modifiable_fields:
+                    if "[" in key:
+                        paths.add(head)
+                    else:
+                        paths.add(key)
+            update_mask = field_mask_pb2.FieldMask(paths=list(paths))
+        self.__update_metadata(metadata, update_mask)
+        self.__insert_predefined_acl(
+            metadata,
+            self.bucket,
+            testbench.acl.extract_predefined_acl(request, False, context),
+            context,
+        )
+
+    # === ACL === #
+
+    def __search_acl(self, entity, must_exist, context):
+        entity = testbench.acl.get_canonical_entity(entity)
+        for i in range(len(self.metadata.acl)):
+            if self.metadata.acl[i].entity == entity:
+                return i
+        if must_exist:
+            testbench.error.notfound("ACL %s" % entity, context)
+
+    def __upsert_acl(self, entity, role, context):
+        # For simplicity, we treat `insert`, `update` and `patch` ACL the same way.
+        index = self.__search_acl(entity, False, context)
+        acl = testbench.acl.create_object_acl(
+            self.metadata.bucket,
+            self.metadata.name,
+            self.metadata.generation,
+            entity,
+            role,
+            context,
+        )
+        if index is not None:
+            self.metadata.acl[index].CopyFrom(acl)
+            return self.metadata.acl[index]
+        else:
+            self.metadata.acl.append(acl)
+            return acl
+
+    def get_acl(self, entity, context):
+        index = self.__search_acl(entity, True, context)
+        return self.metadata.acl[index]
+
+    def insert_acl(self, request, context):
+        entity, role = "", ""
+        if context is not None:
+            entity, role = (
+                request.object_access_control.entity,
+                request.object_access_control.role,
+            )
+        else:
+            payload = json.loads(request.data)
+            entity, role = payload["entity"], payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def update_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.object_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def patch_acl(self, request, entity, context):
+        role = ""
+        if context is not None:
+            role = request.object_access_control.role
+        else:
+            payload = json.loads(request.data)
+            role = payload["role"]
+        return self.__upsert_acl(entity, role, context)
+
+    def delete_acl(self, entity, context):
+        del self.metadata.acl[self.__search_acl(entity, True, context)]
+
     # === RESPONSE === #
 
     @classmethod
@@ -262,3 +403,111 @@ class Object:
 
     def rest_metadata(self):
         return self.rest(self.metadata, self.rest_only)
+
+    def x_goog_hash_header(self):
+        hashes = []
+        if self.metadata.crc32c is not None and self.metadata.crc32c.value is not None:
+            hashes.append(
+                "crc32c=%s"
+                % testbench.common.rest_crc32c_from_proto(self.metadata.crc32c.value)
+            )
+        if self.metadata.md5_hash is not None:
+            hashes.append("md5=%s" % self.metadata.md5_hash)
+        return ",".join(hashes) if len(hashes) != 0 else None
+
+    def rest_media(self, request, delay=time.sleep):
+        range_header = request.headers.get("range")
+        response_payload = self.media
+        begin = 0
+        end = len(response_payload)
+        if range_header is not None:
+            m = re.match("bytes=([0-9]+)-([0-9]+)", range_header)
+            if m:
+                begin = int(m.group(1))
+                end = int(m.group(2))
+                response_payload = response_payload[begin : end + 1]
+            m = re.match("bytes=([0-9]+)-$", range_header)
+            if m:
+                begin = int(m.group(1))
+                response_payload = response_payload[begin:]
+            m = re.match("bytes=-([0-9]+)$", range_header)
+            if m:
+                last = int(m.group(1))
+                response_payload = response_payload[-last:]
+
+        streamer, length, headers = None, len(response_payload), {}
+        content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
+
+        instructions = testbench.common.extract_instruction(request, None)
+        if instructions == "return-broken-stream":
+            headers["Content-Length"] = length
+
+            def streamer():
+                chunk_size = 64 * 1024
+                for r in range(0, len(response_payload), chunk_size):
+                    if r > 1024 * 1024:
+                        print("\n\n###### EXIT to simulate crash\n")
+                        sys.exit(1)
+                    delay(0.1)
+                    chunk_end = min(r + chunk_size, len(response_payload))
+                    yield response_payload[r:chunk_end]
+
+        elif instructions == "return-corrupted-data":
+            media = testbench.common.corrupt_media(response_payload)
+
+            def streamer():
+                yield media
+
+        elif instructions is not None and instructions.startswith(u"stall-always"):
+
+            def streamer():
+                chunk_size = 16 * 1024
+                for r in range(begin, end, chunk_size):
+                    chunk_end = min(r + chunk_size, end)
+                    if r == begin:
+                        delay(10)
+                    yield response_payload[r:chunk_end]
+
+        elif instructions == "stall-at-256KiB" and begin == 0:
+
+            def streamer():
+                chunk_size = 16 * 1024
+                for r in range(begin, end, chunk_size):
+                    chunk_end = min(r + chunk_size, end)
+                    if r == 256 * 1024:
+                        time.sleep(10)
+                    yield response_payload[r:chunk_end]
+
+        elif instructions is not None and instructions.startswith(
+            u"return-503-after-256K"
+        ):
+            if begin == 0:
+
+                def streamer():
+                    chunk_size = 4 * 1024
+                    for r in range(0, len(response_payload), chunk_size):
+                        if r >= 256 * 1024:
+                            print("\n\n###### EXIT to simulate crash\n")
+                            sys.exit(1)
+                        time.sleep(0.01)
+                        chunk_end = min(r + chunk_size, len(response_payload))
+                        yield response_payload[r:chunk_end]
+
+            elif instructions.endswith(u"/retry-1"):
+                print("## Return error for retry 1")
+                return flask.Response("Service Unavailable", status=503)
+            elif instructions.endswith(u"/retry-2"):
+                print("## Return error for retry 2")
+                return flask.Response("Service Unavailable", status=503)
+            else:
+                print("## Return success for %s" % instructions)
+                return flask.Response(response_payload, status=200, headers=headers)
+        else:
+
+            def streamer():
+                yield response_payload
+
+        headers["Content-Range"] = content_range
+        headers["x-goog-hash"] = self.x_goog_hash_header()
+        headers["x-goog-generation"] = self.metadata.generation
+        return flask.Response(streamer(), status=200, headers=headers)
