@@ -280,19 +280,6 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.media, b"The quick brown fox jumps over the lazy dog")
         self.assertEqual(blob.metadata.content_type, "text/plain")
 
-    def test_init_predefined_acl(self):
-        boundary, payload = self.__format_multipart_upload(
-            {"name": "object"},
-            media="",
-        )
-        request = testbench.common.FakeRequest(
-            args={"predefinedAcl": ""},
-            headers={"content-type": "multipart/related; boundary=" + boundary},
-            data=payload.encode("utf-8"),
-            environ={},
-        )
-        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
-
     __REST_FIELDS_KEY_ONLY = [
         "owner",
         "timeCreated",
