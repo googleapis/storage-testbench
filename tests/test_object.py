@@ -410,6 +410,14 @@ class TestObject(unittest.TestCase):
             },
         )
 
+        # `REST` PATCH
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"metadata": {"method": "rest"}})
+        )
+        blob.patch(request, None)
+        self.assertEqual(blob.metadata.metadata["method"], "rest")
+
     def test_rest_to_grpc(self):
         # Make sure that object created by `REST` works with `gRPC`'s request.
         metadata = {
@@ -541,6 +549,229 @@ class TestObject(unittest.TestCase):
                 "temporaryHold": True,
             },
         )
+
+        # `grpc` PATCH
+
+        request = storage_pb2.PatchObjectRequest(
+            bucket="bucket",
+            object="object",
+            metadata={"metadata": {"method": "grpc"}},
+            update_mask={"paths": ["metadata"]},
+        )
+        blob.patch(request, "")
+        self.assertEqual(blob.metadata.bucket, "bucket")
+        self.assertEqual(blob.metadata.name, "test-object-name")
+        self.assertEqual(blob.media, b"123456789")
+        self.assertEqual(blob.metadata.metadata["method"], "grpc")
+
+    def test_update_and_patch(self):
+        # Because Object's `update` and `patch` are similar to Bucket'ones, we only
+        # want to make sure that REST `UPDATE` and `PATCH` does not throw any exception.
+
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=foo_bar_baz"},
+            data=b'--foo_bar_baz\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{"name": "object", "metadata": {"method": "rest"}}\r\n--foo_bar_baz\r\nContent-Type: image/jpeg\r\n\r\n123456789\r\n--foo_bar_baz--\r\n',
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        self.assertEqual(blob.metadata.name, "object")
+        self.assertEqual(blob.metadata.metadata["method"], "rest")
+        self.assertEqual(blob.metadata.content_type, "image/jpeg")
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"metadata": {"method": "rest_update"}})
+        )
+        blob.update(request, None)
+        self.assertEqual(blob.metadata.metadata["method"], "rest_update")
+        # Modifiable fields will be replaced by default value when updating
+        self.assertEqual(blob.metadata.content_type, "")
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"metadata": {"method": "rest_patch"}})
+        )
+        blob.patch(request, None)
+        self.assertEqual(blob.metadata.metadata["method"], "rest_patch")
+
+    def test_acl_crud(self):
+        boundary, payload = self.__format_multipart_upload(
+            {"name": "object"},
+            media="",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=" + boundary},
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={},
+            # The actual format for "entity" is more complex, but for testing any string will do.
+            data=json.dumps({"entity": "test-entity", "role": "READER"}),
+            environ={},
+        )
+        insert_result = blob.insert_acl(request, None)
+        self.assertEqual(insert_result.entity, "test-entity")
+        self.assertEqual(insert_result.role, "READER")
+        get_result = blob.get_acl("test-entity", None)
+        self.assertEqual(get_result, insert_result)
+
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={},
+            data=json.dumps({"entity": "test-entity", "role": "OWNER"}),
+            environ={},
+        )
+        update_result = blob.update_acl(request, "test-entity", None)
+        self.assertEqual(update_result.entity, "test-entity")
+        self.assertEqual(update_result.role, "OWNER")
+
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={},
+            data=json.dumps({"entity": "test-entity", "role": "READER"}),
+            environ={},
+        )
+        patch_result = blob.patch_acl(request, "test-entity", None)
+        self.assertEqual(patch_result.entity, "test-entity")
+        self.assertEqual(patch_result.role, "READER")
+
+        blob.delete_acl("test-entity", None)
+        with self.assertRaises(testbench.error.RestException) as rest:
+            blob.get_acl("test-entity", None)
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_rest_media(self):
+        boundary, payload = self.__format_multipart_upload(
+            {"name": "object"},
+            media="How vexingly quick daft zebras jump!",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=" + boundary},
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        request = Request(
+            create_environ(
+                base_url="http://localhost:8080",
+                headers={},
+                data=json.dumps({}),
+            )
+        )
+        response = blob.rest_media(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"How vexingly quick daft zebras jump!")
+
+        cases = {
+            "bytes=4-9": b"vexing",
+            "bytes=12-": b" quick daft zebras jump!",
+            "bytes=-5": b"jump!",
+        }
+        for range, expected in cases.items():
+            request = Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    headers={"range": range},
+                    data=json.dumps({}),
+                )
+            )
+            response = blob.rest_media(request)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data, expected)
+
+    def test_rest_media_instructions(self):
+        boundary, payload = self.__format_multipart_upload(
+            {"name": "object"},
+            media="How vexingly quick daft zebras jump!",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=" + boundary},
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+
+        retry_cases = {
+            "return-503-after-256K/retry-1": 503,
+            "return-503-after-256K/retry-2": 503,
+            "return-503-after-256K/retry-3": 200,
+        }
+        for instruction, status_code in retry_cases.items():
+            request = Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    headers={
+                        "x-goog-testbench-instructions": instruction,
+                        "range": "bytes=2-",
+                    },
+                    data=json.dumps({}),
+                )
+            )
+            response = blob.rest_media(request)
+            self.assertEqual(response.status_code, status_code, msg=instruction)
+
+        request = Request(
+            create_environ(
+                base_url="http://localhost:8080",
+                headers={"x-goog-testbench-instructions": "return-corrupted-data"},
+                data=json.dumps({}),
+            )
+        )
+        response = blob.rest_media(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.data, b"How vexingly quick daft zebras jump!")
+
+        cases = {
+            "return-broken-stream": 200,
+            "return-503-after-256K": 200,
+            "return-503-after-256K/retry-3": 200,
+            "stall-at-256KiB": 200,
+        }
+        for instruction, status_code in cases.items():
+            request = Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    headers={"x-goog-testbench-instructions": instruction},
+                    data=json.dumps({}),
+                )
+            )
+            response = blob.rest_media(request)
+            self.assertEqual(response.status_code, status_code, msg=instruction)
+            self.assertEqual(
+                response.data,
+                b"How vexingly quick daft zebras jump!",
+                msg=instruction,
+            )
+
+    def test_stall_always(self):
+        boundary, payload = self.__format_multipart_upload(
+            {"name": "object"},
+            media="How vexingly quick daft zebras jump!",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=" + boundary},
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        request = Request(
+            create_environ(
+                base_url="http://localhost:8080",
+                headers={"x-goog-testbench-instructions": "stall-always"},
+                data=json.dumps({}),
+            )
+        )
+        mock_sleep = unittest.mock.create_autospec(lambda x: None)
+        response = blob.rest_media(request, delay=mock_sleep)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"How vexingly quick daft zebras jump!")
+        mock_sleep.assert_called_once_with(10)
 
 
 if __name__ == "__main__":
