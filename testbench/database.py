@@ -226,3 +226,33 @@ class Database:
             self.live_generations[bucket_name].pop(object_name, None)
         if generation != 0:
             del self.objects[bucket_name]["%s#%d" % (object_name, generation)]
+
+    # === UPLOAD === #
+
+    def get_upload(self, upload_id, context):
+        upload = self.uploads.get(upload_id)
+        if upload is None:
+            testbench.error.notfound("Upload %s" % upload_id, context)
+        return upload
+
+    def insert_upload(self, upload):
+        self.uploads[upload.upload_id] = upload
+
+    def delete_upload(self, upload_id, context):
+        self.get_upload(upload_id, context)
+        del self.uploads[upload_id]
+
+    # === REWRITE === #
+
+    def get_rewrite(self, token, context):
+        rewrite = self.rewrites.get(token)
+        if rewrite is None:
+            testbench.error.notfound("Rewrite %s" % token, context)
+        return rewrite
+
+    def insert_rewrite(self, rewrite):
+        self.rewrites[rewrite.token] = rewrite
+
+    def delete_rewrite(self, token, context):
+        self.get_rewrite(token, context)
+        del self.rewrites[token]
