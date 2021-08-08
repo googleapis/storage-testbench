@@ -135,7 +135,19 @@ class TestDatabaseObject(unittest.TestCase):
         self.assertEqual(names, {"object-name"})
 
         self.bucket.metadata.versioning.enabled = True
-        for name in ["abc", "obaaa", "obzzz", "zzz", "object-name/qux", "object-name"]:
+        for name in [
+            "abc",
+            "obaaa",
+            "obzzz",
+            "zzz",
+            "object-name",
+            "object-name/",
+            "object-name/qux",
+            "object-name/foo/bar/baz",
+            "object-name/foo/bar/",
+            "object-name/foo/bar",
+            "object-name/foo///",
+        ]:
             request = testbench.common.FakeRequest(
                 args={"name": name}, data=b"12345678", headers={}, environ={}
             )
@@ -150,7 +162,6 @@ class TestDatabaseObject(unittest.TestCase):
                         "startOffset": "obc",
                         "endOffset": "obr",
                         "delimiter": "/",
-                        "includeTrailingDelimiter": "false",
                         "versions": "true",
                     }
                 )
@@ -216,6 +227,15 @@ class TestDatabaseObject(unittest.TestCase):
                 "object-name",
                 is_source=False,
                 context=None,
+            )
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_list_object_bucket_not_found(self):
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _, _, _ = self.database.list_object(
+                Request(create_environ(query_string={})),
+                "invalid-bucket-name",
+                None,
             )
         self.assertEqual(rest.exception.code, 404)
 

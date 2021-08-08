@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import json
 import os
-import uuid
-import re
+
+from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 
 import gcs
 import testbench
-
-from schema import Schema, SchemaError, And, Use
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 
 
 class Database:
@@ -47,13 +43,6 @@ class Database:
     @classmethod
     def init(cls):
         return cls({}, {}, {}, {}, {}, {}, [])
-
-    def raii(self, grpc_server):
-        self.grpc_server = grpc_server
-
-    def __del__(self):
-        if hasattr(self, "grpc_server") and self.grpc_server is not None:
-            self.grpc_server.stop(None)
 
     # === BUCKET === #
 
@@ -128,20 +117,13 @@ class Database:
         delimiter, prefix, versions = "", "", False
         start_offset, end_offset = "", None
         include_trailing_delimiter = False
-        if context is not None:
-            delimiter = request.delimiter
-            prefix = request.prefix
-            versions = request.versions
-            include_trailing_delimiter = request.include_trailing_delimiter
-        else:
-            delimiter = request.args.get("delimiter", "")
-            prefix = request.args.get("prefix", "")
-            versions = request.args.get("versions", False, type=bool)
-            start_offset = request.args.get("startOffset", "")
-            end_offset = request.args.get("endOffset")
-            include_trailing_delimiter = request.args.get(
-                "includeTrailingDelimiter", False
-            )
+        # TODO(#27) - restore gRPC support for listing objects?
+        delimiter = request.args.get("delimiter", "")
+        prefix = request.args.get("prefix", "")
+        versions = request.args.get("versions", False, type=bool)
+        start_offset = request.args.get("startOffset", "")
+        end_offset = request.args.get("endOffset")
+        include_trailing_delimiter = request.args.get("includeTrailingDelimiter", False)
         return (
             delimiter,
             prefix,
