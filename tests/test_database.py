@@ -240,5 +240,61 @@ class TestDatabaseObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 404)
 
 
+class TestDatabaseTemporaryResources(unittest.TestCase):
+    """Test the Database class handling of uploads and rewrites."""
+
+    def setUp(self):
+        self.database = testbench.database.Database.init()
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"name": "bucket-name"}),
+        )
+        self.bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.database.insert_bucket(request, self.bucket, None)
+
+    def test_upload_crud(self):
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            data=json.dumps({}),
+            query_string={"name": "test-object"},
+            content_type="application/json",
+            method="POST",
+        )
+        upload = gcs.holder.DataHolder.init_resumable_rest(
+            Request(environ), self.bucket.metadata
+        )
+        self.database.insert_upload(upload)
+        get_result = self.database.get_upload(upload.upload_id, None)
+        self.assertEqual(upload, get_result)
+
+        self.database.delete_upload(upload.upload_id, None)
+        # get_upload() should fail after a delete.
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.database.get_upload(upload.upload_id, None)
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_rewrite_crud(self):
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            query_string={},
+        )
+        rewrite = gcs.holder.DataHolder.init_rewrite_rest(
+            Request(environ),
+            "bucket-name",
+            "source-object",
+            "bucket-name",
+            "destination-object",
+        )
+        self.database.insert_rewrite(rewrite)
+        get_result = self.database.get_rewrite(rewrite.token, None)
+        self.assertEqual(rewrite, get_result)
+
+        self.database.delete_rewrite(rewrite.token, None)
+        # get_rewrite() should fail after a delete.
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.database.get_rewrite(rewrite.token, None)
+        self.assertEqual(rest.exception.code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()
