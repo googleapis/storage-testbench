@@ -35,6 +35,7 @@ class TestBucket(unittest.TestCase):
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(bucket.metadata.name, "bucket")
+        self.assertLess(0, bucket.metadata.metageneration)
 
     def test_init_validates_names(self):
         request = testbench.common.FakeRequest(
@@ -65,6 +66,7 @@ class TestBucket(unittest.TestCase):
     def test_init_rest(self):
         metadata = {
             "name": "test-bucket-name",
+            "metageneration": "1",
             "defaultEventBasedHold": True,
             "retentionPolicy": {
                 "retentionPeriod": "90",
@@ -116,6 +118,9 @@ class TestBucket(unittest.TestCase):
         request = testbench.common.FakeRequest(args={}, data=json.dumps(metadata))
         bucket, projection = gcs.bucket.Bucket.init(request, None)
         bucket_rest = bucket.rest()
+        # Some fields must exist in the REST message
+        for required in ["metageneration", "kind", "name"]:
+            self.assertIsNotNone(bucket_rest.get(required, None), msg=required)
         # Verify the BucketAccessControl entries have the desired fields
         metadata.pop("acl")
         acl = bucket_rest.pop("acl", None)
