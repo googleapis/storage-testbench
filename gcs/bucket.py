@@ -208,7 +208,7 @@ class Bucket:
         metadata.iam_configuration.uniform_bucket_level_access.enabled = is_uniform
         metadata.id = metadata.name
         metadata.project_number = int(testbench.acl.PROJECT_NUMBER)
-        metadata.metageneration = 0
+        metadata.metageneration = 1
         metadata.etag = hashlib.md5(metadata.name.encode("utf-8")).hexdigest()
         metadata.time_created.FromDatetime(time_created)
         metadata.updated.FromDatetime(time_created)
