@@ -17,8 +17,8 @@
 """Unit test for testbench.database."""
 
 import json
-import unittest
 import os
+import unittest
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
@@ -294,6 +294,65 @@ class TestDatabaseTemporaryResources(unittest.TestCase):
         with self.assertRaises(testbench.error.RestException) as rest:
             _ = self.database.get_rewrite(rewrite.token, None)
         self.assertEqual(rest.exception.code, 404)
+
+
+class TestDatabaseRetryTest(unittest.TestCase):
+    def test_retry_test_crud(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        test = database.insert_retry_test({"storage.buckets.list": ["return-503"]})
+        self.assertLessEqual({"id", "instructions", "completed"}, set(test.keys()))
+        self.assertFalse(test.get("completed"))
+        get_result = database.get_retry_test(test.get("id"))
+        self.assertEqual(test, get_result)
+
+        self.assertTrue(
+            database.has_instructions_retry_test(test.get("id"), "storage.buckets.list")
+        )
+        self.assertFalse(
+            database.has_instructions_retry_test(
+                test.get("id"), "storage.buckets.delete"
+            )
+        )
+
+        self.assertEqual(
+            "return-503",
+            database.peek_next_instruction(test.get("id"), "storage.buckets.list"),
+        )
+        self.assertIsNone(
+            database.peek_next_instruction(test.get("id"), "storage.buckets.delete")
+        )
+
+        self.assertEqual(
+            "return-503",
+            database.dequeue_next_instruction(test.get("id"), "storage.buckets.list"),
+        )
+        get_result = database.get_retry_test(test.get("id"))
+        self.assertTrue(get_result.get("completed"))
+
+        ids = {r.get("id") for r in database.list_retry_tests()}
+        self.assertEqual({test.get("id")}, ids)
+
+        database.delete_retry_test(test.get("id"))
+        ids = {r.get("id") for r in database.list_retry_tests()}
+        self.assertEqual(set(), ids)
+
+    def test_get_retry_test_not_found(self):
+        database = testbench.database.Database.init()
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = database.get_retry_test("test-invalid")
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_insert_retry_test_invalid(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = database.insert_retry_test(
+                {"storage.buckets.list": ["invalid-instruction"]}
+            )
+        self.assertEqual(rest.exception.code, 400)
 
 
 if __name__ == "__main__":
