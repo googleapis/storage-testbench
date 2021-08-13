@@ -10,6 +10,5 @@ branchProtectionRules:
   requiresStrictStatusChecks: false
   requiredStatusCheckContexts:
     - cla/google
-    - clang-format
     - Format with psf-black
     - Unit Tests with Python 3.9
