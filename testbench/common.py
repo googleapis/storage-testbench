@@ -341,39 +341,6 @@ def enforce_patch_override(request):
         testbench.error.notallowed(context=None)
 
 
-def __extract_data(data):
-    if isinstance(data, FlaskResponse):
-        return data.get_data()
-    if isinstance(data, dict):
-        return json.dumps(data)
-    return data
-
-
-def __wrap_in_response_instance(data, to_wrap):
-    if isinstance(data, FlaskResponse):
-        data.set_data(to_wrap)
-        return data
-    return FlaskResponse(to_wrap)
-
-
-def __get_streamer_response_fn(database, method, conn, test_id):
-    def response_handler(data):
-        def streamer():
-            database.dequeue_next_instruction(test_id, method)
-            d = __extract_data(data)
-            chunk_size = 4
-            for r in range(0, len(d), chunk_size):
-                if r >= 10:
-                    conn.close()
-                    sys.exit(1)
-                chunk_end = min(r + chunk_size, len(d))
-                yield d[r:chunk_end]
-
-        return __wrap_in_response_instance(data, streamer())
-
-    return response_handler
-
-
 def __get_default_response_fn(data):
     return data
 
@@ -396,35 +363,6 @@ def handle_retry_test_instruction(database, request, method):
         testbench.error.generic(
             msg=error_message, rest_code=error_code, grpc_code=None, context=None
         )
-    retry_connection_matches = testbench.common.retry_return_error_connection.match(
-        next_instruction
-    )
-    if retry_connection_matches:
-        items = list(retry_connection_matches.groups())
-        # sys.exit(1) retains database state with more than 1 thread
-        if items[0] == "reset-connection":
-            database.dequeue_next_instruction(test_id, method)
-            fd = request.environ["gunicorn.socket"]
-            fd.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
-            fd.close()
-            sys.exit(1)
-        elif items[0] == "broken-stream":
-            conn = request.environ["gunicorn.socket"]
-            return __get_streamer_response_fn(database, method, conn, test_id)
-    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
-        next_instruction
-    )
-    if error_after_bytes_matches and method == "storage.objects.insert":
-        items = list(error_after_bytes_matches.groups())
-        error_code = items[0]
-        after_bytes = items[1]
-        # Upload failures should allow to not complete after certain bytes
-        upload_type = request.args.get("uploadType", None)
-        upload_id = request.args.get("upload_id", None)
-        if upload_type == "resumable" and upload_id is not None:
-            database.dequeue_next_instruction(test_id, method)
-            testbench.error.notallowed()
-    return __get_default_response_fn
 
 
 def rest_crc32c_to_proto(crc32c):

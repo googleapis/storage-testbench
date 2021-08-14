@@ -46,7 +46,7 @@ def _simple_json_error(msg):
     return json.dumps({"error": {"errors": [{"domain": "global", "message": msg}]}})
 
 
-def _generic(msg, rest_code, grpc_code, context):
+def generic(msg, rest_code, grpc_code, context):
     """Generate the appropriate error for REST or gRPC handlers."""
     if context is not None:
         context.abort(grpc_code, msg)
@@ -75,17 +75,17 @@ def csek(context, rest_code=400, grpc_code=grpc.StatusCode.INVALID_ARGUMENT):
             }
         }
     )
-    _generic(error_msg, rest_code, grpc_code, context)
+    generic(error_msg, rest_code, grpc_code, context)
 
 
 def invalid(msg, context, rest_code=400, grpc_code=grpc.StatusCode.INVALID_ARGUMENT):
     """A fairly generic error for invalid values in arguments."""
-    _generic(_simple_json_error("%s is invalid." % msg), rest_code, grpc_code, context)
+    generic(_simple_json_error("%s is invalid." % msg), rest_code, grpc_code, context)
 
 
 def missing(name, context, rest_code=400, grpc_code=grpc.StatusCode.INVALID_ARGUMENT):
     """Error returned when an argument or value is missing."""
-    _generic(_simple_json_error("Missing %s." % name), rest_code, grpc_code, context)
+    generic(_simple_json_error("Missing %s." % name), rest_code, grpc_code, context)
 
 
 def mismatch(
@@ -102,23 +102,23 @@ def mismatch(
         str(expect),
         str(actual),
     )
-    _generic(_simple_json_error(msg), rest_code, grpc_code, context)
+    generic(_simple_json_error(msg), rest_code, grpc_code, context)
 
 
 def notchanged(msg, context, rest_code=304, grpc_code=grpc.StatusCode.ABORTED):
     """Error returned when if*NotMatch or If-None-Match pre-conditions fail."""
-    _generic(
+    generic(
         _simple_json_error("%s validation failed." % msg), rest_code, grpc_code, context
     )
 
 
 def notfound(name, context, rest_code=404, grpc_code=grpc.StatusCode.NOT_FOUND):
     """Error returned when a resource (Object, Bucket, Notification, etc.) is not found."""
-    _generic(
+    generic(
         _simple_json_error("%s does not exist." % name), rest_code, grpc_code, context
     )
 
 
 def notallowed(context=None, rest_code=405, grpc_code=None):
     """Error returned when a method is not allowed."""
-    _generic(_simple_json_error("method is not allowed"), rest_code, grpc_code, context)
+    generic(_simple_json_error("method is not allowed"), rest_code, grpc_code, context)
