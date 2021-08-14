@@ -94,7 +94,8 @@ class TestEmulator(unittest.TestCase):
         self.assertIn("id", create_rest)
 
         list_response = self.client.get(
-            "/storage/v1/b", query_string={"project": "test-project-unused"},
+            "/storage/v1/b",
+            query_string={"project": "test-project-unused"},
             headers={"x-retry-test-id": create_rest.get("id")},
         )
         self.assertEqual(list_response.status_code, 429, msg=list_response.data)
