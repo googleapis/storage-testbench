@@ -14,6 +14,7 @@
 
 import flask
 import httpbin
+import json
 from functools import wraps
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
@@ -25,7 +26,6 @@ import testbench
 
 db = testbench.database.Database.init()
 grpc_port = 0
-supported_methods = []
 
 # === DEFAULT ENTRY FOR REST SERVER === #
 root = flask.Flask(__name__)
@@ -76,6 +76,54 @@ def root_put_object_with_bucket(bucket_name, object_name):
     return xml_put_object(bucket_name, object_name)
 
 
+# Needs to be defined in emulator.py to keep context of flask and db global variables
+def retry_test(method):
+    db.insert_supported_methods([method])
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            response_handler = testbench.common.handle_retry_test_instruction(
+                db, flask.request, method
+            )
+            return response_handler(func(*args, **kwargs))
+
+        return wrapper
+
+    return decorator
+
+
+@root.route("/retry_tests", methods=["GET"])
+def list_retry_tests():
+    response = json.dumps({"retry_test": db.list_retry_tests()})
+    return flask.Response(response, status=200, content_type="application/json")
+
+
+@root.route("/retry_test", methods=["POST"])
+def create_retry_test():
+    payload = json.loads(flask.request.data)
+    test_instruction_set = payload.get("instructions", None)
+    if not test_instruction_set:
+        return flask.Response("instructions is not defined", status=400)
+    retry_test = db.insert_retry_test(test_instruction_set)
+    retry_test_response = json.dumps(retry_test)
+    return flask.Response(
+        retry_test_response, status=200, content_type="application/json"
+    )
+
+
+@root.route("/retry_test/<test_id>", methods=["GET"])
+def get_retry_test(test_id):
+    retry_test = json.dumps(db.get_retry_test(test_id))
+    return flask.Response(retry_test, status=200, content_type="application/json")
+
+
+@root.route("/retry_test/<test_id>", methods=["DELETE"])
+def delete_retry_test(test_id):
+    db.delete_retry_test(test_id)
+    return flask.Response("Deleted {}".format(test_id), 200, content_type="text/plain")
+
+
 # === WSGI APP TO HANDLE JSON API === #
 GCS_HANDLER_PATH = "/storage/v1"
 gcs = flask.Flask(__name__)
@@ -87,6 +135,7 @@ gcs.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
 @gcs.route("/b", methods=["GET"])
+@retry_test(method="storage.buckets.list")
 def bucket_list():
     db.insert_test_bucket(None)
     project = flask.request.args.get("project")
@@ -102,6 +151,7 @@ def bucket_list():
 
 
 @gcs.route("/b", methods=["POST"])
+@retry_test(method="storage.buckets.insert")
 def bucket_insert():
     db.insert_test_bucket(None)
     bucket, projection = gcs_type.bucket.Bucket.init(flask.request, None)
@@ -111,6 +161,7 @@ def bucket_insert():
 
 
 @gcs.route("/b/<bucket_name>")
+@retry_test(method="storage.buckets.get")
 def bucket_get(bucket_name):
     db.insert_test_bucket(None)
     db.insert_test_bucket(None)
@@ -123,6 +174,7 @@ def bucket_get(bucket_name):
 
 
 @gcs.route("/b/<bucket_name>", methods=["PUT"])
+@retry_test(method="storage.buckets.update")
 def bucket_update(bucket_name):
     db.insert_test_bucket(None)
     bucket = db.get_bucket(flask.request, bucket_name, None)
@@ -135,6 +187,7 @@ def bucket_update(bucket_name):
 
 
 @gcs.route("/b/<bucket_name>", methods=["PATCH", "POST"])
+@retry_test(method="storage.buckets.patch")
 def bucket_patch(bucket_name):
     testbench.common.enforce_patch_override(flask.request)
     bucket = db.get_bucket(flask.request, bucket_name, None)
@@ -147,6 +200,7 @@ def bucket_patch(bucket_name):
 
 
 @gcs.route("/b/<bucket_name>", methods=["DELETE"])
+@retry_test(method="storage.buckets.delete")
 def bucket_delete(bucket_name):
     db.delete_bucket(flask.request, bucket_name, None)
     return ""

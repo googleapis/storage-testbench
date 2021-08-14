@@ -18,6 +18,8 @@
 
 import json
 import os
+from testbench import database
+from testbench.common import rest_adjust
 import unittest
 
 import emulator
@@ -25,6 +27,9 @@ import emulator
 
 class TestEmulator(unittest.TestCase):
     def setUp(self):
+        supported_methods = emulator.db.supported_methods.copy()
+        emulator.db = database.Database.init()
+        emulator.db.insert_supported_methods(supported_methods)
         self.client = emulator.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
@@ -33,7 +38,50 @@ class TestEmulator(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.data, b"OK")
 
-    def test_bucket_insert(self):
+    def test_retry_test_crud(self):
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps({"instructions": {"storage.buckets.list": ["return-429"]}}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        response = self.client.get("/retry_test/" + create_rest.get("id"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+        self.assertEqual(get_rest, create_rest)
+
+        response = self.client.get("/retry_tests")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        list_rest = json.loads(response.data)
+        ids = [test.get("id") for test in list_rest.get("retry_test", [])]
+        self.assertEqual(ids, [create_rest.get("id")], msg=response.data)
+
+        response = self.client.delete("/retry_test/" + create_rest.get("id"))
+        self.assertEqual(response.status_code, 200)
+        # Once deleted, getting the test should fail.
+        response = self.client.get("/retry_test/" + create_rest.get("id"))
+        self.assertEqual(response.status_code, 404)
+
+    def test_retry_test_create_invalid(self):
+        response = self.client.post("/retry_test", data=json.dumps({}))
+        self.assertEqual(response.status_code, 400)
+
+    def test_retry_test_get_notfound(self):
+        response = self.client.get("/retry_test/invalid-id")
+        self.assertEqual(response.status_code, 404)
+
+    def test_bucket_crud(self):
         insert_response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
         )
