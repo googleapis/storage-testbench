@@ -274,6 +274,77 @@ class TestEmulator(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_bucket_default_object_acl_crud(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        insert_data = {"entity": "allAuthenticatedUsers", "role": "READER"}
+        response = self.client.post(
+            "/storage/v1/b/bucket-name/defaultObjectAcl", data=json.dumps(insert_data)
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        insert_rest = json.loads(response.data)
+        self.assertEqual(insert_rest, insert_rest | insert_data)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+        self.assertEqual(get_rest, insert_rest)
+
+        response = self.client.patch(
+            "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers",
+            data=json.dumps({"role": "OWNER"}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        patch_rest = json.loads(response.data)
+        self.assertEqual(patch_rest.get("role", None), "OWNER")
+
+        update_data = patch_rest.copy()
+        update_data["role"] = "READER"
+        response = self.client.put(
+            "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers",
+            data=json.dumps(update_data),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        update_rest = json.loads(response.data)
+        self.assertEqual(update_rest.get("role", None), "READER")
+
+        response = self.client.get("/storage/v1/b/bucket-name/defaultObjectAcl")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        list_rest = json.loads(response.data)
+        self.assertIn(
+            "allAuthenticatedUsers", [a.get("entity") for a in list_rest.get("items")]
+        )
+
+        response = self.client.delete(
+            "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 200)
+        # After delete, get should fail
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
