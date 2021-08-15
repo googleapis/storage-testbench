@@ -19,6 +19,7 @@ from functools import wraps
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
+from google.protobuf import json_format
 
 import gcs as gcs_type
 import testbench
@@ -205,6 +206,75 @@ def bucket_patch(bucket_name):
 @retry_test(method="storage.buckets.delete")
 def bucket_delete(bucket_name):
     db.delete_bucket(flask.request, bucket_name, None)
+    return ""
+
+
+# === BUCKET ACL === #
+
+
+@gcs.route("/b/<bucket_name>/acl")
+@retry_test(method="storage.bucket_acl.list")
+def bucket_acl_list(bucket_name):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    response = {"kind": "storage#bucketAccessControls", "items": []}
+    for acl in bucket.metadata.acl:
+        acl_rest = json_format.MessageToDict(acl)
+        acl_rest["kind"] = "storage#bucketAccessControl"
+        response["items"].append(acl_rest)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/acl", methods=["POST"])
+@retry_test(method="storage.bucket_acl.insert")
+def bucket_acl_insert(bucket_name):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    acl = bucket.insert_acl(flask.request, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#bucketAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/acl/<entity>")
+@retry_test(method="storage.bucket_acl.get")
+def bucket_acl_get(bucket_name, entity):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    acl = bucket.get_acl(entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#bucketAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/acl/<entity>", methods=["PUT"])
+@retry_test(method="storage.bucket_acl.update")
+def bucket_acl_update(bucket_name, entity):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    acl = bucket.update_acl(flask.request, entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#bucketAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/acl/<entity>", methods=["PATCH", "POST"])
+@retry_test(method="storage.bucket_acl.patch")
+def bucket_acl_patch(bucket_name, entity):
+    testbench.common.enforce_patch_override(flask.request)
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    acl = bucket.patch_acl(flask.request, entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#bucketAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/acl/<entity>", methods=["DELETE"])
+@retry_test(method="storage.bucket_acl.delete")
+def bucket_acl_delete(bucket_name, entity):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    bucket.delete_acl(entity, None)
     return ""
 
 
