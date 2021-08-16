@@ -363,6 +363,7 @@ def handle_retry_test_instruction(database, request, method):
         testbench.error.generic(
             msg=error_message, rest_code=error_code, grpc_code=None, context=None
         )
+    return __get_default_response_fn
 
 
 def rest_crc32c_to_proto(crc32c):

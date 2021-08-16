@@ -104,7 +104,9 @@ def create_retry_test():
     payload = json.loads(flask.request.data)
     test_instruction_set = payload.get("instructions", None)
     if not test_instruction_set:
-        return flask.Response("instructions is not defined", status=400)
+        return flask.Response(
+            "instructions is not defined", status=400, content_type="text/plain"
+        )
     retry_test = db.insert_retry_test(test_instruction_set)
     retry_test_response = json.dumps(retry_test)
     return flask.Response(
