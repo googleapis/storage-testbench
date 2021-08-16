@@ -72,3 +72,7 @@ class TestEmulator(unittest.TestCase):
         response = self.client.get("/bucket-name/fox.txt")
         self.assertEqual(response.status_code, 200, msg=response.data)
         self.assertEqual(response.data, b"The quick brown fox jumps over the lazy dog")
+
+
+if __name__ == "__main__":
+    unittest.main()
