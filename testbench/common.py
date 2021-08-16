@@ -19,8 +19,11 @@ import json
 import random
 import re
 import scalpl
+import socket
 import struct
+import sys
 import types
+from flask import Response as FlaskResponse
 from google.protobuf import timestamp_pb2
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
@@ -336,6 +339,31 @@ def enforce_patch_override(request):
         and request.headers.get("X-Http-Method-Override", "") != "PATCH"
     ):
         testbench.error.notallowed(context=None)
+
+
+def __get_default_response_fn(data):
+    return data
+
+
+def handle_retry_test_instruction(database, request, method):
+    test_id = request.headers.get("x-retry-test-id", None)
+    if not test_id or not database.has_instructions_retry_test(test_id, method):
+        return __get_default_response_fn
+    next_instruction = database.peek_next_instruction(test_id, method)
+    error_code_matches = testbench.common.retry_return_error_code.match(
+        next_instruction
+    )
+    if error_code_matches:
+        database.dequeue_next_instruction(test_id, method)
+        items = list(error_code_matches.groups())
+        error_code = items[0]
+        error_message = {
+            "error": {"message": "Retry Test: Caused a {}".format(error_code)}
+        }
+        testbench.error.generic(
+            msg=error_message, rest_code=error_code, grpc_code=None, context=None
+        )
+    return __get_default_response_fn
 
 
 def rest_crc32c_to_proto(crc32c):

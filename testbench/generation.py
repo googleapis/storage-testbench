@@ -74,7 +74,7 @@ def extract_generation(request, is_source, context):
 def check_precondition(generation, match, not_match, is_meta, context):
     msg = "generation" if not is_meta else "metageneration"
     if generation is not None and not_match is not None and not_match == generation:
-        testbench.error._generic(
+        testbench.error.generic(
             "Precondition Failed (%s = %d vs %s_not_match = %d)"
             % (msg, generation, msg, not_match),
             304,
@@ -82,7 +82,7 @@ def check_precondition(generation, match, not_match, is_meta, context):
             context,
         )
     if generation is not None and match is not None and match != generation:
-        testbench.error._generic(
+        testbench.error.generic(
             "Precondition Failed (%s = %d vs %s_match = %d)"
             % (msg, generation, msg, match),
             412,
