@@ -33,7 +33,9 @@ class RestException(Exception):
         # https://cloud.google.com/apis/design/errors#error_model and some
         # clients depend on code being specified, otherwise behavior is
         # undefined.
-        return flask.make_response(flask.jsonify(code=self.code, message=self.msg), self.code)
+        return flask.make_response(
+            flask.jsonify(code=self.code, message=self.msg), self.code
+        )
 
     @staticmethod
     def handler(ex):
