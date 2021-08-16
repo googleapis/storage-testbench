@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for emulator."""
+"""Unit test for Object XML operations in emulator.py."""
 
 import json
 import os
@@ -25,7 +25,7 @@ import emulator
 import testbench
 
 
-class TestEmulator(unittest.TestCase):
+class TestEmulatorObjectXML(unittest.TestCase):
     def setUp(self):
         emulator.db = testbench.database.Database.init()
         emulator.server.config["PREFERRED_URL_SCHEME"] = "https"
