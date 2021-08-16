@@ -278,6 +278,83 @@ def bucket_acl_delete(bucket_name, entity):
     return ""
 
 
+# === OBJECT === #
+
+
+@gcs.route("/b/<bucket_name>/o")
+@retry_test(method="storage.objects.list")
+def object_list(bucket_name):
+    db.insert_test_bucket(None)
+    items, prefixes, rest_onlys = db.list_object(flask.request, bucket_name, None)
+    response = {
+        "kind": "storage#objects",
+        "items": [
+            gcs_type.object.Object.rest(blob, rest_only)
+            for blob, rest_only in zip(items, rest_onlys)
+        ],
+        "prefixes": prefixes,
+    }
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["PUT"])
+@retry_test(method="storage.objects.update")
+def object_update(bucket_name, object_name):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob.update(flask.request, None)
+    projection = testbench.common.extract_projection(
+        flask.request, CommonEnums.Projection.FULL, None
+    )
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(
+        blob.rest_metadata(), projection, fields
+    )
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["PATCH", "POST"])
+@retry_test(method="storage.objects.patch")
+def object_patch(bucket_name, object_name):
+    testbench.common.enforce_patch_override(flask.request)
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob.patch(flask.request, None)
+    projection = testbench.common.extract_projection(
+        flask.request, CommonEnums.Projection.FULL, None
+    )
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(
+        blob.rest_metadata(), projection, fields
+    )
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["DELETE"])
+@retry_test(method="storage.objects.delete")
+def object_delete(bucket_name, object_name):
+    db.delete_object(flask.request, bucket_name, object_name, None)
+    return ""
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>")
+@retry_test(method="storage.objects.get")
+def object_get(bucket_name, object_name):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    media = flask.request.args.get("alt", None)
+    if media is None or media == "json":
+        projection = testbench.common.extract_projection(
+            flask.request, CommonEnums.Projection.NO_ACL, None
+        )
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+    if media != "media":
+        testbench.error.invalid("Alt %s")
+    testbench.csek.validation(
+        flask.request, blob.metadata.customer_encryption.key_sha256, False, None
+    )
+    return blob.rest_media(flask.request)
+
+
 # === SERVER === #
 
 # Define the WSGI application to handle HMAC key requests
