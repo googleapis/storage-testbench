@@ -181,3 +181,7 @@ class TestEmulator(unittest.TestCase):
         list_rest = json.loads(list_response.data)
         names = [b.get("name") for b in list_rest.get("items")]
         self.assertEqual(names, [])
+
+
+if __name__ == "__main__":
+    unittest.main()
