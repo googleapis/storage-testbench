@@ -38,6 +38,44 @@ def index():
     return "OK"
 
 
+def xml_put_object(bucket_name, object_name):
+    db.insert_test_bucket(None)
+    bucket = db.get_bucket_without_generation(bucket_name, None).metadata
+    blob, fake_request = gcs_type.object.Object.init_xml(
+        flask.request, bucket, object_name
+    )
+    db.insert_object(fake_request, bucket_name, blob, None)
+    response = flask.make_response("")
+    response.headers["x-goog-hash"] = fake_request.headers.get("x-goog-hash")
+    return response
+
+
+def xml_get_object(bucket_name, object_name):
+    fake_request = testbench.common.FakeRequest.init_xml(flask.request)
+    blob = db.get_object(fake_request, bucket_name, object_name, False, None)
+    return blob.rest_media(fake_request)
+
+
+@root.route("/<path:object_name>", subdomain="<bucket_name>")
+def root_get_object(bucket_name, object_name):
+    return xml_get_object(bucket_name, object_name)
+
+
+@root.route("/<bucket_name>/<path:object_name>", subdomain="")
+def root_get_object_with_bucket(bucket_name, object_name):
+    return xml_get_object(bucket_name, object_name)
+
+
+@root.route("/<path:object_name>", subdomain="<bucket_name>", methods=["PUT"])
+def root_put_object(bucket_name, object_name):
+    return xml_put_object(bucket_name, object_name)
+
+
+@root.route("/<bucket_name>/<path:object_name>", subdomain="", methods=["PUT"])
+def root_put_object_with_bucket(bucket_name, object_name):
+    return xml_put_object(bucket_name, object_name)
+
+
 # === WSGI APP TO HANDLE JSON API === #
 GCS_HANDLER_PATH = "/storage/v1"
 gcs = flask.Flask(__name__)
