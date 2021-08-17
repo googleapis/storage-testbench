@@ -361,6 +361,10 @@ class TestBucket(unittest.TestCase):
         for n in expected:
             bucket.delete_notification(n["id"], None)
 
+        with self.assertRaises(Exception) as rest:
+            bucket.get_notification(expected[0]["id"], None)
+        self.assertEqual(rest.exception.code, 404)
+
     @staticmethod
     def _find_role(role, policy):
         for binding in policy.bindings:

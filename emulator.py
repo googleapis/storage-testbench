@@ -344,6 +344,35 @@ def bucket_default_object_acl_delete(bucket_name, entity):
     return ""
 
 
+@gcs.route("/b/<bucket_name>/notificationConfigs")
+@retry_test(method="storage.notifications.list")
+def bucket_notification_list(bucket_name):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    return bucket.list_notifications(None)
+
+
+@gcs.route("/b/<bucket_name>/notificationConfigs", methods=["POST"])
+@retry_test(method="storage.notifications.insert")
+def bucket_notification_insert(bucket_name):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    return bucket.insert_notification(flask.request, None)
+
+
+@gcs.route("/b/<bucket_name>/notificationConfigs/<notification_id>")
+@retry_test(method="storage.notifications.get")
+def bucket_notification_get(bucket_name, notification_id):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    return bucket.get_notification(notification_id, None)
+
+
+@gcs.route("/b/<bucket_name>/notificationConfigs/<notification_id>", methods=["DELETE"])
+@retry_test(method="storage.notifications.delete")
+def bucket_notification_delete(bucket_name, notification_id):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    bucket.delete_notification(notification_id, None)
+    return ""
+
+
 # === OBJECT === #
 
 

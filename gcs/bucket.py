@@ -486,6 +486,8 @@ class Bucket:
         return notification
 
     def get_notification(self, notification_id, context):
+        if notification_id not in self.notifications:
+            testbench.error.notfound("Notification %s" % notification_id, context)
         return self.notifications[notification_id]
 
     def delete_notification(self, notification_id, context):

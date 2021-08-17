@@ -345,6 +345,51 @@ class TestEmulator(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_bucket_notifications_crud(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(
+            "/storage/v1/b/bucket-name/notificationConfigs",
+            data=json.dumps({"topic": "test-topic", "payload_format": "JSON_API_V1"}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        insert_rest = json.loads(response.data)
+        self.assertIn("id", insert_rest)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/notificationConfigs/" + insert_rest.get("id")
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+        self.assertEqual(insert_rest, get_rest)
+
+        response = self.client.get("/storage/v1/b/bucket-name/notificationConfigs")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        list_rest = json.loads(response.data)
+        ids = [n.get("id") for n in list_rest.get("items")]
+        self.assertIn(get_rest.get("id"), ids)
+
+        response = self.client.delete(
+            "/storage/v1/b/bucket-name/notificationConfigs/" + insert_rest.get("id")
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/notificationConfigs/" + insert_rest.get("id")
+        )
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
