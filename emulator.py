@@ -430,7 +430,7 @@ def object_get(bucket_name, object_name):
 def objects_compose(bucket_name, object_name):
     bucket = db.get_bucket_without_generation(bucket_name, None).metadata
     payload = json.loads(flask.request.data)
-    source_objects = payload["sourceObjects"]
+    source_objects = payload.get("sourceObjects", None)
     if source_objects is None:
         testbench.error.missing("source component", None)
     if len(source_objects) > 32:
@@ -440,15 +440,15 @@ def objects_compose(bucket_name, object_name):
         )
     composed_media = b""
     for source_object in source_objects:
+        print("%s\n" % source_object)
         source_object_name = source_object.get("name")
         if source_object_name is None:
             testbench.error.missing("Name of source compose object", None)
         generation = source_object.get("generation", None)
-        if_generation_match = (
-            source_object.get("objectPreconditions").get("ifGenerationMatch")
-            if source_object.get("objectPreconditions") is not None
-            else None
-        )
+        if_generation_match = None
+        preconditions = source_object.get("objectPreconditions", None)
+        if preconditions is not None:
+            if_generation_match = preconditions.get("ifGenerationMatch", None)
         fake_request = testbench.common.FakeRequest(args=dict(), headers={})
         if generation is not None:
             fake_request.args["generation"] = generation
