@@ -121,6 +121,86 @@ class TestEmulatorObjectMetadata(unittest.TestCase):
         response = self.client.get("/storage/v1/b/bucket-name/o/fox.txt")
         self.assertEqual(response.status_code, 404)
 
+    def test_object_acl_crud(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Use the XML API to insert an object, as the JSON API is not yet ready.
+        payload = "How vexingly quick daft zebras jump!"
+        response = self.client.put(
+            "/bucket-name/zebra",
+            content_type="text/plain",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        insert_data = {"entity": "allAuthenticatedUsers", "role": "READER"}
+        response = self.client.post(
+            "/storage/v1/b/bucket-name/o/zebra/acl", data=json.dumps(insert_data)
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        insert_rest = json.loads(response.data)
+        self.assertEqual(insert_rest, insert_rest | insert_data)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+        self.assertEqual(get_rest, insert_rest)
+
+        response = self.client.patch(
+            "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers",
+            data=json.dumps({"role": "OWNER"}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        patch_rest = json.loads(response.data)
+        self.assertEqual(patch_rest.get("role", None), "OWNER")
+
+        update_data = patch_rest.copy()
+        update_data["role"] = "READER"
+        response = self.client.put(
+            "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers",
+            data=json.dumps(update_data),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        update_rest = json.loads(response.data)
+        self.assertEqual(update_rest.get("role", None), "READER")
+
+        response = self.client.get("/storage/v1/b/bucket-name/o/zebra/acl")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        list_rest = json.loads(response.data)
+        self.assertIn(
+            "allAuthenticatedUsers", [a.get("entity") for a in list_rest.get("items")]
+        )
+
+        response = self.client.delete(
+            "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 200)
+        # After delete, get should fail
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/zebra/allAuthenticatedUsers"
+        )
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

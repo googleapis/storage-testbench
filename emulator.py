@@ -421,6 +421,77 @@ def object_get(bucket_name, object_name):
     return blob.rest_media(flask.request)
 
 
+# === OBJECT ACCESS CONTROL === #
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/acl")
+@retry_test(method="storage.object_acl.list")
+def object_acl_list(bucket_name, object_name):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    response = {"kind": "storage#objectAccessControls", "items": []}
+    for acl in blob.metadata.acl:
+        acl_rest = json_format.MessageToDict(acl)
+        acl_rest["kind"] = "storage#objectAccessControl"
+        response["items"].append(acl_rest)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/acl", methods=["POST"])
+@retry_test(method="storage.object_acl.insert")
+def object_acl_insert(bucket_name, object_name):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    acl = blob.insert_acl(flask.request, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#objectAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>")
+@retry_test(method="storage.object_acl.get")
+def object_acl_get(bucket_name, object_name, entity):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    acl = blob.get_acl(entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#objectAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["PUT"])
+@retry_test(method="storage.object_acl.update")
+def object_acl_update(bucket_name, object_name, entity):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    acl = blob.update_acl(flask.request, entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#objectAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route(
+    "/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["PATCH", "POST"]
+)
+@retry_test(method="storage.object_acl.patch")
+def object_acl_patch(bucket_name, object_name, entity):
+    testbench.common.enforce_patch_override(flask.request)
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    acl = blob.patch_acl(flask.request, entity, None)
+    response = json_format.MessageToDict(acl)
+    response["kind"] = "storage#objectAccessControl"
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["DELETE"])
+@retry_test(method="storage.object_acl.delete")
+def object_acl_delete(bucket_name, object_name, entity):
+    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob.delete_acl(entity, None)
+    return ""
+
+
 # === SERVER === #
 
 # Define the WSGI application to handle HMAC key requests
