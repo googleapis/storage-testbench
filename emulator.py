@@ -18,6 +18,7 @@ import json
 from functools import wraps
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
+from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 from google.protobuf import json_format
 
@@ -419,6 +420,154 @@ def object_get(bucket_name, object_name):
         flask.request, blob.metadata.customer_encryption.key_sha256, False, None
     )
     return blob.rest_media(flask.request)
+
+
+# === OBJECT SPECIAL OPERATIONS === #
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/compose", methods=["POST"])
+@retry_test(method="storage.objects.compose")
+def objects_compose(bucket_name, object_name):
+    bucket = db.get_bucket_without_generation(bucket_name, None).metadata
+    payload = json.loads(flask.request.data)
+    source_objects = payload.get("sourceObjects", None)
+    if source_objects is None:
+        testbench.error.missing("source component", None)
+    if len(source_objects) > 32:
+        testbench.error.invalid(
+            "The number of source components provided (%d > 32)" % len(source_objects),
+            None,
+        )
+    composed_media = b""
+    for source_object in source_objects:
+        source_object_name = source_object.get("name")
+        if source_object_name is None:
+            testbench.error.missing("Name of source compose object", None)
+        generation = source_object.get("generation", None)
+        if_generation_match = None
+        preconditions = source_object.get("objectPreconditions", None)
+        if preconditions is not None:
+            if_generation_match = preconditions.get("ifGenerationMatch", None)
+        fake_request = testbench.common.FakeRequest(args=dict(), headers={})
+        if generation is not None:
+            fake_request.args["generation"] = generation
+        if if_generation_match is not None:
+            fake_request.args["ifGenerationMatch"] = if_generation_match
+        source_object = db.get_object(
+            fake_request, bucket_name, source_object_name, False, None
+        )
+        composed_media += source_object.media
+    metadata = {"name": object_name, "bucket": bucket_name}
+    metadata.update(payload.get("destination", {}))
+    composed_object, _ = gcs_type.object.Object.init_dict(
+        flask.request, metadata, composed_media, bucket, True
+    )
+    db.insert_object(flask.request, bucket_name, composed_object, None)
+    return composed_object.rest_metadata()
+
+
+@gcs.route(
+    "/b/<src_bucket_name>/o/<path:src_object_name>/copyTo/b/<dst_bucket_name>/o/<path:dst_object_name>",
+    methods=["POST"],
+)
+@retry_test(method="storage.objects.copy")
+def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_name):
+    db.insert_test_bucket(None)
+    dst_bucket = db.get_bucket_without_generation(dst_bucket_name, None).metadata
+    src_object = db.get_object(
+        flask.request, src_bucket_name, src_object_name, True, None
+    )
+    testbench.csek.validation(
+        flask.request, src_object.metadata.customer_encryption.key_sha256, False, None
+    )
+    dst_metadata = resources_pb2.Object()
+    dst_metadata.CopyFrom(src_object.metadata)
+    del dst_metadata.acl[:]
+    dst_metadata.bucket = dst_bucket_name
+    dst_metadata.name = dst_object_name
+    dst_media = b""
+    dst_media += src_object.media
+    dst_rest_only = dict(src_object.rest_only)
+    dst_object, _ = gcs_type.object.Object.init(
+        flask.request, dst_metadata, dst_media, dst_bucket, True, None, dst_rest_only
+    )
+    db.insert_object(flask.request, dst_bucket_name, dst_object, None)
+    if flask.request.data:
+        dst_object.patch(flask.request, None)
+    dst_object.metadata.metageneration = 1
+    dst_object.metadata.updated.FromDatetime(
+        dst_object.metadata.time_created.ToDatetime()
+    )
+    return dst_object.rest_metadata()
+
+
+@gcs.route(
+    "/b/<src_bucket_name>/o/<path:src_object_name>/rewriteTo/b/<dst_bucket_name>/o/<path:dst_object_name>",
+    methods=["POST"],
+)
+@retry_test(method="storage.objects.rewrite")
+def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_object_name):
+    db.insert_test_bucket(None)
+    token, rewrite = flask.request.args.get("rewriteToken"), None
+    src_object = None
+    if token is None:
+        rewrite = gcs_type.holder.DataHolder.init_rewrite_rest(
+            flask.request,
+            src_bucket_name,
+            src_object_name,
+            dst_bucket_name,
+            dst_object_name,
+        )
+        db.insert_rewrite(rewrite)
+    else:
+        rewrite = db.get_rewrite(token, None)
+    src_object = db.get_object(
+        rewrite.request, src_bucket_name, src_object_name, True, None
+    )
+    testbench.csek.validation(
+        rewrite.request, src_object.metadata.customer_encryption.key_sha256, True, None
+    )
+    total_bytes_rewritten = len(rewrite.media)
+    total_bytes_rewritten += min(
+        rewrite.max_bytes_rewritten_per_call, len(src_object.media) - len(rewrite.media)
+    )
+    rewrite.media += src_object.media[len(rewrite.media) : total_bytes_rewritten]
+    done, dst_object = total_bytes_rewritten == len(src_object.media), None
+    response = {
+        "kind": "storage#rewriteResponse",
+        "totalBytesRewritten": len(rewrite.media),
+        "objectSize": len(src_object.media),
+        "done": done,
+    }
+    if done:
+        dst_bucket = db.get_bucket_without_generation(dst_bucket_name, None).metadata
+        dst_metadata = resources_pb2.Object()
+        dst_metadata.CopyFrom(src_object.metadata)
+        dst_rest_only = dict(src_object.rest_only)
+        dst_metadata.bucket = dst_bucket_name
+        dst_metadata.name = dst_object_name
+        dst_media = rewrite.media
+        dst_object, _ = gcs_type.object.Object.init(
+            flask.request,
+            dst_metadata,
+            dst_media,
+            dst_bucket,
+            True,
+            None,
+            dst_rest_only,
+        )
+        db.insert_object(flask.request, dst_bucket_name, dst_object, None)
+        if flask.request.data:
+            dst_object.patch(rewrite.request, None)
+        dst_object.metadata.metageneration = 1
+        dst_object.metadata.updated.FromDatetime(
+            dst_object.metadata.time_created.ToDatetime()
+        )
+        resources = dst_object.rest_metadata()
+        response["resource"] = resources
+    else:
+        response["rewriteToken"] = rewrite.token
+    return response
 
 
 # === OBJECT ACCESS CONTROL === #
