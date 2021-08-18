@@ -440,7 +440,6 @@ def objects_compose(bucket_name, object_name):
         )
     composed_media = b""
     for source_object in source_objects:
-        print("%s\n" % source_object)
         source_object_name = source_object.get("name")
         if source_object_name is None:
             testbench.error.missing("Name of source compose object", None)
