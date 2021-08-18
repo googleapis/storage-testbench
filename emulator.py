@@ -374,6 +374,44 @@ def bucket_notification_delete(bucket_name, notification_id):
     return ""
 
 
+@gcs.route("/b/<bucket_name>/iam")
+@retry_test(method="storage.buckets.getIamPolicy")
+def bucket_get_iam_policy(bucket_name):
+    db.insert_test_bucket(None)
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    response = json_format.MessageToDict(bucket.iam_policy)
+    response["kind"] = "storage#policy"
+    return response
+
+
+@gcs.route("/b/<bucket_name>/iam", methods=["PUT"])
+@retry_test(method="storage.buckets.setIamPolicy")
+def bucket_set_iam_policy(bucket_name):
+    db.insert_test_bucket(None)
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    bucket.set_iam_policy(flask.request, None)
+    response = json_format.MessageToDict(bucket.iam_policy)
+    response["kind"] = "storage#policy"
+    return response
+
+
+@gcs.route("/b/<bucket_name>/iam/testPermissions")
+@retry_test(method="storage.buckets.testIamPermission")
+def bucket_test_iam_permissions(bucket_name):
+    db.get_bucket(flask.request, bucket_name, None)
+    permissions = flask.request.args.getlist("permissions")
+    result = {"kind": "storage#testIamPermissionsResponse", "permissions": permissions}
+    return result
+
+
+@gcs.route("/b/<bucket_name>/lockRetentionPolicy", methods=["POST"])
+@retry_test(method="storage.buckets.lockRententionPolicy")
+def bucket_lock_retention_policy(bucket_name):
+    bucket = db.get_bucket(flask.request, bucket_name, None)
+    bucket.metadata.retention_policy.is_locked = True
+    return bucket.rest()
+
+
 # === OBJECT === #
 
 
