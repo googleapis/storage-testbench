@@ -29,6 +29,7 @@ from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 
 import gcs
 import testbench
+from tests.format_multipart_upload import format_multipart_upload
 
 
 class TestObject(unittest.TestCase):
@@ -36,42 +37,6 @@ class TestObject(unittest.TestCase):
         request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
         bucket, _ = gcs.bucket.Bucket.init(request, "")
         self.bucket = bucket
-
-    @staticmethod
-    def __format_multipart_upload(
-        metadata, media, content_type="application/octet-stream"
-    ):
-        boundary = "test_separator_deadbeef"
-        payload = (
-            ("--" + boundary + "\r\n").join(
-                [
-                    "",
-                    # object metadata "part"
-                    "\r\n".join(
-                        [
-                            "Content-Type: application/json; charset=UTF-8",
-                            "",
-                            json.dumps(metadata),
-                            "",
-                        ]
-                    ),
-                    # object media "part"
-                    "\r\n".join(
-                        [
-                            "Content-Type: " + content_type,
-                            "Content-Length: %d" % len(media),
-                            "",
-                            media,
-                            "",
-                        ]
-                    ),
-                ]
-            )
-            + "--"
-            + boundary
-            + "--\r\n"
-        )
-        return boundary, payload
 
     def test_init_media(self):
         request = testbench.common.FakeRequest(
@@ -94,7 +59,7 @@ class TestObject(unittest.TestCase):
         self.assertNotEqual(blob.media, b"12345678")
 
     def test_init_multipart(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object", "metadata": {"key": "value"}},
             media="123456789",
             content_type="image/jpeg",
@@ -112,7 +77,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.content_type, "image/jpeg")
 
     def test_init_multipart_with_acl(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {
                 "name": "object",
                 "acl": [{"entity": "allAuthenticatedUsers", "role": "READER"}],
@@ -135,7 +100,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(projection, "full")
 
     def test_init_mismatched_ubla_and_predefined_acl(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="",
         )
@@ -153,7 +118,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 400)
 
     def test_init_csek(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="",
         )
@@ -181,7 +146,7 @@ class TestObject(unittest.TestCase):
         )
 
     def test_init_multipart_missing_name(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"not-the-name": "object"},
             media="",
         )
@@ -196,7 +161,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 400)
 
     def test_init_multipart_inconsistent_content_type(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object", "contentType": "text/plain"},
             media="How vexingly quick daft zebras jump!",
         )
@@ -212,7 +177,7 @@ class TestObject(unittest.TestCase):
 
     def test_init_multipart_inconsistent_md5(self):
         # The magic string is the MD5 hash for an empty object, computed using `gsutil hash`
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object", "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg=="},
             "How vexingly quick daft zebras jump!",
         )
@@ -228,7 +193,7 @@ class TestObject(unittest.TestCase):
 
     def test_init_multipart_inconsistent_crc32c(self):
         # The magic string is the CRC32C checksum for an empty object, computed using `gsutil hash`
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object", "crc32c": "AAAAAA=="},
             "How vexingly quick daft zebras jump!",
         )
@@ -594,7 +559,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.metadata["method"], "rest_patch")
 
     def test_acl_crud(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="",
         )
@@ -644,7 +609,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 404)
 
     def test_rest_media(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="How vexingly quick daft zebras jump!",
         )
@@ -684,7 +649,7 @@ class TestObject(unittest.TestCase):
             self.assertEqual(response.data, expected)
 
     def test_rest_media_instructions(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="How vexingly quick daft zebras jump!",
         )
@@ -749,7 +714,7 @@ class TestObject(unittest.TestCase):
             )
 
     def test_stall_always(self):
-        boundary, payload = self.__format_multipart_upload(
+        boundary, payload = format_multipart_upload(
             {"name": "object"},
             media="How vexingly quick daft zebras jump!",
         )
