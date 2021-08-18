@@ -708,6 +708,172 @@ def object_acl_delete(bucket_name, object_name, entity):
     return ""
 
 
+# Define the WSGI application to handle bucket requests.
+DOWNLOAD_HANDLER_PATH = "/download/storage/v1"
+download = flask.Flask(__name__)
+download.debug = False
+download.register_error_handler(Exception, testbench.error.RestException.handler)
+
+
+@download.route("/b/<bucket_name>/o/<path:object_name>")
+def download_object_get(bucket_name, object_name):
+    return object_get(bucket_name, object_name)
+
+
+# Define the WSGI application to handle bucket requests.
+UPLOAD_HANDLER_PATH = "/upload/storage/v1"
+upload = flask.Flask(__name__)
+upload.debug = False
+upload.register_error_handler(Exception, testbench.error.RestException.handler)
+
+
+@upload.route("/b/<bucket_name>/o", methods=["POST"])
+@retry_test(method="storage.objects.insert")
+def object_insert(bucket_name):
+    db.insert_test_bucket(None)
+    bucket = db.get_bucket_without_generation(bucket_name, None).metadata
+    upload_type = flask.request.args.get("uploadType")
+    if upload_type is None:
+        testbench.error.missing("uploadType", None)
+    elif upload_type not in {"multipart", "media", "resumable"}:
+        testbench.error.invalid("uploadType %s" % upload_type, None)
+    if upload_type == "resumable":
+        upload = gcs_type.holder.DataHolder.init_resumable_rest(flask.request, bucket)
+        db.insert_upload(upload)
+        response = flask.make_response("")
+        response.headers["Location"] = upload.location
+        return response
+    blob, projection = None, ""
+    if upload_type == "media":
+        blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
+    elif upload_type == "multipart":
+        blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
+    db.insert_object(flask.request, bucket.name, blob, None)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(
+        blob.rest_metadata(), projection, fields
+    )
+
+
+# TODO(#27) - this function is waaay to long.
+@upload.route("/b/<bucket_name>/o", methods=["PUT"])
+@retry_test(method="storage.objects.insert")
+def resumable_upload_chunk(bucket_name):
+    request = flask.request
+    upload_id = request.args.get("upload_id")
+    if upload_id is None:
+        testbench.error.missing("upload_id in resumable_upload_chunk", None)
+    upload = db.get_upload(upload_id, None)
+    if upload.complete:
+        return gcs_type.object.Object.rest(upload.metadata, upload.rest_only)
+    upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
+    content_length = request.headers.get("content-length", None)
+    data = testbench.common.extract_media(request)
+    if content_length is not None and int(content_length) != len(data):
+        # This cannot be unit tested because flask.Flask.test_client() always
+        # sends a valid content-length header
+        testbench.error.invalid("content-length header", None)
+    content_range = request.headers.get("content-range")
+    custom_header_value = request.headers.get("x-goog-emulator-custom-header")
+    if content_range is not None:
+        items = list(testbench.common.content_range_split.match(content_range).groups())
+        # TODO(#27) - maybe this should be an assert()
+        # Given the structure of the regular expression, these conditions are always true:
+        #   assert(len(items) == 2 or content_range_split.match() is None)
+        #   assert((items[0] != items[1]) or items[0] == '*')
+        if len(items) != 2 or (items[0] == items[1] and items[0] != "*"):
+            testbench.error.invalid("content-range header", None)
+        # TODO(#27) - maybe this should be an assert()
+        # We check if the upload is complete before we get here.
+        #   assert(not upload.completed)
+        if items[0] == "*":
+            if items[1] != "*" and int(items[1]) == len(upload.media):
+                upload.complete = True
+                blob, _ = gcs_type.object.Object.init(
+                    upload.request,
+                    upload.metadata,
+                    upload.media,
+                    upload.bucket,
+                    False,
+                    None,
+                )
+                blob.metadata.metadata["x_emulator_transfer_encoding"] = ":".join(
+                    upload.transfer
+                )
+                db.insert_object(upload.request, bucket_name, blob, None)
+                projection = testbench.common.extract_projection(
+                    upload.request, CommonEnums.Projection.NO_ACL, None
+                )
+                fields = upload.request.args.get("fields", None)
+                return testbench.common.filter_response_rest(
+                    blob.rest_metadata(), projection, fields
+                )
+            return upload.resumable_status_rest()
+        _, chunk_last_byte = [v for v in items[0].split("-")]
+        x_upload_content_length = int(
+            upload.request.headers.get("x-upload-content-length", 0)
+        )
+        if chunk_last_byte == "*":
+            x_upload_content_length = len(upload.media)
+            chunk_last_byte = len(upload.media) - 1
+        else:
+            chunk_last_byte = int(chunk_last_byte)
+        total_object_size = (
+            int(items[1]) if items[1] != "*" else x_upload_content_length
+        )
+        if (
+            x_upload_content_length != 0
+            and x_upload_content_length != total_object_size
+        ):
+            testbench.error.mismatch(
+                "X-Upload-Content-Length",
+                x_upload_content_length,
+                total_object_size,
+                None,
+                rest_code=400,
+            )
+        upload.media += data
+        upload.complete = total_object_size == len(upload.media) or (
+            chunk_last_byte + 1 == total_object_size
+        )
+    else:
+        upload.media += data
+        upload.complete = True
+    if upload.complete:
+        blob, _ = gcs_type.object.Object.init(
+            upload.request,
+            upload.metadata,
+            upload.media,
+            upload.bucket,
+            False,
+            None,
+            upload.rest_only,
+        )
+        blob.metadata.metadata["x_emulator_transfer_encoding"] = ":".join(
+            upload.transfer
+        )
+        blob.metadata.metadata["x_emulator_upload"] = "resumable"
+        blob.metadata.metadata["x_emulator_custom_header"] = str(custom_header_value)
+        db.insert_object(upload.request, bucket_name, blob, None)
+        projection = testbench.common.extract_projection(
+            upload.request, CommonEnums.Projection.NO_ACL, None
+        )
+        fields = upload.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+    else:
+        return upload.resumable_status_rest()
+
+
+@upload.route("/b/<bucket_name>/o", methods=["DELETE"])
+@retry_test(method="storage.objects.delete")
+def delete_resumable_upload(bucket_name):
+    upload_id = flask.request.args.get("upload_id")
+    db.delete_upload(upload_id, None)
+    return flask.make_response("", 499, {"content-length": 0})
+
+
 # === SERVER === #
 
 # Define the WSGI application to handle HMAC key requests
@@ -725,6 +891,8 @@ server.wsgi_app = testbench.handle_gzip.HandleGzipMiddleware(
         {
             "/httpbin": httpbin.app,
             GCS_HANDLER_PATH: gcs,
+            DOWNLOAD_HANDLER_PATH: download,
+            UPLOAD_HANDLER_PATH: upload,
             PROJECTS_HANDLER_PATH: projects_app,
             IAM_HANDLER_PATH: iam_app,
         },
