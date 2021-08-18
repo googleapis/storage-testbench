@@ -25,7 +25,7 @@ import emulator
 import testbench
 
 
-class TestEmulatorObjectXML(unittest.TestCase):
+class TestEmulatorObjectSpecial(unittest.TestCase):
     def setUp(self):
         emulator.db = testbench.database.Database.init()
         self.client = emulator.server.test_client()
