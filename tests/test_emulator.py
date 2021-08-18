@@ -353,7 +353,21 @@ class TestEmulator(unittest.TestCase):
 
         response = self.client.post(
             "/storage/v1/b/bucket-name/notificationConfigs",
-            data=json.dumps({"topic": "test-topic", "payload_format": "JSON_API_V1"}),
+            data=json.dumps(
+                {"missing-topic": "test-topic", "payload_format": "JSON_API_V1"}
+            ),
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(
+            "/storage/v1/b/bucket-name/notificationConfigs",
+            data=json.dumps(
+                {
+                    "topic": "test-topic",
+                    "payload_format": "JSON_API_V1",
+                    "custom_attributes": {"key": "value"},
+                }
+            ),
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
