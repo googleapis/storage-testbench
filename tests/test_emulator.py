@@ -404,6 +404,97 @@ class TestEmulator(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_bucket_iam(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/storage/v1/b/bucket-name/iam")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+        self.assertEqual(get_rest.get("kind", None), "storage#policy")
+
+        # We only expect the legacy roles for a freshly created bucket
+        legacy_roles = {
+            "roles/storage.legacyBucketOwner",
+            "roles/storage.legacyBucketWriter",
+            "roles/storage.legacyBucketReader",
+        }
+        self.assertEqual(
+            {b.get("role") for b in get_rest.get("bindings")}, legacy_roles
+        )
+        set_request = get_rest.copy()
+        set_request.pop("kind")
+        set_request["bindings"].append(
+            {"role": "roles/storage.admin", "members": ["user:user-name@test-only"]}
+        )
+        response = self.client.put(
+            "/storage/v1/b/bucket-name/iam", data=json.dumps(set_request)
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        set_rest = json.loads(response.data)
+        self.assertEqual(set_rest.get("kind", None), "storage#policy")
+        self.assertNotEqual(set_rest.get("etag"), get_rest.get("etag"))
+
+        set_rest.pop("etag")
+        set_rest.pop("kind")
+        set_request.pop("etag")
+        self.assertEqual(set_rest, set_request)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/iam/testPermissions",
+            query_string={"permissions": "storage.object.create"},
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        permissions_rest = json.loads(response.data)
+        self.assertEqual(
+            permissions_rest.get("kind"), "storage#testIamPermissionsResponse"
+        )
+        self.assertIn("storage.object.create", permissions_rest.get("permissions"))
+
+    def test_bucket_lock(self):
+        response = self.client.post(
+            "/storage/v1/b",
+            data=json.dumps(
+                {
+                    "name": "bucket-name",
+                    "retentionPolicy": {
+                        "retentionPeriod": 90 * 24 * 3600,
+                    },
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        insert_rest = json.loads(response.data)
+        self.assertIn("retentionPolicy", insert_rest)
+        insert_policy = insert_rest.get("retentionPolicy")
+        self.assertEqual(insert_policy.get("isLocked", False), False)
+
+        response = self.client.post("/storage/v1/b/bucket-name/lockRetentionPolicy")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        lock_rest = json.loads(response.data)
+        self.assertEqual(lock_rest.get("kind", None), "storage#bucket")
+        self.assertIn("retentionPolicy", lock_rest)
+        policy = lock_rest.get("retentionPolicy")
+        self.assertIn("isLocked", policy)
+        self.assertEqual(policy.get("isLocked"), True)
+
 
 if __name__ == "__main__":
     unittest.main()
