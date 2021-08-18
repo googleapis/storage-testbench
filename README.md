@@ -47,7 +47,7 @@ It is useful as well to test features that are not yet deployed to production: y
    ```bash
    git clone https://github.com/googleapis/storage-testbench.git
    ```
-4. Switch to the cloned directory:
+3. Switch to the cloned directory:
    ```bash
    cd storage-testbench
     ```
