@@ -48,6 +48,19 @@ class Database:
     def init(cls):
         return cls({}, {}, {}, {}, {}, {}, [])
 
+    def clear(self):
+        """Clear all data except for the supported method list."""
+        self.buckets = {}
+        self.objects = {}
+        self.live_generations = {}
+        self.uploads = {}
+        self.rewrites = {}
+        self.retry_tests = {}
+        # The list of supported methods for `retry_test` is defined via flask
+        # decorators, it should remain unchanged after the test or application
+        # is initialized. Arguably this means it should be in a global variable.
+        #   TODO(#27) - maybe `self.supported_methods` should be a global
+
     # === BUCKET === #
 
     def __check_bucket_metageneration(self, request, bucket, context):

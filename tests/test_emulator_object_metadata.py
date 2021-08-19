@@ -28,7 +28,7 @@ import testbench
 
 class TestEmulatorObjectMetadata(unittest.TestCase):
     def setUp(self):
-        emulator.db = testbench.database.Database.init()
+        emulator.db.clear()
         self.client = emulator.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
