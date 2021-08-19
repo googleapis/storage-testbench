@@ -99,27 +99,6 @@ class TestEmulatorRetry(unittest.TestCase):
         )
         self.assertEqual(list_response.status_code, 429, msg=list_response.data)
 
-    def test_retry_test_return_error_after(self):
-        response = self.client.post(
-            "/retry_test",
-            data=json.dumps(
-                {"instructions": {"storage.buckets.list": ["return-429-after-128K"]}}
-            ),
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            response.headers.get("content-type").startswith("application/json")
-        )
-        create_rest = json.loads(response.data)
-        self.assertIn("id", create_rest)
-
-        list_response = self.client.get(
-            "/storage/v1/b",
-            query_string={"project": "test-project-unused"},
-            headers={"x-retry-test-id": create_rest.get("id")},
-        )
-        self.assertEqual(list_response.status_code, 200)
-
 
 if __name__ == "__main__":
     unittest.main()
