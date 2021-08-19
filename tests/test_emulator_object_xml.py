@@ -27,7 +27,7 @@ import testbench
 
 class TestEmulatorObjectXML(unittest.TestCase):
     def setUp(self):
-        emulator.db = testbench.database.Database.init()
+        emulator.db.clear()
         emulator.server.config["PREFERRED_URL_SCHEME"] = "https"
         emulator.server.config["SERVER_NAME"] = "storage.googleapis.com"
         emulator.root.config["PREFERRED_URL_SCHEME"] = "https"
