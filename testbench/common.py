@@ -343,7 +343,7 @@ def enforce_patch_override(request):
         testbench.error.notallowed(context=None)
 
 
-def __extract_data(data):
+def _extract_data(data):
     if isinstance(data, flask.Response):
         return data.get_data()
     if isinstance(data, dict):
@@ -355,7 +355,7 @@ def __get_streamer_response_fn(database, method, conn, test_id):
     def response_handler(data):
         def streamer():
             database.dequeue_next_instruction(test_id, method)
-            d = __extract_data(data)
+            d = _extract_data(data)
             chunk_size = 4
             for r in range(0, len(d), chunk_size):
                 if r >= 10:

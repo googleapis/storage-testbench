@@ -16,7 +16,8 @@
 
 """Unit test for utils"""
 
-from testbench.common import corrupt_media, rest_crc32c_from_proto
+import flask
+import json
 import unittest
 
 from werkzeug.test import create_environ
@@ -357,6 +358,19 @@ class TestCommonUtils(unittest.TestCase):
                 "untouched": "preserve-value",
             },
         )
+
+    def test_extract_data(self):
+        """Verify the helper function __extract_data() works with different input types."""
+        fox = "The quick brown fox jumps over the lazy dog"
+        actual = testbench.common._extract_data(fox)
+        self.assertEqual(actual, fox)
+
+        expected = json.dumps({"text": fox})
+        actual = testbench.common._extract_data({"text": fox})
+        self.assertEqual(actual, expected)
+
+        actual = testbench.common._extract_data(flask.Response(fox))
+        self.assertEqual(actual.decode("utf-8"), fox)
 
 
 if __name__ == "__main__":

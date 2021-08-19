@@ -344,7 +344,7 @@ class TestDatabaseRetryTest(unittest.TestCase):
             _ = database.get_retry_test("test-invalid")
         self.assertEqual(rest.exception.code, 404)
 
-    def test_insert_retry_test_invalid(self):
+    def test_insert_retry_test_invalid_instruction(self):
         database = testbench.database.Database.init()
         database.insert_supported_methods(["storage.buckets.list"])
 
@@ -354,6 +354,15 @@ class TestDatabaseRetryTest(unittest.TestCase):
             )
         self.assertEqual(rest.exception.code, 400)
 
+    def test_insert_retry_test_invalid_operation(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = database.insert_retry_test(
+                {"storage.buckets.get": ["return-429"]}
+            )
+        self.assertEqual(rest.exception.code, 400)
 
 if __name__ == "__main__":
     unittest.main()
