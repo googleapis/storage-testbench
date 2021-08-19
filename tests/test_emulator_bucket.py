@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for emulator."""
+"""Unit test for bucket operations in emulator.py."""
 
 import json
 import os
