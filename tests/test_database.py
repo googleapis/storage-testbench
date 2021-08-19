@@ -359,10 +359,9 @@ class TestDatabaseRetryTest(unittest.TestCase):
         database.insert_supported_methods(["storage.buckets.list"])
 
         with self.assertRaises(testbench.error.RestException) as rest:
-            _ = database.insert_retry_test(
-                {"storage.buckets.get": ["return-429"]}
-            )
+            _ = database.insert_retry_test({"storage.buckets.get": ["return-429"]})
         self.assertEqual(rest.exception.code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
