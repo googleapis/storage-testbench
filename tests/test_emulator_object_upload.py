@@ -30,7 +30,7 @@ from tests.format_multipart_upload import format_multipart_upload
 UPLOAD_QUANTUM = 256 * 1024
 
 
-class TestEmulatorObjectMetadata(unittest.TestCase):
+class TestEmulatorObjectUpload(unittest.TestCase):
     def setUp(self):
         emulator.db = testbench.database.Database.init()
         self.client = emulator.server.test_client()
