@@ -15,6 +15,7 @@
 """Common utils"""
 
 import base64
+import flask
 import json
 import random
 import re
@@ -23,7 +24,8 @@ import socket
 import struct
 import sys
 import types
-from flask import Response as FlaskResponse
+
+from grpc import StatusCode
 from google.protobuf import timestamp_pb2
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
@@ -341,6 +343,33 @@ def enforce_patch_override(request):
         testbench.error.notallowed(context=None)
 
 
+def __extract_data(data):
+    if isinstance(data, flask.Response):
+        return data.get_data()
+    if isinstance(data, dict):
+        return json.dumps(data)
+    return data
+
+
+def __get_streamer_response_fn(database, method, conn, test_id):
+    def response_handler(data):
+        def streamer():
+            database.dequeue_next_instruction(test_id, method)
+            d = __extract_data(data)
+            chunk_size = 4
+            for r in range(0, len(d), chunk_size):
+                if r >= 10:
+                    if conn is not None:
+                        conn.close()
+                    sys.exit(1)
+                chunk_end = min(r + chunk_size, len(d))
+                yield d[r:chunk_end]
+
+        return flask.Response(streamer())
+
+    return response_handler
+
+
 def __get_default_response_fn(data):
     return data
 
@@ -363,6 +392,43 @@ def handle_retry_test_instruction(database, request, method):
         testbench.error.generic(
             msg=error_message, rest_code=error_code, grpc_code=None, context=None
         )
+    retry_connection_matches = testbench.common.retry_return_error_connection.match(
+        next_instruction
+    )
+    if retry_connection_matches:
+        items = list(retry_connection_matches.groups())
+        # sys.exit(1) retains database state with more than 1 thread
+        if items[0] == "reset-connection":
+            database.dequeue_next_instruction(test_id, method)
+            fd = request.environ.get("gunicorn.socket", None)
+            if fd is not None:
+                fd.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+                )
+                fd.close()
+            sys.exit(1)
+        elif items[0] == "broken-stream":
+            conn = request.environ.get("gunicorn.socket", None)
+            return __get_streamer_response_fn(database, method, conn, test_id)
+    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
+        next_instruction
+    )
+    if error_after_bytes_matches and method == "storage.objects.insert":
+        items = list(error_after_bytes_matches.groups())
+        error_code = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        # Upload failures should allow to not complete after certain bytes
+        upload_id = request.args.get("upload_id", None)
+        if upload_id is not None:
+            upload = database.uploads.get(upload_id)
+            if upload is not None and len(upload.media) >= after_bytes:
+                database.dequeue_next_instruction(test_id, method)
+                testbench.error.generic(
+                    "Fault injected after uploadng %d bytes" % len(upload.media),
+                    rest_code=error_code,
+                    grpc_code=StatusCode.INTERNAL,  # not really used
+                    context=None,
+                )
     return __get_default_response_fn
 
 
