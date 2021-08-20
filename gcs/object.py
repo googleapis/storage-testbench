@@ -91,7 +91,7 @@ class Object:
             entry.object = metadata.name
             entry.generation = metadata.generation
 
-    # TODO(#4893): Remove `rest_only`
+    # TODO(#57): Remove `rest_only`
     @classmethod
     def init(
         cls, request, metadata, media, bucket, is_destination, context, rest_only=None
@@ -136,7 +136,7 @@ class Object:
             metadata.customer_encryption.key_sha256 = key_sha256_b64
         default_projection = CommonEnums.Projection.NO_ACL
         is_uniform = bucket.iam_configuration.uniform_bucket_level_access.enabled
-        # TODO(#..) - this is probably a bug, cleanup once we move all the code
+        # TODO(#27) - this is probably a bug, cleanup once we move all the code
         bucket.iam_configuration.uniform_bucket_level_access.enabled = False
         if len(metadata.acl) != 0:
             default_projection = CommonEnums.Projection.FULL

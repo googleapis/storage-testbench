@@ -99,7 +99,7 @@ class TestBucket(unittest.TestCase):
                         "condition": {
                             "age": 60,
                             "createdBefore": "2023-08-01",
-                            # TODO(#6982) - these cannot be tested until we move to storage v2/
+                            # TODO(#58) - these cannot be tested until we move to storage v2/
                             #   "customTimeBefore": "2024-08-01",
                             #   "daysSinceCustomTime": 90,
                             #   "daysSinceNoncurrentTime": 30,
