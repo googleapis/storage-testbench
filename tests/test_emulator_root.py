@@ -33,7 +33,7 @@ class TestEmulatorRoot(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.data, b"OK")
 
-    def test_raise_defaul(self):
+    def test_raise_default(self):
         response = self.client.get("/raise_error", query_string={"msg": "test-only"})
         self.assertNotEqual(response.status_code, 200)
         self.assertIn("test-only", response.data.decode("utf-8"))
