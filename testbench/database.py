@@ -15,10 +15,8 @@
 import collections
 import json
 import os
-import re
 import uuid
 
-from schema import Schema, SchemaError, And, Use
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 
 import gcs
@@ -295,26 +293,24 @@ class Database:
             testbench.error.notfound("Retry Test %s" % retry_test_id, context=None)
         return self.__to_serializeable_retry_test(retry_test)
 
+    def __validate_injected_failure_description(self, failure):
+        for expr in [
+            testbench.common.retry_return_error_code,
+            testbench.common.retry_return_error_connection,
+            testbench.common.retry_return_error_after_bytes,
+        ]:
+            if expr.match(failure) is not None:
+                return
+        testbench.error.invalid("The fault injection request <%s>" % failure, None)
+
     def __validate_instructions(self, instructions):
-        expected_instructions_format = [
-            testbench.common.retry_return_error_code.pattern,
-            testbench.common.retry_return_error_connection.pattern,
-            testbench.common.retry_return_error_after_bytes.pattern,
-        ]
-        search_expression = re.compile(
-            "(%s)" % ")|(".join(expected_instructions_format)
-        )
-        expected_schema = Schema(
-            {
-                And(Use(str), lambda n: n in self.supported_methods): [
-                    And(Use(str), lambda n: re.match(search_expression, n))
-                ]
-            }
-        )
-        try:
-            expected_schema.validate(instructions)
-        except SchemaError as e:
-            testbench.error.invalid("Invalid format used: %s" % e, context=None)
+        for method, failures in instructions.items():
+            if method not in self.supported_methods:
+                testbench.error.invalid(
+                    "The requested method <%s> for fault injection" % method, None
+                )
+            for failure in failures:
+                self.__validate_injected_failure_description(failure)
 
     def insert_retry_test(self, instructions):
         self.__validate_instructions(instructions)
