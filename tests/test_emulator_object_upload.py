@@ -195,7 +195,7 @@ class TestEmulatorObjectUpload(unittest.TestCase):
         insert_rest = json.loads(response.data)
         self.assertIn("metadata", insert_rest)
         insert_metadata = insert_rest.get("metadata")
-        self.assertEqual(insert_metadata, insert_metadata | {"key0": "label0"})
+        self.assertEqual(insert_metadata, {**insert_metadata, **{"key0": "label0"}})
 
         response = self.client.get("/storage/v1/b/bucket-name/o/zebra")
         self.assertEqual(response.status_code, 200)
@@ -256,7 +256,7 @@ class TestEmulatorObjectUpload(unittest.TestCase):
         insert_rest = json.loads(response.data)
         self.assertIn("metadata", insert_rest)
         insert_metadata = insert_rest.get("metadata")
-        self.assertEqual(insert_metadata, insert_metadata | {"key0": "label0"})
+        self.assertEqual(insert_metadata, {**insert_metadata, **{"key0": "label0"}})
 
         response = self.client.get("/storage/v1/b/bucket-name/o/zebra")
         self.assertEqual(response.status_code, 200)
@@ -332,7 +332,7 @@ class TestEmulatorObjectUpload(unittest.TestCase):
         insert_rest = json.loads(response.data)
         self.assertIn("metadata", insert_rest)
         insert_metadata = insert_rest.get("metadata")
-        self.assertEqual(insert_metadata, insert_metadata | {"key0": "label0"})
+        self.assertEqual(insert_metadata, {**insert_metadata, **{"key0": "label0"}})
 
         response = self.client.get("/storage/v1/b/bucket-name/o/empty")
         self.assertEqual(response.status_code, 200)

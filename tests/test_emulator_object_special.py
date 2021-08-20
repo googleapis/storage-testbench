@@ -193,7 +193,7 @@ class TestEmulatorObjectSpecial(unittest.TestCase):
         get_rest = json.loads(response.data)
 
         self.assertEqual(get_rest, copy_rest)
-        self.assertEqual(get_rest["metadata"], get_rest["metadata"] | metadata)
+        self.assertEqual(get_rest["metadata"], {**get_rest["metadata"], **metadata})
 
         response = self.client.get("/bucket-name/fox2")
         self.assertEqual(response.status_code, 200)
@@ -265,7 +265,7 @@ class TestEmulatorObjectSpecial(unittest.TestCase):
         get_rest = json.loads(response.data)
 
         self.assertEqual(get_rest, resource)
-        self.assertEqual(get_rest["metadata"], get_rest["metadata"] | metadata)
+        self.assertEqual(get_rest["metadata"], {**get_rest["metadata"], **metadata})
 
         response = self.client.get("/bucket-name/fox2")
         self.assertEqual(response.status_code, 200)
