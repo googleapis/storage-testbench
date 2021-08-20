@@ -396,7 +396,7 @@ def bucket_set_iam_policy(bucket_name):
 
 
 @gcs.route("/b/<bucket_name>/iam/testPermissions")
-@retry_test(method="storage.buckets.testIamPermission")
+@retry_test(method="storage.buckets.testIamPermissions")
 def bucket_test_iam_permissions(bucket_name):
     db.get_bucket(flask.request, bucket_name, None)
     permissions = flask.request.args.getlist("permissions")
@@ -405,7 +405,7 @@ def bucket_test_iam_permissions(bucket_name):
 
 
 @gcs.route("/b/<bucket_name>/lockRetentionPolicy", methods=["POST"])
-@retry_test(method="storage.buckets.lockRententionPolicy")
+@retry_test(method="storage.buckets.lockRetentionPolicy")
 def bucket_lock_retention_policy(bucket_name):
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.metadata.retention_policy.is_locked = True
