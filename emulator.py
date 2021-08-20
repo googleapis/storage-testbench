@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import flask
 import httpbin
 import json
+import logging
+import os
 from functools import wraps
+from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
@@ -900,3 +904,19 @@ server.wsgi_app = testbench.handle_gzip.HandleGzipMiddleware(
 )
 
 httpbin.app.register_error_handler(Exception, testbench.error.RestException.handler)
+
+
+def run():
+    logging.basicConfig()
+    return server
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="A testbench for the GCS client libraries"
+    )
+    parser.add_argument("--port", default=0, type=int)
+    args = parser.parse_args()
+    serving.run_simple(
+        "localhost", port=args.port, application=run(), use_reloader=True, threaded=True
+    )
