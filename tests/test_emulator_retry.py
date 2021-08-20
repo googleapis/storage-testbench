@@ -35,10 +35,6 @@ class TestEmulatorRetry(unittest.TestCase):
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 
-    def test_root(self):
-        response = self.client.get("/")
-        self.assertEqual(response.data, b"OK")
-
     def test_retry_test_supported_operations(self):
         BUCKET_OPERATIONS = {
             "storage.buckets." + op

@@ -43,6 +43,16 @@ def index():
     return "OK"
 
 
+@root.route("/raise_error")
+def raise_error():
+    etype = flask.request.args.get("etype")
+    msg = flask.request.args.get("msg", "")
+    if etype is not None:
+        raise TypeError(msg)
+    else:
+        raise Exception(msg)
+
+
 def xml_put_object(bucket_name, object_name):
     db.insert_test_bucket(None)
     bucket = db.get_bucket_without_generation(bucket_name, None).metadata
