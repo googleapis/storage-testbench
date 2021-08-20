@@ -456,7 +456,7 @@ class TestEmulatorObjectUpload(unittest.TestCase):
             query_string={"upload_id": upload_id},
             headers={"content-range": "bytes */*"},
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, msg=response.data)
         self.assertTrue(
             response.headers.get("content-type").startswith("application/json")
         )

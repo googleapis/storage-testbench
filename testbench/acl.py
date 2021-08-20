@@ -19,7 +19,6 @@ import os
 
 import testbench
 
-from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
 from google.storage.v2 import storage_pb2
 
 PROJECT_NUMBER = os.getenv(
@@ -129,24 +128,11 @@ def create_default_object_acl(bucket_name, entity, role, context):
 def create_object_acl_from_default_object_acl(
     object_name, generation, default_object_acl, context
 ):
-    acl = resources_pb2.ObjectAccessControl()
-    # TODO(#58) - simplify this to acl.CopyFrom(default_object_acl)
-    acl.role = default_object_acl.role
-    acl.entity = default_object_acl.entity
-    acl.entity_id = default_object_acl.entity_id
-    acl.email = default_object_acl.email
-    acl.domain = default_object_acl.domain
-    acl.project_team.project_number = default_object_acl.project_team.project_number
-    acl.project_team.team = default_object_acl.project_team.team
-    # TODO(#58) - end
+    acl = storage_pb2.ObjectAccessControl()
+    acl.CopyFrom(default_object_acl)
     acl.id = hashlib.md5(
-        (acl.bucket + object_name + str(generation) + acl.entity + acl.role).encode(
-            "utf-8"
-        )
+        (object_name + str(generation) + acl.entity + acl.role).encode("utf-8")
     ).hexdigest()
-    acl.etag = acl.id
-    acl.object = object_name
-    acl.generation = generation
     return acl
 
 

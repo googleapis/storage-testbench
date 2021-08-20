@@ -22,7 +22,7 @@ import unittest
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
+from google.storage.v2 import storage_pb2
 
 import testbench
 
@@ -83,7 +83,7 @@ class TestCommonUtils(unittest.TestCase):
         request = testbench.common.FakeRequest.init_protobuf(
             protobuf_request, MockContext()
         )
-        print("\n\n%s\n\n" % request)
+        self.assertIsNotNone(request)
 
     def test_nested_key(self):
         doc = {

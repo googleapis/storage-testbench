@@ -21,7 +21,7 @@ from functools import wraps
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
-from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
+from google.storage.v2 import storage_pb2
 from google.protobuf import json_format
 
 import gcs as gcs_type
@@ -411,13 +411,10 @@ def bucket_lock_retention_policy(bucket_name):
 @retry_test(method="storage.objects.list")
 def object_list(bucket_name):
     db.insert_test_bucket(None)
-    items, prefixes, rest_onlys = db.list_object(flask.request, bucket_name, None)
+    items, prefixes = db.list_object(flask.request, bucket_name, None)
     response = {
         "kind": "storage#objects",
-        "items": [
-            gcs_type.object.Object.rest(blob, rest_only)
-            for blob, rest_only in zip(items, rest_onlys)
-        ],
+        "items": [gcs_type.object.Object.rest(blob) for blob in items],
         "prefixes": prefixes,
     }
     fields = flask.request.args.get("fields", None)
@@ -533,23 +530,22 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
     testbench.csek.validation(
         flask.request, src_object.metadata.customer_encryption.key_sha256, False, None
     )
-    dst_metadata = resources_pb2.Object()
+    dst_metadata = storage_pb2.Object()
     dst_metadata.CopyFrom(src_object.metadata)
     del dst_metadata.acl[:]
     dst_metadata.bucket = dst_bucket_name
     dst_metadata.name = dst_object_name
     dst_media = b""
     dst_media += src_object.media
-    dst_rest_only = dict(src_object.rest_only)
     dst_object, _ = gcs_type.object.Object.init(
-        flask.request, dst_metadata, dst_media, dst_bucket, True, None, dst_rest_only
+        flask.request, dst_metadata, dst_media, dst_bucket, True, None
     )
     db.insert_object(flask.request, dst_bucket_name, dst_object, None)
     if flask.request.data:
         dst_object.patch(flask.request, None)
     dst_object.metadata.metageneration = 1
-    dst_object.metadata.updated.FromDatetime(
-        dst_object.metadata.time_created.ToDatetime()
+    dst_object.metadata.update_time.FromDatetime(
+        dst_object.metadata.create_time.ToDatetime()
     )
     return dst_object.rest_metadata()
 
@@ -594,27 +590,20 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
     }
     if done:
         dst_bucket = db.get_bucket_without_generation(dst_bucket_name, None).metadata
-        dst_metadata = resources_pb2.Object()
+        dst_metadata = storage_pb2.Object()
         dst_metadata.CopyFrom(src_object.metadata)
-        dst_rest_only = dict(src_object.rest_only)
         dst_metadata.bucket = dst_bucket_name
         dst_metadata.name = dst_object_name
         dst_media = rewrite.media
         dst_object, _ = gcs_type.object.Object.init(
-            flask.request,
-            dst_metadata,
-            dst_media,
-            dst_bucket,
-            True,
-            None,
-            dst_rest_only,
+            flask.request, dst_metadata, dst_media, dst_bucket, True, None
         )
         db.insert_object(flask.request, dst_bucket_name, dst_object, None)
         if flask.request.data:
             dst_object.patch(rewrite.request, None)
         dst_object.metadata.metageneration = 1
-        dst_object.metadata.updated.FromDatetime(
-            dst_object.metadata.time_created.ToDatetime()
+        dst_object.metadata.update_time.FromDatetime(
+            dst_object.metadata.create_time.ToDatetime()
         )
         resources = dst_object.rest_metadata()
         response["resource"] = resources
@@ -751,7 +740,7 @@ def resumable_upload_chunk(bucket_name):
         testbench.error.missing("upload_id in resumable_upload_chunk", None)
     upload = db.get_upload(upload_id, None)
     if upload.complete:
-        return gcs_type.object.Object.rest(upload.metadata, upload.rest_only)
+        return gcs_type.object.Object.rest(upload.metadata)
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
     data = testbench.common.extract_media(request)
@@ -827,13 +816,7 @@ def resumable_upload_chunk(bucket_name):
         upload.complete = True
     if upload.complete:
         blob, _ = gcs_type.object.Object.init(
-            upload.request,
-            upload.metadata,
-            upload.media,
-            upload.bucket,
-            False,
-            None,
-            upload.rest_only,
+            upload.request, upload.metadata, upload.media, upload.bucket, False, None
         )
         blob.metadata.metadata["x_emulator_transfer_encoding"] = ":".join(
             upload.transfer

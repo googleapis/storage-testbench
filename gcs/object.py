@@ -28,8 +28,7 @@ import crc32c
 import flask
 import testbench
 
-from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
+from google.storage.v2 import storage_pb2
 from google.protobuf import field_mask_pb2, json_format
 
 
@@ -42,36 +41,26 @@ class Object:
         "content_language",
         "content_type",
         "storage_class",
-        "kms_key_name",
+        "kms_key",
         "temporary_hold",
-        "retention_expiration_time",
+        "retention_expire_time",
         "metadata",
         "event_based_hold",
         "customer_encryption",
+        "custom_time",
     ]
 
-    rest_only_fields = ["customTime"]
-
-    def __init__(self, metadata, media, bucket, rest_only=None):
+    def __init__(self, metadata, media, bucket):
         self.metadata = metadata
         self.media = media
         self.bucket = bucket
-        self.rest_only = rest_only
-
-    @classmethod
-    def __extract_rest_only(cls, data):
-        rest_only = {}
-        for field in Object.rest_only_fields:
-            if field in data:
-                rest_only[field] = data.pop(field)
-        return rest_only
 
     @classmethod
     def __insert_predefined_acl(cls, metadata, bucket, predefined_acl, context):
         if (
             predefined_acl == ""
             or predefined_acl
-            == CommonEnums.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
+            == storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
         ):
             return
         if bucket.iam_config.uniform_bucket_level_access.enabled:
@@ -85,17 +74,46 @@ class Object:
         metadata.acl.extend(acls)
 
     @classmethod
-    def __enrich_acl(cls, metadata):
-        for entry in metadata.acl:
-            entry.bucket = metadata.bucket
-            entry.object = metadata.name
-            entry.generation = metadata.generation
+    def __postprocess_object_metadata(cls, metadata):
+        """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
+        # For some fields the storage/v2 name just needs to change slightly.
+        metadata = testbench.common.rest_adjust(
+            metadata,
+            {
+                "createTime": lambda x: ("timeCreated", x),
+                "updateTime": lambda x: ("updated", x),
+                "kmsKey": lambda x: ("kmsKeyName", x),
+                "retentionExpireTime": lambda x: ("retentionExpirationTime", x),
+                "deleteTime": lambda x: ("timeDeleted", x),
+                "updateStorageClassTime": lambda x: ("timeStorageClassUpdated", x),
+            },
+        )
+        metadata["kind"] = "storage#object"
+        metadata["id"] = "%s/o/%s#%s" % (
+            metadata["bucket"],
+            metadata["name"],
+            metadata["generation"],
+        )
+        # Checksums need special treatment
+        cs = metadata.pop("checksums", None)
+        if cs is not None:
+            if "crc32c" in cs:
+                metadata["crc32c"] = base64.b64encode(
+                    struct.pack(">I", cs["crc32c"])
+                ).decode("utf-8")
+            if "md5Hash" in cs:
+                metadata["md5Hash"] = cs["md5Hash"]
+        # Finally the ACLs, if present, require additional fields
+        if "acl" in metadata:
+            for a in metadata["acl"]:
+                a["kind"] = "storage#objectAccessControl"
+                a["bucket"] = metadata.get("bucket", None)
+                a["object"] = metadata.get("name", None)
+                a["generation"] = metadata.get("generation", None)
+        return metadata
 
-    # TODO(#57): Remove `rest_only`
     @classmethod
-    def init(
-        cls, request, metadata, media, bucket, is_destination, context, rest_only=None
-    ):
+    def init(cls, request, metadata, media, bucket, is_destination, context):
         instruction = testbench.common.extract_instruction(request, context)
         if instruction == "inject-upload-data-error":
             media = testbench.common.corrupt_media(media)
@@ -103,30 +121,22 @@ class Object:
         metadata.bucket = bucket.name
         metadata.generation = int(timestamp.timestamp() * 1000)
         metadata.metageneration = 1
-        metadata.id = "%s/o/%s#%d" % (
-            metadata.bucket,
-            metadata.name,
-            metadata.generation,
-        )
         metadata.size = len(media)
-        actual_md5Hash = base64.b64encode(hashlib.md5(media).digest()).decode("utf-8")
-        if metadata.md5_hash != "" and actual_md5Hash != metadata.md5_hash:
-            testbench.error.mismatch(
-                "md5Hash", metadata.md5_hash, actual_md5Hash, context
-            )
+        actual_md5Hash = hashlib.md5(media).digest()
         actual_crc32c = crc32c.crc32c(media)
-        if metadata.HasField("crc32c") and actual_crc32c != metadata.crc32c.value:
-            testbench.error.mismatch(
-                "crc32c", metadata.crc32c.value, actual_crc32c, context
-            )
-        metadata.md5_hash = actual_md5Hash
-        metadata.crc32c.value = actual_crc32c
-        metadata.time_created.FromDatetime(timestamp)
-        metadata.updated.FromDatetime(timestamp)
+        if metadata.HasField("checksums"):
+            cs = metadata.checksums
+            if len(cs.md5_hash) != 0 and actual_md5Hash != cs.md5_hash:
+                testbench.error.mismatch(
+                    "md5Hash", cs.md5_hash, actual_md5Hash, context
+                )
+            if cs.HasField("crc32c") and actual_crc32c != cs.crc32c:
+                testbench.error.mismatch("crc32c", cs.crc32c, actual_crc32c, context)
+        metadata.checksums.md5_hash = actual_md5Hash
+        metadata.checksums.crc32c = actual_crc32c
+        metadata.create_time.FromDatetime(timestamp)
+        metadata.update_time.FromDatetime(timestamp)
         metadata.owner.entity = testbench.acl.get_object_entity("OWNER", context)
-        metadata.owner.entity_id = hashlib.md5(
-            metadata.owner.entity.encode("utf-8")
-        ).hexdigest()
         algorithm, key_b64, key_sha256_b64 = testbench.csek.extract(
             request, False, context
         )
@@ -146,10 +156,10 @@ class Object:
             )
             if (
                 predefined_acl
-                == CommonEnums.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
+                == storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
             ):
                 predefined_acl = (
-                    CommonEnums.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
+                    storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
                 )
             elif predefined_acl == "":
                 predefined_acl = "projectPrivate"
@@ -158,22 +168,19 @@ class Object:
                     "Predefined ACL with uniform bucket level access enabled", context
                 )
             cls.__insert_predefined_acl(metadata, bucket, predefined_acl, context)
-        cls.__enrich_acl(metadata)
+        # TODO(#27) - this is probably a bug, cleanup once we move all the code
         bucket.iam_config.uniform_bucket_level_access.enabled = is_uniform
-        if rest_only is None:
-            rest_only = {}
         return (
-            cls(metadata, media, bucket, rest_only),
+            cls(metadata, media, bucket),
             testbench.common.extract_projection(request, default_projection, context),
         )
 
     @classmethod
     def init_dict(cls, request, metadata, media, bucket, is_destination):
-        rest_only = cls.__extract_rest_only(metadata)
-        metadata = json_format.ParseDict(metadata, resources_pb2.Object())
-        return cls.init(
-            request, metadata, media, bucket, is_destination, None, rest_only
+        metadata = json_format.ParseDict(
+            testbench.common.preprocess_object_metadata(metadata), storage_pb2.Object()
         )
+        return cls.init(request, metadata, media, bucket, is_destination, None)
 
     @classmethod
     def init_media(cls, request, bucket):
@@ -214,12 +221,8 @@ class Object:
         metadata["metadata"]["x_emulator_upload"] = "multipart"
         if "md5Hash" in metadata:
             metadata["metadata"]["x_emulator_md5"] = metadata["md5Hash"]
-            metadata["md5Hash"] = metadata["md5Hash"]
         if "crc32c" in metadata:
             metadata["metadata"]["x_emulator_crc32c"] = metadata["crc32c"]
-            metadata["crc32c"] = testbench.common.rest_crc32c_to_proto(
-                metadata["crc32c"]
-            )
         return cls.init_dict(request, metadata, media, bucket, False)
 
     @classmethod
@@ -241,9 +244,7 @@ class Object:
                     metadata["md5Hash"] = md5Hash
                 if checksum.startswith("crc32c="):
                     crc32c_value = checksum[7:]
-                    metadata["crc32c"] = testbench.common.rest_crc32c_to_proto(
-                        crc32c_value
-                    )
+                    metadata["crc32c"] = crc32c_value
         blob, _ = cls.init_dict(fake_request, metadata, media, bucket, False)
         return blob, fake_request
 
@@ -254,14 +255,17 @@ class Object:
             update_mask = field_mask_pb2.FieldMask(paths=Object.modifiable_fields)
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
-        self.metadata.updated.FromDatetime(datetime.datetime.now())
+        self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
     def update(self, request, context):
         metadata = None
-        data = json.loads(request.data)
-        rest_only = self.__extract_rest_only(data)
-        self.rest_only.update(rest_only)
-        metadata = json_format.ParseDict(data, resources_pb2.Object())
+        if context is not None:
+            metadata = request.metadata
+        else:
+            data = json.loads(request.data)
+            metadata = json_format.ParseDict(
+                testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
+            )
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
@@ -271,20 +275,41 @@ class Object:
         )
 
     def patch(self, request, context):
-        data = json.loads(request.data)
-        rest_only = self.__extract_rest_only(data)
-        self.rest_only.update(rest_only)
-        if "metadata" in data:
-            if data["metadata"] is None:
-                self.metadata.metadata.clear()
-            else:
-                for key, value in data["metadata"].items():
-                    if value is None:
-                        self.metadata.metadata.pop(key, None)
+        update_mask = field_mask_pb2.FieldMask()
+        metadata = None
+        if context is not None:
+            metadata = request.metadata
+            update_mask = request.update_mask
+        else:
+            data = json.loads(request.data)
+            if "metadata" in data:
+                if data["metadata"] is None:
+                    self.metadata.metadata.clear()
+                else:
+                    for key, value in data["metadata"].items():
+                        if value is None:
+                            self.metadata.metadata.pop(key, None)
+                        else:
+                            self.metadata.metadata[key] = value
+            data.pop("metadata", None)
+            metadata = json_format.ParseDict(
+                testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
+            )
+            paths = set()
+            for key in testbench.common.nested_key(data):
+                key = testbench.common.to_snake_case(key)
+                head = key
+                for i, c in enumerate(key):
+                    if c == "." or c == "[":
+                        head = key[0:i]
+                        break
+                if head in Object.modifiable_fields:
+                    if "[" in key:
+                        paths.add(head)
                     else:
                         self.metadata.metadata[key] = value
         data.pop("metadata", None)
-        metadata = json_format.ParseDict(data, resources_pb2.Object())
+        metadata = json_format.ParseDict(data, storage_pb2.Object())
         paths = set()
         for key in testbench.common.nested_key(data):
             key = testbench.common.to_snake_case(key)
@@ -360,11 +385,11 @@ class Object:
     # === RESPONSE === #
 
     @classmethod
-    def rest(cls, metadata, rest_only):
-        response = json_format.MessageToDict(metadata)
+    def rest(cls, metadata):
+        response = cls.__postprocess_object_metadata(
+            json_format.MessageToDict(metadata)
+        )
         response["kind"] = "storage#object"
-        response["crc32c"] = testbench.common.rest_crc32c_from_proto(response["crc32c"])
-        response.update(rest_only)
         old_metadata = {}
         if "metadata" in response:
             for key, value in response["metadata"].items():
@@ -372,23 +397,22 @@ class Object:
                     old_key = key.replace("emulator", "testbench")
                     old_metadata[old_key] = value
             response["metadata"].update(old_metadata)
-        if "acl" in response:
-            for entry in response["acl"]:
-                entry["kind"] = "storage#objectAccessControl"
         return response
 
     def rest_metadata(self):
-        return self.rest(self.metadata, self.rest_only)
+        return self.rest(self.metadata)
 
     def x_goog_hash_header(self):
+        if not self.metadata.HasField("checksums"):
+            return None
         hashes = []
-        if self.metadata.crc32c is not None and self.metadata.crc32c.value is not None:
+        cs = self.metadata.checksums
+        if cs.HasField("crc32c"):
             hashes.append(
-                "crc32c=%s"
-                % testbench.common.rest_crc32c_from_proto(self.metadata.crc32c.value)
+                "crc32c=%s" % testbench.common.rest_crc32c_from_proto(cs.crc32c)
             )
-        if self.metadata.md5_hash is not None:
-            hashes.append("md5=%s" % self.metadata.md5_hash)
+        if len(cs.md5_hash) != 0:
+            hashes.append("md5=%s" % base64.b64encode(cs.md5_hash).decode("utf-8"))
         return ",".join(hashes) if len(hashes) != 0 else None
 
     def rest_media(self, request, delay=time.sleep):

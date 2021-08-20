@@ -17,8 +17,7 @@
 """Unit tests for testbench.generation."""
 
 import unittest
-
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
+from google.storage.v2 import storage_pb2
 
 import testbench.generation
 
@@ -58,7 +57,7 @@ class TestGeneration(unittest.TestCase):
         self.assertEqual(not_match, 7)
 
     def test_extract_generation(self):
-        request = storage_pb2.GetObjectRequest()
+        request = storage_pb2.ReadObjectRequest()
         generation = testbench.generation.extract_generation(request, False, "")
         self.assertEqual(generation, 0)
 

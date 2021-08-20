@@ -36,39 +36,20 @@ def extract_precondition(request, is_meta, is_source, context):
         not_match_field = (
             "ifGenerationNotMatch" if not is_source else "ifSourceGenerationNotMatch"
         )
-    match, not_match = None, None
-    if context is not None:
-        match_field = testbench.common.to_snake_case(match_field)
-        not_match_field = testbench.common.to_snake_case(not_match_field)
-        match = (
-            getattr(request, match_field, None).value
-            if hasattr(request, match_field) and request.HasField(match_field)
-            else None
-        )
-        not_match = (
-            getattr(request, not_match_field, None).value
-            if hasattr(request, not_match_field) and request.HasField(not_match_field)
-            else None
-        )
-    else:
-        match = (
-            int(request.args.get(match_field)) if match_field in request.args else None
-        )
-        not_match = (
-            int(request.args.get(not_match_field))
-            if not_match_field in request.args
-            else None
-        )
+    match = int(request.args.get(match_field)) if match_field in request.args else None
+    not_match = (
+        int(request.args.get(not_match_field))
+        if not_match_field in request.args
+        else None
+    )
     return match, not_match
 
 
 def extract_generation(request, is_source, context):
     if context is not None:
-        extract_field = "generation" if not is_source else "source_generation"
-        return getattr(request, extract_field, 0)
-    else:
-        extract_field = "generation" if not is_source else "sourceGeneration"
-        return int(request.args.get(extract_field, 0))
+        return request.generation
+    extract_field = "generation" if not is_source else "sourceGeneration"
+    return int(request.args.get(extract_field, 0))
 
 
 def check_precondition(generation, match, not_match, is_meta, context):

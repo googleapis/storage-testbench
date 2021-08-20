@@ -117,7 +117,7 @@ class FakeRequest(types.SimpleNamespace):
             args_field,
         ) in FakeRequest.protobuf_wrapper_to_json_args.items():
             if hasattr(request, proto_field) and request.HasField(proto_field):
-                self.args[args_field] = getattr(request, proto_field).value
+                self.args[args_field] = getattr(request, proto_field)
                 setattr(self, proto_field, getattr(request, proto_field))
         for (
             proto_field,
@@ -140,7 +140,9 @@ class FakeRequest(types.SimpleNamespace):
                 self,
                 csek_field,
                 types.SimpleNamespace(
-                    encryption_algorithm="", encryption_key="", encryption_key_sha256=""
+                    encryption_algorithm="",
+                    encryption_key_bytes="",
+                    encryption_key_sha256_bytes="",
                 ),
             )
 
@@ -517,3 +519,37 @@ def rest_adjust(data, adjustments):
             if k is not None:
                 modified[k] = v
     return modified
+
+
+def preprocess_object_metadata(metadata):
+    """
+    Convert from the JSON field names in an Object metadata to the storage/v2 field names.
+
+    This function is used by both holder.py and object.py.
+    """
+    # For some fields the storage/v2 name just needs to change slightly.
+    md = rest_adjust(
+        metadata,
+        {
+            "timeCreated": lambda x: ("createTime", x),
+            "updated": lambda x: ("updateTime", x),
+            "kmsKeyName": lambda x: ("kmsKey", x),
+            "retentionExpirationTime": lambda x: ("retentionExpireTime", x),
+            "timeDeleted": lambda x: ("deleteTime", x),
+            "timeStorageClassUpdated": lambda x: ("updateStorageClassTime", x),
+        },
+    )
+    checksums = {}
+    if "crc32c" in md:
+        checksums["crc32c"] = rest_crc32c_to_proto(md.pop("crc32c"))
+    if "md5Hash" in metadata:
+        checksums["md5Hash"] = md.pop("md5Hash")
+    if len(checksums) > 0:
+        md["checksums"] = checksums
+    # Finally the ACLs, if present, have fewer fields in gRPC, remove
+    # them if present, ignore then otherwise
+    if "acl" in md:
+        for a in md["acl"]:
+            for field in ["kind", "bucket", "object", "generation"]:
+                a.pop(field, None)
+    return md

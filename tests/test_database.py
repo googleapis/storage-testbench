@@ -128,7 +128,7 @@ class TestDatabaseObject(unittest.TestCase):
             context=None,
         )
         self.assertEqual(get_result.metadata, blob.metadata)
-        items, _, _ = self.database.list_object(
+        items, _ = self.database.list_object(
             Request(create_environ(query_string={})), "bucket-name", None
         )
         names = {o.name for o in items}
@@ -154,7 +154,7 @@ class TestDatabaseObject(unittest.TestCase):
             blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
             self.database.insert_object(request, "bucket-name", blob, None)
 
-        items, _, _ = self.database.list_object(
+        items, _ = self.database.list_object(
             Request(
                 create_environ(
                     query_string={
@@ -176,14 +176,14 @@ class TestDatabaseObject(unittest.TestCase):
         self.database.delete_object(
             testbench.common.FakeRequest(args={}), "bucket-name", "object-name", None
         )
-        items, _, _ = self.database.list_object(
+        items, _ = self.database.list_object(
             Request(create_environ(query_string={})), "bucket-name", None
         )
         names = {o.name for o in items}
         self.assertNotIn("object-name", names)
 
         # Delete all versions of all objects.
-        items, _, _ = self.database.list_object(
+        items, _ = self.database.list_object(
             Request(create_environ(query_string={"versions": "true"})),
             "bucket-name",
             None,
@@ -195,7 +195,7 @@ class TestDatabaseObject(unittest.TestCase):
                 o.name,
                 None,
             )
-        items, _, _ = self.database.list_object(
+        items, _ = self.database.list_object(
             Request(create_environ(query_string={"versions": "true"})),
             "bucket-name",
             None,
