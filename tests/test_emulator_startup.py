@@ -56,14 +56,9 @@ class TestEmulatorStartup(unittest.TestCase):
     def tearDown(self):
         processes = [self.gunicorn, self.plain]
         for p in processes:
-            p.terminate()
             p.stderr.close()
-        for p in processes:
-            try:
-                p.wait(30)
-            except subprocess.TimeoutExpired:
-                p.kill()
-                p.wait(2)
+            p.kill()
+            p.wait(30)
 
     def test_startup_gunicorn(self):
         started = False
