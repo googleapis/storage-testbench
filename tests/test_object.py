@@ -25,7 +25,6 @@ from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 
 import gcs
 import testbench
@@ -34,8 +33,10 @@ from tests.format_multipart_upload import format_multipart_upload
 
 class TestObject(unittest.TestCase):
     def setUp(self):
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, _ = gcs.bucket.Bucket.init(request, "")
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.bucket = bucket
 
     def test_init_media(self):
@@ -514,20 +515,6 @@ class TestObject(unittest.TestCase):
                 "temporaryHold": True,
             },
         )
-
-        # `grpc` PATCH
-
-        request = storage_pb2.PatchObjectRequest(
-            bucket="bucket",
-            object="object",
-            metadata={"metadata": {"method": "grpc"}},
-            update_mask={"paths": ["metadata"]},
-        )
-        blob.patch(request, "")
-        self.assertEqual(blob.metadata.bucket, "bucket")
-        self.assertEqual(blob.metadata.name, "test-object-name")
-        self.assertEqual(blob.media, b"123456789")
-        self.assertEqual(blob.metadata.metadata["method"], "grpc")
 
     def test_update_and_patch(self):
         # Because Object's `update` and `patch` are similar to Bucket'ones, we only

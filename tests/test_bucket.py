@@ -211,16 +211,19 @@ class TestBucket(unittest.TestCase):
             ),
         )
 
-    def test_patch(self):
+    def test_patch_rest(self):
         # Updating requires a full metadata so we don't test it here.
-        request = storage_pb2.InsertBucketRequest(
-            bucket={
-                "name": "bucket",
-                "labels": {"init": "true", "patch": "false"},
-                "website": {"not_found_page": "notfound.html"},
-            }
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "labels": {"init": "true", "patch": "false"},
+                    "website": {"not_found_page": "notfound.html"},
+                }
+            ),
         )
-        bucket, projection = gcs.bucket.Bucket.init(request, "")
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(bucket.metadata.labels.get("init"), "true")
         self.assertEqual(bucket.metadata.labels.get("patch"), "false")
         self.assertIsNone(bucket.metadata.labels.get("method"))
@@ -228,19 +231,20 @@ class TestBucket(unittest.TestCase):
         self.assertEqual(bucket.metadata.website.not_found_page, "notfound.html")
         previous_metageneration = bucket.metadata.metageneration
 
-        request = storage_pb2.PatchBucketRequest(
-            bucket="bucket",
-            metadata={
-                "labels": {"patch": "true", "method": "grpc"},
-                "website": {"main_page_suffix": "bucket", "not_found_page": "404"},
-            },
-            update_mask={"paths": ["labels", "website.main_page_suffix"]},
+        request = testbench.common.FakeRequest(
+            args={"bucket": "bucket"},
+            data=json.dumps(
+                {
+                    "labels": {"init": None, "patch": "true", "method": "rest"},
+                    "website": {"main_page_suffix": "bucket"},
+                }
+            ),
         )
-        bucket.patch(request, "")
+        bucket.patch(request, None)
         # GRPC can not update a part of map field.
         self.assertIsNone(bucket.metadata.labels.get("init"))
         self.assertEqual(bucket.metadata.labels.get("patch"), "true")
-        self.assertEqual(bucket.metadata.labels.get("method"), "grpc")
+        self.assertEqual(bucket.metadata.labels.get("method"), "rest")
         self.assertEqual(bucket.metadata.website.main_page_suffix, "bucket")
         # `update_mask` does not update `website.not_found_page`
         self.assertEqual(bucket.metadata.website.not_found_page, "notfound.html")
@@ -272,64 +276,6 @@ class TestBucket(unittest.TestCase):
         )
         bucket.update(request, None)
         self.assertEqual(bucket.metadata.labels["method"], "rest_update")
-
-    def test_acl(self):
-        # Both REST and GRPC share almost the same implementation so we only test GRPC here.
-        entity = "user-bucket.acl@example.com"
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, projection = gcs.bucket.Bucket.init(request, "")
-
-        request = storage_pb2.InsertBucketAccessControlRequest(
-            bucket="bucket", bucket_access_control={"entity": entity, "role": "READER"}
-        )
-        bucket.insert_acl(request, "")
-
-        acl = bucket.get_acl(entity, "")
-        self.assertEqual(acl.entity, entity)
-        self.assertEqual(acl.email, "bucket.acl@example.com")
-        self.assertEqual(acl.role, "READER")
-
-        request = storage_pb2.PatchBucketAccessControlRequest(
-            bucket="bucket", entity=entity, bucket_access_control={"role": "OWNER"}
-        )
-        bucket.patch_acl(request, entity, "")
-        acl = bucket.get_acl(entity, "")
-        self.assertEqual(acl.entity, entity)
-        self.assertEqual(acl.email, "bucket.acl@example.com")
-        self.assertEqual(acl.role, "OWNER")
-
-        bucket.delete_acl(entity, "")
-        with self.assertRaises(Exception):
-            bucket.get_acl(entity, None)
-
-    def test_default_object_acl(self):
-        # Both REST and GRPC share almost the same implementation so we only test GRPC here.
-        entity = "user-bucket.default_object_acl@example.com"
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, projection = gcs.bucket.Bucket.init(request, "")
-
-        request = storage_pb2.InsertDefaultObjectAccessControlRequest(
-            bucket="bucket", object_access_control={"entity": entity, "role": "READER"}
-        )
-        bucket.insert_default_object_acl(request, "")
-
-        acl = bucket.get_default_object_acl(entity, "")
-        self.assertEqual(acl.entity, entity)
-        self.assertEqual(acl.email, "bucket.default_object_acl@example.com")
-        self.assertEqual(acl.role, "READER")
-
-        request = storage_pb2.PatchDefaultObjectAccessControlRequest(
-            bucket="bucket", entity=entity, object_access_control={"role": "OWNER"}
-        )
-        bucket.patch_default_object_acl(request, entity, "")
-        acl = bucket.get_default_object_acl(entity, "")
-        self.assertEqual(acl.entity, entity)
-        self.assertEqual(acl.email, "bucket.default_object_acl@example.com")
-        self.assertEqual(acl.role, "OWNER")
-
-        bucket.delete_default_object_acl(entity, "")
-        with self.assertRaises(Exception):
-            bucket.get_default_object_acl(entity, None)
 
     def test_notification(self):
         metadata = {

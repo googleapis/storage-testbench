@@ -25,36 +25,6 @@ import testbench.generation
 
 class TestGeneration(unittest.TestCase):
     def test_extract_precondition(self):
-        request = storage_pb2.CopyObjectRequest(
-            if_generation_not_match={"value": 1},
-            if_metageneration_match={"value": 2},
-            if_metageneration_not_match={"value": 3},
-            if_source_generation_match={"value": 4},
-            if_source_generation_not_match={"value": 5},
-            if_source_metageneration_match={"value": 6},
-            if_source_metageneration_not_match={"value": 7},
-        )
-        match, not_match = testbench.generation.extract_precondition(
-            request, False, False, ""
-        )
-        self.assertIsNone(match)
-        self.assertEqual(not_match, 1)
-        match, not_match = testbench.generation.extract_precondition(
-            request, True, False, ""
-        )
-        self.assertEqual(match, 2)
-        self.assertEqual(not_match, 3)
-        match, not_match = testbench.generation.extract_precondition(
-            request, False, True, ""
-        )
-        self.assertEqual(match, 4)
-        self.assertEqual(not_match, 5)
-        match, not_match = testbench.generation.extract_precondition(
-            request, True, True, ""
-        )
-        self.assertEqual(match, 6)
-        self.assertEqual(not_match, 7)
-
         request = testbench.common.FakeRequest(
             args={
                 "ifGenerationNotMatch": 1,
@@ -95,10 +65,6 @@ class TestGeneration(unittest.TestCase):
         request.generation = 1
         generation = testbench.generation.extract_generation(request, False, "")
         self.assertEqual(generation, 1)
-
-        request = storage_pb2.CopyObjectRequest(source_generation=2)
-        generation = testbench.generation.extract_generation(request, True, "")
-        self.assertEqual(generation, 2)
 
         request = testbench.common.FakeRequest(args={})
         generation = testbench.generation.extract_generation(request, False, None)

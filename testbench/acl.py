@@ -171,11 +171,7 @@ def extract_predefined_acl(request, is_destination, context):
 
 
 def extract_predefined_default_object_acl(request, context):
-    return (
-        request.args.get("predefinedDefaultObjectAcl", "")
-        if context is None
-        else request.predefined_default_object_acl
-    )
+    return request.args.get("predefinedDefaultObjectAcl", "")
 
 
 # === COMPUTE PREDEFINED ACL === #

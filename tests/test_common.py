@@ -105,17 +105,6 @@ class TestCommonUtils(unittest.TestCase):
         )
 
     def test_extract_projection(self):
-        request = storage_pb2.CopyObjectRequest()
-        projection = testbench.common.extract_projection(
-            request, CommonEnums.Projection.NO_ACL, ""
-        )
-        self.assertEqual(projection, CommonEnums.Projection.NO_ACL)
-        request.projection = CommonEnums.Projection.FULL
-        projection = testbench.common.extract_projection(
-            request, CommonEnums.Projection.NO_ACL, ""
-        )
-        self.assertEqual(projection, CommonEnums.Projection.FULL)
-
         request = testbench.common.FakeRequest(args={})
         projection = testbench.common.extract_projection(
             request, CommonEnums.Projection.NO_ACL, None

@@ -23,7 +23,6 @@ import unittest
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
-from google.protobuf import json_format
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
@@ -183,8 +182,10 @@ class TestHolder(unittest.TestCase):
         upload = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
 
     def test_init_resumable_grpc(self):
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, _ = gcs.bucket.Bucket.init(request, "")
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
         bucket = bucket.metadata
         insert_object_spec = storage_pb2.InsertObjectSpec(
             resource={"name": "object", "bucket": "bucket"},
@@ -227,8 +228,10 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(projection, CommonEnums.Projection.FULL)
 
     def test_resumable_rest(self):
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, _ = gcs.bucket.Bucket.init(request, "")
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
         bucket = bucket.metadata
         data = json.dumps(
             {
@@ -262,8 +265,10 @@ class TestHolder(unittest.TestCase):
             self.assertEqual("bytes=0-42", status.headers.get("Range", None))
 
     def test_rewrite_rest(self):
-        request = storage_pb2.InsertBucketRequest(bucket={"name": "bucket"})
-        bucket, _ = gcs.bucket.Bucket.init(request, "")
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
         bucket = bucket.metadata
         data = json.dumps({"name": "a"})
         environ = create_environ(
