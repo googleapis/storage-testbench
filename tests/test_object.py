@@ -269,7 +269,7 @@ class TestObject(unittest.TestCase):
                 customer_encryption=resources_pb2.Object.CustomerEncryption(
                     encryption_algorithm="AES", key_sha256="123456"
                 ),
-                # TODO(#6982) - add these fields when moving to storage/v2
+                # TODO(#58) - add these fields when moving to storage/v2
                 #   custom_time=testbench.common.rest_rfc3339_to_proto("2021-08-01T12:00:00Z"),
                 event_based_hold={"value": True},
                 kms_key_name="test-value",
