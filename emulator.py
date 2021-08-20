@@ -17,7 +17,6 @@ import flask
 import httpbin
 import json
 import logging
-import os
 from functools import wraps
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
