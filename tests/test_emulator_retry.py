@@ -36,6 +36,63 @@ class TestEmulatorRetry(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.data, b"OK")
 
+    def test_retry_test_supported_operations(self):
+        BUCKET_OPERATIONS = {
+            "storage.buckets." + op
+            for op in [
+                "list",
+                "insert",
+                "get",
+                "update",
+                "patch",
+                "delete",
+                "getIamPolicy",
+                "setIamPolicy",
+                "testIamPermissions",
+                "lockRetentionPolicy",
+            ]
+        }
+        BUCKET_ACL_OPERATIONS = {
+            "storage.bucket_acl." + op
+            for op in ["list", "insert", "get", "update", "patch", "delete"]
+        }
+        BUCKET_DEFAULT_OBJECT_ACL_OPERATIONS = {
+            "storage.default_object_acl." + op
+            for op in ["list", "insert", "get", "update", "patch", "delete"]
+        }
+        NOTIFICATION_OPERATIONS = {
+            "storage.notifications." + op for op in ["list", "insert", "get", "delete"]
+        }
+        OBJECT_OPERATIONS = {
+            "storage.objects." + op
+            for op in [
+                "list",
+                "insert",
+                "get",
+                "update",
+                "patch",
+                "delete",
+                "compose",
+                "copy",
+                "rewrite",
+            ]
+        }
+        OBJECT_ACL_OPERATIONS = {
+            "storage.object_acl." + op
+            for op in ["list", "insert", "get", "update", "patch", "delete"]
+        }
+        groups = {
+            "buckets": BUCKET_OPERATIONS,
+            "bucket_acl": BUCKET_ACL_OPERATIONS,
+            "bucket_default_object_acl": BUCKET_DEFAULT_OBJECT_ACL_OPERATIONS,
+            "notifications": NOTIFICATION_OPERATIONS,
+            "objects": OBJECT_OPERATIONS,
+            "object_acl": OBJECT_ACL_OPERATIONS,
+        }
+        all = set(emulator.db.supported_methods)
+        for name, operations in groups.items():
+            self.assertEqual(all, all | operations)
+
     def test_retry_test_crud(self):
         self.assertIn("storage.buckets.list", emulator.db.supported_methods)
         response = self.client.post(
