@@ -58,7 +58,7 @@ class TestEmulatorObjectMetadata(unittest.TestCase):
             "name": "fox.txt",
             "size": "%d" % len(payload),
         }
-        self.assertEqual(get_rest, get_rest | expected_fields)
+        self.assertEqual(get_rest, {**get_rest, **expected_fields})
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/o/fox.txt", query_string={"alt": "media"}
@@ -83,7 +83,7 @@ class TestEmulatorObjectMetadata(unittest.TestCase):
         )
         patch_rest = json.loads(response.data)
         self.assertEqual(
-            patch_rest.get("metadata"), patch_rest.get("metadata") | metadata
+            patch_rest.get("metadata"), {**patch_rest.get("metadata"), **metadata}
         )
 
         update = patch_rest.copy()
@@ -103,7 +103,7 @@ class TestEmulatorObjectMetadata(unittest.TestCase):
         update_rest = json.loads(response.data)
         self.assertEqual(
             update_rest.get("metadata"),
-            update_rest.get("metadata") | {"key0": "updated-label0"},
+            {**update_rest.get("metadata"), **{"key0": "updated-label0"}},
         )
 
         response = self.client.get("/storage/v1/b/bucket-name/o")
@@ -145,7 +145,7 @@ class TestEmulatorObjectMetadata(unittest.TestCase):
             response.headers.get("content-type").startswith("application/json")
         )
         insert_rest = json.loads(response.data)
-        self.assertEqual(insert_rest, insert_rest | insert_data)
+        self.assertEqual(insert_rest, {**insert_rest, **insert_data})
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers"

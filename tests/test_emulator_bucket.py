@@ -129,7 +129,7 @@ class TestEmulatorBucket(unittest.TestCase):
             response.headers.get("content-type").startswith("application/json")
         )
         insert_rest = json.loads(response.data)
-        self.assertEqual(insert_rest, insert_rest | insert_data)
+        self.assertEqual(insert_rest, {**insert_rest, **insert_data})
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/acl/allAuthenticatedUsers"
@@ -200,7 +200,7 @@ class TestEmulatorBucket(unittest.TestCase):
             response.headers.get("content-type").startswith("application/json")
         )
         insert_rest = json.loads(response.data)
-        self.assertEqual(insert_rest, insert_rest | insert_data)
+        self.assertEqual(insert_rest, {**insert_rest, **insert_data})
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/defaultObjectAcl/allAuthenticatedUsers"
