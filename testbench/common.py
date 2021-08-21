@@ -22,7 +22,6 @@ import re
 import scalpl
 import socket
 import struct
-import sys
 import types
 
 from grpc import StatusCode
@@ -358,12 +357,20 @@ def __get_streamer_response_fn(database, method, conn, test_id):
             d = _extract_data(data)
             chunk_size = 4
             for r in range(0, len(d), chunk_size):
-                if r >= 10:
-                    if conn is not None:
-                        conn.close()
-                    sys.exit(1)
-                chunk_end = min(r + chunk_size, len(d))
-                yield d[r:chunk_end]
+                if r < 10:
+                    chunk_end = min(r + chunk_size, len(d))
+                    yield d[r:chunk_end]
+                if conn is not None:
+                    conn.close()
+                # This exception is raised to abort the flow control. The
+                # connection has already been closed, causing the client to
+                # receive a "connection reset by peer" (or a similar error).
+                # The exception is useful in unit tests (where there is no
+                # socket to close), and stops the testbench from trying to
+                # complete a request that we intentionally aborted.
+                raise testbench.error.RestException(
+                    "Injected 'connection reset by peer' fault", 500
+                )
 
         return flask.Response(streamer())
 
@@ -397,7 +404,6 @@ def handle_retry_test_instruction(database, request, method):
     )
     if retry_connection_matches:
         items = list(retry_connection_matches.groups())
-        # sys.exit(1) retains database state with more than 1 thread
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
             fd = request.environ.get("gunicorn.socket", None)
@@ -406,7 +412,14 @@ def handle_retry_test_instruction(database, request, method):
                     socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
                 )
                 fd.close()
-            sys.exit(1)
+            # This exception is raised to abort the flow control. The connection
+            # has already been closed, causing the client to receive a "connection
+            # reset by peer" (or a similar error). The exception is useful in
+            # unit tests (where there is no socket to close), and stops the testbench
+            # from trying to complete a request that we intentionally aborted.
+            raise testbench.error.RestException(
+                "Injected 'connection reset by peer' fault", 500
+            )
         elif items[0] == "broken-stream":
             conn = request.environ.get("gunicorn.socket", None)
             return __get_streamer_response_fn(database, method, conn, test_id)

@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, patch
 import emulator
 import testbench
 
+
 UPLOAD_QUANTUM = 256 * 1024
 
 
@@ -189,16 +190,14 @@ class TestEmulatorRetry(unittest.TestCase):
         self.assertIn("id", create_rest)
         id = create_rest.get("id")
 
-        mock_exit = MagicMock(name="exit", side_effect=Exception("sys.exit called"))
-        with patch("sys.exit", mock_exit):
-            response = self.client.get(
-                "/storage/v1/b/bucket-name/o/256k.txt",
-                query_string={"alt": "media"},
-                headers={"x-retry-test-id": id},
-            )
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/256k.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
         self.assertEqual(response.status_code, 500)
         error = json.loads(response.data)
-        self.assertIn("sys.exit called", error.get("message"))
+        self.assertIn("connection reset by peer", error.get("message"))
 
     def test_retry_test_return_broken_stream(self):
         response = self.client.post(
@@ -229,16 +228,14 @@ class TestEmulatorRetry(unittest.TestCase):
         self.assertIn("id", create_rest)
         id = create_rest.get("id")
 
-        mock_exit = MagicMock(name="exit", side_effect=Exception("sys.exit called"))
         response = self.client.get(
             "/storage/v1/b/bucket-name/o/256k.txt",
             query_string={"alt": "media"},
             headers={"x-retry-test-id": id},
         )
-        with patch("sys.exit", mock_exit):
-            with self.assertRaises(Exception) as ex:
-                _ = len(response.data)
-        self.assertIn("sys.exit called", ex.exception.args)
+        with self.assertRaises(testbench.error.RestException) as ex:
+            _ = len(response.data)
+        self.assertIn("connection reset by peer", ex.exception.msg)
 
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(
