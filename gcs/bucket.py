@@ -156,9 +156,9 @@ class Bucket:
         metadata, rest_only = cls.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(metadata, resources_pb2.Bucket())
         cls.__validate_bucket_name(metadata.name, context)
-        default_projection = CommonEnums.Projection.NO_ACL
+        default_projection = "noAcl"
         if len(metadata.acl) != 0 or len(metadata.default_object_acl) != 0:
-            default_projection = CommonEnums.Projection.FULL
+            default_projection = "full"
         is_uniform = metadata.iam_configuration.uniform_bucket_level_access.enabled
         metadata.iam_configuration.uniform_bucket_level_access.enabled = False
         if len(metadata.acl) == 0:

@@ -299,13 +299,9 @@ def extract_media(request):
 
 def extract_projection(request, default, context):
     if context is not None:
-        return request.projection if request.projection != 0 else default
-    else:
-        projection_map = ["noAcl", "full"]
-        projection = request.args.get("projection")
-        return (
-            projection if projection in projection_map else projection_map[default - 1]
-        )
+        return default
+    projection = request.args.get("projection")
+    return projection if projection is not None else default
 
 
 # === DATA === #

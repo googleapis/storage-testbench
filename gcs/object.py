@@ -134,12 +134,12 @@ class Object:
             testbench.csek.check(algorithm, key_b64, key_sha256_b64, context)
             metadata.customer_encryption.encryption_algorithm = algorithm
             metadata.customer_encryption.key_sha256 = key_sha256_b64
-        default_projection = CommonEnums.Projection.NO_ACL
+        default_projection = "noAcl"
         is_uniform = bucket.iam_configuration.uniform_bucket_level_access.enabled
         # TODO(#27) - this is probably a bug, cleanup once we move all the code
         bucket.iam_configuration.uniform_bucket_level_access.enabled = False
         if len(metadata.acl) != 0:
-            default_projection = CommonEnums.Projection.FULL
+            default_projection = "full"
         else:
             predefined_acl = testbench.acl.extract_predefined_acl(
                 request, is_destination, context

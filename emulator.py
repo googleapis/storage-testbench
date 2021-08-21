@@ -22,7 +22,6 @@ from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 from google.protobuf import json_format
 
 import gcs as gcs_type
@@ -183,9 +182,7 @@ def bucket_get(bucket_name):
     db.insert_test_bucket(None)
     db.insert_test_bucket(None)
     bucket = db.get_bucket(flask.request, bucket_name, None)
-    projection = testbench.common.extract_projection(
-        flask.request, CommonEnums.Projection.NO_ACL, None
-    )
+    projection = testbench.common.extract_projection(flask.request, "noAcl", None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(bucket.rest(), projection, fields)
 
@@ -196,9 +193,7 @@ def bucket_update(bucket_name):
     db.insert_test_bucket(None)
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.update(flask.request, None)
-    projection = testbench.common.extract_projection(
-        flask.request, CommonEnums.Projection.FULL, None
-    )
+    projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(bucket.rest(), projection, fields)
 
@@ -209,9 +204,7 @@ def bucket_patch(bucket_name):
     testbench.common.enforce_patch_override(flask.request)
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.patch(flask.request, None)
-    projection = testbench.common.extract_projection(
-        flask.request, CommonEnums.Projection.FULL, None
-    )
+    projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(bucket.rest(), projection, fields)
 
@@ -450,9 +443,7 @@ def object_list(bucket_name):
 def object_update(bucket_name, object_name):
     blob = db.get_object(flask.request, bucket_name, object_name, False, None)
     blob.update(flask.request, None)
-    projection = testbench.common.extract_projection(
-        flask.request, CommonEnums.Projection.FULL, None
-    )
+    projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(
         blob.rest_metadata(), projection, fields
@@ -465,9 +456,7 @@ def object_patch(bucket_name, object_name):
     testbench.common.enforce_patch_override(flask.request)
     blob = db.get_object(flask.request, bucket_name, object_name, False, None)
     blob.patch(flask.request, None)
-    projection = testbench.common.extract_projection(
-        flask.request, CommonEnums.Projection.FULL, None
-    )
+    projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(
         blob.rest_metadata(), projection, fields
@@ -487,9 +476,7 @@ def object_get(bucket_name, object_name):
     blob = db.get_object(flask.request, bucket_name, object_name, False, None)
     media = flask.request.args.get("alt", None)
     if media is None or media == "json":
-        projection = testbench.common.extract_projection(
-            flask.request, CommonEnums.Projection.NO_ACL, None
-        )
+        projection = testbench.common.extract_projection(flask.request, "noAcl", None)
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(
             blob.rest_metadata(), projection, fields
@@ -815,7 +802,7 @@ def resumable_upload_chunk(bucket_name):
                 )
                 db.insert_object(upload.request, bucket_name, blob, None)
                 projection = testbench.common.extract_projection(
-                    upload.request, CommonEnums.Projection.NO_ACL, None
+                    upload.request, "noAcl", None
                 )
                 fields = upload.request.args.get("fields", None)
                 return testbench.common.filter_response_rest(
@@ -868,9 +855,7 @@ def resumable_upload_chunk(bucket_name):
         blob.metadata.metadata["x_emulator_upload"] = "resumable"
         blob.metadata.metadata["x_emulator_custom_header"] = str(custom_header_value)
         db.insert_object(upload.request, bucket_name, blob, None)
-        projection = testbench.common.extract_projection(
-            upload.request, CommonEnums.Projection.NO_ACL, None
-        )
+        projection = testbench.common.extract_projection(upload.request, "noAcl", None)
         fields = upload.request.args.get("fields", None)
         return testbench.common.filter_response_rest(
             blob.rest_metadata(), projection, fields
