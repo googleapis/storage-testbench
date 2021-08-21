@@ -1,0 +1,3 @@
+ignore:
+  - "google/iam/v1/**/*"
+  - "google/storage/v2/**/*"
