@@ -23,6 +23,8 @@ import subprocess
 import time
 import unittest
 
+from requests.models import iter_slices
+
 
 class TestEmulatorContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
@@ -115,6 +117,80 @@ class TestEmulatorContinueAfterFaultInjection(unittest.TestCase):
 
         # Verify the testbench remains usable.
         response = requests.get(endpoint + "/storage/v1/b?project=test-project-unused")
+        self.assertEqual(response.status_code, 200)
+
+    @staticmethod
+    def _create_block(desired_kib):
+        line = "A" * 127 + "\n"
+        return 1024 * int(desired_kib / len(line)) * line
+
+    def test_repeated_broken_stream_faults_by_header(self):
+        endpoint = "http://localhost:" + self.port
+
+        # Create an object and bucket in the testbench.
+        response = requests.post(
+            endpoint + "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(2 * 1024)
+        response = requests.put(
+            endpoint + "/bucket-name/2MiB.txt",
+            headers={"content-type": "text/plain"},
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Verify we get the expected error (in this case the connection is closed) when sending several requests
+        for _ in range(0, 4):
+            with self.assertRaises(requests.exceptions.RequestException) as ex:
+                response = requests.get(
+                    endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media",
+                    stream=True,
+                    headers={"x-goog-testbench-instructions": "return-broken-stream"},
+                )
+                self.assertLess(
+                    len(response.content), int(response.headers.get("content-length"))
+                )
+                self.assertNotEqual(response.status_code, 200)
+
+        # Verify the testbench remains usable.
+        response = requests.get(
+            endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_repeated_error_after_256K_faults_by_header(self):
+        endpoint = "http://localhost:" + self.port
+
+        # Create an object and bucket in the testbench.
+        response = requests.post(
+            endpoint + "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(2 * 1024)
+        response = requests.put(
+            endpoint + "/bucket-name/2MiB.txt",
+            headers={"content-type": "text/plain"},
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Verify we get the expected error when sending several requests
+        for _ in range(0, 10):
+            with self.assertRaises(requests.exceptions.RequestException) as ex:
+                response = requests.get(
+                    endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media",
+                    stream=True,
+                    headers={"x-goog-testbench-instructions": "return-503-after-256K"},
+                )
+                _ = len(response.content)
+
+        # Verify the testbench remains usable.
+        response = requests.get(
+            endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media"
+        )
         self.assertEqual(response.status_code, 200)
 
 
