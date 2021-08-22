@@ -20,8 +20,8 @@ import hashlib
 import json
 import random
 import re
+import socket
 import struct
-import sys
 import time
 
 import crc32c
@@ -440,14 +440,28 @@ class Object:
 
         instructions = testbench.common.extract_instruction(request, None)
         if instructions == "return-broken-stream":
-            headers["Content-Length"] = length
+            socket = request.environ.get("gunicorn.socket", None)
 
             def streamer():
                 chunk_size = 64 * 1024
                 for r in range(0, len(response_payload), chunk_size):
-                    if r > 1024 * 1024:
-                        print("\n\n###### EXIT to simulate crash\n")
-                        sys.exit(1)
+                    if r >= 1024 * 1024:
+                        if socket is not None:
+                            socket.setsockopt(
+                                socket.SOL_SOCKET,
+                                socket.SO_LINGER,
+                                struct.pack("ii", 1, 0),
+                            )
+                            socket.close()
+                        # This exception is raised to abort the flow control. The
+                        # connection has already been closed, causing the client to
+                        # receive a "connection reset by peer" (or a similar error).
+                        # The exception is useful in unit tests (where there is no
+                        # socket to close), and stops the testbench from trying to
+                        # complete a request that we intentionally aborted.
+                        raise testbench.error.RestException(
+                            "Injected 'connection reset by peer' fault", 500
+                        )
                     delay(0.1)
                     chunk_end = min(r + chunk_size, len(response_payload))
                     yield response_payload[r:chunk_end]
@@ -482,13 +496,28 @@ class Object:
             u"return-503-after-256K"
         ):
             if begin == 0:
+                socket = request.environ.get("gunicorn.socket", None)
 
                 def streamer():
                     chunk_size = 4 * 1024
                     for r in range(0, len(response_payload), chunk_size):
                         if r >= 256 * 1024:
-                            print("\n\n###### EXIT to simulate crash\n")
-                            sys.exit(1)
+                            if socket is not None:
+                                socket.setsockopt(
+                                    socket.SOL_SOCKET,
+                                    socket.SO_LINGER,
+                                    struct.pack("ii", 1, 0),
+                                )
+                                socket.close()
+                            # This exception is raised to abort the flow control. The
+                            # connection has already been closed, causing the client to
+                            # receive a "connection reset by peer" (or a similar error).
+                            # The exception is useful in unit tests (where there is no
+                            # socket to close), and stops the testbench from trying to
+                            # complete a request that we intentionally aborted.
+                            raise testbench.error.RestException(
+                                "Injected 'connection reset by peer' fault", 503
+                            )
                         time.sleep(0.01)
                         chunk_end = min(r + chunk_size, len(response_payload))
                         yield response_payload[r:chunk_end]
