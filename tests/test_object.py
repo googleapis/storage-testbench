@@ -111,9 +111,7 @@ class TestObject(unittest.TestCase):
             data=payload.encode("utf-8"),
             environ={},
         )
-        self.bucket.metadata.iam_configuration.uniform_bucket_level_access.enabled = (
-            True
-        )
+        self.bucket.metadata.iam_config.uniform_bucket_level_access.enabled = True
         with self.assertRaises(testbench.error.RestException) as rest:
             _, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
         self.assertEqual(rest.exception.code, 400)
