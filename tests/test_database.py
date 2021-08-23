@@ -39,7 +39,7 @@ class TestDatabaseBucket(unittest.TestCase):
         get_result = database.get_bucket(request, "bucket-name", None)
         self.assertEqual(bucket.metadata, get_result.metadata)
         list_result = database.list_bucket(request, "test-project-id", None)
-        names = {b.metadata.name for b in list_result}
+        names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
         database.delete_bucket(request, "bucket-name", None)
         list_result = database.list_bucket(request, "test-project-id", None)
@@ -101,7 +101,7 @@ class TestDatabaseBucket(unittest.TestCase):
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database.insert_test_bucket(None)
         get_result = database.get_bucket(request, "test-bucket-1", None)
-        self.assertEqual(get_result.metadata.name, "test-bucket-1")
+        self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
 
 
 class TestDatabaseObject(unittest.TestCase):
@@ -191,7 +191,7 @@ class TestDatabaseObject(unittest.TestCase):
         for o in items:
             self.database.delete_object(
                 testbench.common.FakeRequest(args={"generation": o.generation}),
-                o.bucket,
+                "bucket-name",
                 o.name,
                 None,
             )

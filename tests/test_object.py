@@ -44,6 +44,7 @@ class TestObject(unittest.TestCase):
             args={"name": "object"}, data=b"12345678", headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "object")
         self.assertEqual(blob.media, b"12345678")
 
@@ -72,6 +73,7 @@ class TestObject(unittest.TestCase):
             environ={},
         )
         blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "object")
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["key"], "value")
@@ -297,7 +299,7 @@ class TestObject(unittest.TestCase):
             False,
             "FakeContext",
         )
-        self.assertEqual(blob.metadata.bucket, "bucket")
+        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
 
@@ -447,7 +449,7 @@ class TestObject(unittest.TestCase):
             environ={},
         )
         blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
-        self.assertEqual(blob.metadata.bucket, "bucket")
+        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["method"], "rest")
