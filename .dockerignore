@@ -2,7 +2,7 @@
 *.yaml
 .dockerignore
 .git/
-.github
+.github/
 .gitignore
 .idea/
 Dockerfile
