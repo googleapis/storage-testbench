@@ -136,9 +136,15 @@ class DataHolder(types.SimpleNamespace):
             metadata.metadata["x_emulator_no_crc32c"] = "true"
             metadata.metadata["x_emulator_no_md5"] = "true"
         upload_id = cls.__create_upload_id(bucket.name, metadata.name)
-        fake_request = testbench.common.FakeRequest.init_protobuf(request, context)
+        fake_request = testbench.common.FakeRequest.init_protobuf(
+            request.write_object_spec, context
+        )
         fake_request.update_protobuf(request.write_object_spec, context)
         return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
+
+    @classmethod
+    def create_upload_id(cls, bucket_name, object_name):
+        return cls.__create_upload_id(bucket_name, object_name)
 
     def resumable_status_rest(self):
         response = flask.make_response()
