@@ -23,7 +23,6 @@ import unittest
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 
 import testbench
 
@@ -106,14 +105,10 @@ class TestCommonUtils(unittest.TestCase):
 
     def test_extract_projection(self):
         request = testbench.common.FakeRequest(args={})
-        projection = testbench.common.extract_projection(
-            request, CommonEnums.Projection.NO_ACL, None
-        )
+        projection = testbench.common.extract_projection(request, "noAcl", None)
         self.assertEqual(projection, "noAcl")
         request.args["projection"] = "full"
-        projection = testbench.common.extract_projection(
-            request, CommonEnums.Projection.NO_ACL, None
-        )
+        projection = testbench.common.extract_projection(request, "noAcl", None)
         self.assertEqual(projection, "full")
 
     def test_filter_response_rest(self):

@@ -20,7 +20,6 @@ import json
 import unittest
 
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 from google.protobuf import json_format
 
 import gcs

@@ -193,7 +193,6 @@ class TestHolder(unittest.TestCase):
             if_generation_not_match={"value": 1},
             if_metageneration_match={"value": 2},
             if_metageneration_not_match={"value": 3},
-            projection=CommonEnums.Projection.FULL,
         )
         request = storage_pb2.InsertObjectRequest(
             insert_object_spec=insert_object_spec, write_offset=0
@@ -224,8 +223,6 @@ class TestHolder(unittest.TestCase):
         )
         self.assertEqual(match, 2)
         self.assertEqual(not_match, 3)
-        projection = testbench.common.extract_projection(upload.request, False, "")
-        self.assertEqual(projection, CommonEnums.Projection.FULL)
 
     def test_resumable_rest(self):
         request = testbench.common.FakeRequest(
