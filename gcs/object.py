@@ -258,13 +258,10 @@ class Object:
 
     def update(self, request, context):
         metadata = None
-        if context is not None:
-            metadata = request.metadata
-        else:
-            data = json.loads(request.data)
-            rest_only = self.__extract_rest_only(data)
-            self.rest_only.update(rest_only)
-            metadata = json_format.ParseDict(data, resources_pb2.Object())
+        data = json.loads(request.data)
+        rest_only = self.__extract_rest_only(data)
+        self.rest_only.update(rest_only)
+        metadata = json_format.ParseDict(data, resources_pb2.Object())
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
@@ -274,40 +271,34 @@ class Object:
         )
 
     def patch(self, request, context):
-        update_mask = field_mask_pb2.FieldMask()
-        metadata = None
-        if context is not None:
-            metadata = request.metadata
-            update_mask = request.update_mask
-        else:
-            data = json.loads(request.data)
-            rest_only = self.__extract_rest_only(data)
-            self.rest_only.update(rest_only)
-            if "metadata" in data:
-                if data["metadata"] is None:
-                    self.metadata.metadata.clear()
-                else:
-                    for key, value in data["metadata"].items():
-                        if value is None:
-                            self.metadata.metadata.pop(key, None)
-                        else:
-                            self.metadata.metadata[key] = value
-            data.pop("metadata", None)
-            metadata = json_format.ParseDict(data, resources_pb2.Object())
-            paths = set()
-            for key in testbench.common.nested_key(data):
-                key = testbench.common.to_snake_case(key)
-                head = key
-                for i, c in enumerate(key):
-                    if c == "." or c == "[":
-                        head = key[0:i]
-                        break
-                if head in Object.modifiable_fields:
-                    if "[" in key:
-                        paths.add(head)
+        data = json.loads(request.data)
+        rest_only = self.__extract_rest_only(data)
+        self.rest_only.update(rest_only)
+        if "metadata" in data:
+            if data["metadata"] is None:
+                self.metadata.metadata.clear()
+            else:
+                for key, value in data["metadata"].items():
+                    if value is None:
+                        self.metadata.metadata.pop(key, None)
                     else:
-                        paths.add(key)
-            update_mask = field_mask_pb2.FieldMask(paths=list(paths))
+                        self.metadata.metadata[key] = value
+        data.pop("metadata", None)
+        metadata = json_format.ParseDict(data, resources_pb2.Object())
+        paths = set()
+        for key in testbench.common.nested_key(data):
+            key = testbench.common.to_snake_case(key)
+            head = key
+            for i, c in enumerate(key):
+                if c == "." or c == "[":
+                    head = key[0:i]
+                    break
+            if head in Object.modifiable_fields:
+                if "[" in key:
+                    paths.add(head)
+                else:
+                    paths.add(key)
+        update_mask = field_mask_pb2.FieldMask(paths=list(paths))
         self.__update_metadata(metadata, update_mask)
         self.__insert_predefined_acl(
             metadata,
@@ -349,33 +340,18 @@ class Object:
         return self.metadata.acl[index]
 
     def insert_acl(self, request, context):
-        entity, role = "", ""
-        if context is not None:
-            entity, role = (
-                request.object_access_control.entity,
-                request.object_access_control.role,
-            )
-        else:
-            payload = json.loads(request.data)
-            entity, role = payload["entity"], payload["role"]
+        payload = json.loads(request.data)
+        entity, role = payload["entity"], payload["role"]
         return self.__upsert_acl(entity, role, context)
 
     def update_acl(self, request, entity, context):
-        role = ""
-        if context is not None:
-            role = request.object_access_control.role
-        else:
-            payload = json.loads(request.data)
-            role = payload["role"]
+        payload = json.loads(request.data)
+        role = payload["role"]
         return self.__upsert_acl(entity, role, context)
 
     def patch_acl(self, request, entity, context):
-        role = ""
-        if context is not None:
-            role = request.object_access_control.role
-        else:
-            payload = json.loads(request.data)
-            role = payload["role"]
+        payload = json.loads(request.data)
+        role = payload["role"]
         return self.__upsert_acl(entity, role, context)
 
     def delete_acl(self, entity, context):

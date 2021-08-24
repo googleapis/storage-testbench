@@ -19,8 +19,6 @@
 import unittest
 import testbench
 
-from werkzeug.test import create_environ
-from werkzeug.wrappers import Request
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
 from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
 
@@ -46,26 +44,6 @@ class TestACL(unittest.TestCase):
             checker(testbench.acl.get_canonical_entity(input))
 
     def test_extract_predefined_default_object_acl(self):
-        request = storage_pb2.InsertBucketRequest()
-        predefined_default_object_acl = (
-            testbench.acl.extract_predefined_default_object_acl(request, "")
-        )
-        self.assertEqual(
-            predefined_default_object_acl,
-            CommonEnums.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED,
-        )
-
-        request.predefined_default_object_acl = (
-            CommonEnums.PredefinedObjectAcl.OBJECT_ACL_AUTHENTICATED_READ
-        )
-        predefined_default_object_acl = (
-            testbench.acl.extract_predefined_default_object_acl(request, "")
-        )
-        self.assertEqual(
-            predefined_default_object_acl,
-            CommonEnums.PredefinedObjectAcl.OBJECT_ACL_AUTHENTICATED_READ,
-        )
-
         request = testbench.common.FakeRequest(args={})
         predefined_default_object_acl = (
             testbench.acl.extract_predefined_default_object_acl(request, None)
@@ -79,30 +57,6 @@ class TestACL(unittest.TestCase):
         self.assertEqual(predefined_default_object_acl, "authenticatedRead")
 
     def test_extract_predefined_acl(self):
-        request = storage_pb2.InsertBucketRequest()
-        predefined_acl = testbench.acl.extract_predefined_acl(request, False, "")
-        self.assertEqual(
-            predefined_acl,
-            CommonEnums.PredefinedBucketAcl.PREDEFINED_BUCKET_ACL_UNSPECIFIED,
-        )
-
-        request.predefined_acl = (
-            CommonEnums.PredefinedBucketAcl.BUCKET_ACL_AUTHENTICATED_READ
-        )
-        predefined_acl = testbench.acl.extract_predefined_acl(request, False, "")
-        self.assertEqual(
-            predefined_acl,
-            CommonEnums.PredefinedBucketAcl.BUCKET_ACL_AUTHENTICATED_READ,
-        )
-
-        request = storage_pb2.CopyObjectRequest(
-            destination_predefined_acl=CommonEnums.PredefinedBucketAcl.BUCKET_ACL_PRIVATE
-        )
-        predefined_acl = testbench.acl.extract_predefined_acl(request, True, "")
-        self.assertEqual(
-            predefined_acl, CommonEnums.PredefinedBucketAcl.BUCKET_ACL_PRIVATE
-        )
-
         request = testbench.common.FakeRequest(args={})
         predefined_acl = testbench.acl.extract_predefined_acl(request, False, None)
         self.assertEqual(predefined_acl, "")
