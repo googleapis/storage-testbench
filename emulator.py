@@ -886,6 +886,61 @@ def delete_resumable_upload(bucket_name):
     db.delete_upload(upload_id, None)
     return flask.make_response("", 499, {"content-length": 0})
 
+# PROJECT ROUTES #
+
+@gcs.route("/projects/<project_id>/hmacKeys", methods=["POST"])
+@retry_test("storage.hmacKey.create")
+def hmackeys_create(project_id):
+    project = gcs_type.project.get_project(project_id)
+    email = flask.request.args.get("email")
+    response = project.insert_hmac_key(email)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+@gcs.route("/projects/<project_id>/hmacKeys/<access_id>", methods=["DELETE"])
+@retry_test("storage.hmacKey.delete")
+def hmackeys_delete(project_id, access_id):
+    project = gcs_type.project.get_project(project_id)
+    project.delete_hmac_key(access_id)
+    return ""
+
+@gcs.route("/projects/<project_id>/hmacKeys/<access_id>", methods=["GET"])
+@retry_test("storage.hmacKey.get")
+def hmackeys_get(project_id, access_id):
+    project = gcs_type.project.get_project(project_id)
+    response = project.get_hmac_key(access_id)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+@gcs.route("/projects/<project_id>/hmacKeys", methods=["GET"])
+@retry_test("storage.hmacKey.list")
+def hmackeys_list(project_id):
+    project = gcs_type.project.get_project(project_id)
+    response = {
+        "kind": "storage#hmacKeysMetadata",
+        "items": project.list_hmac_keys()
+    }
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+@gcs.route("/projects/<project_id>/hmacKeys/<access_id>", methods=["PUT"])
+@retry_test("storage.hmacKey.update")
+def hmackeys_update(project_id, access_id):
+    project = gcs_type.project.get_project(project_id)
+    response = project.update_hmac_key(access_id, flask.request.args)
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
+
+@gcs.route("/projects/<project_id>/serviceAccount", methods=["GET"])
+@retry_test("storage.serviceaccount.get")
+def serviceaccount_get(project_id):
+    project = gcs_type.project.get_project(project_id)
+    response = {
+        "kind": "storage#serviceAccount",
+        "email_address": project.service_account_email()
+    }
+    fields = flask.request.args.get("fields", None)
+    return testbench.common.filter_response_rest(response, None, fields)
 
 # === SERVER === #
 
