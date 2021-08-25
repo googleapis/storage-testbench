@@ -74,7 +74,7 @@ class Object:
             == CommonEnums.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
         ):
             return
-        if bucket.iam_configuration.uniform_bucket_level_access.enabled:
+        if bucket.iam_config.uniform_bucket_level_access.enabled:
             testbench.error.invalid(
                 "Predefined ACL with uniform bucket level access enabled", context
             )
@@ -135,9 +135,9 @@ class Object:
             metadata.customer_encryption.encryption_algorithm = algorithm
             metadata.customer_encryption.key_sha256 = key_sha256_b64
         default_projection = "noAcl"
-        is_uniform = bucket.iam_configuration.uniform_bucket_level_access.enabled
+        is_uniform = bucket.iam_config.uniform_bucket_level_access.enabled
         # TODO(#27) - this is probably a bug, cleanup once we move all the code
-        bucket.iam_configuration.uniform_bucket_level_access.enabled = False
+        bucket.iam_config.uniform_bucket_level_access.enabled = False
         if len(metadata.acl) != 0:
             default_projection = "full"
         else:
@@ -159,7 +159,7 @@ class Object:
                 )
             cls.__insert_predefined_acl(metadata, bucket, predefined_acl, context)
         cls.__enrich_acl(metadata)
-        bucket.iam_configuration.uniform_bucket_level_access.enabled = is_uniform
+        bucket.iam_config.uniform_bucket_level_access.enabled = is_uniform
         if rest_only is None:
             rest_only = {}
         return (

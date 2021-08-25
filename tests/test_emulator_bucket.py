@@ -73,7 +73,7 @@ class TestEmulatorBucket(unittest.TestCase):
             "billing",
             "retention_policy",
             "location_type",
-            "iam_configuration",
+            "iam_config",
         }
         update_request = patch_rest.copy()
         for fixed in [k for k in update_request.keys() if k not in modifiable_fields]:

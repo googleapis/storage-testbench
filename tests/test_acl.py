@@ -20,7 +20,7 @@ import unittest
 import testbench
 
 from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
-from google.cloud.storage_v1.proto.storage_resources_pb2 import CommonEnums
+from google.storage.v2 import storage_pb2
 
 
 class TestACL(unittest.TestCase):
@@ -133,8 +133,6 @@ class TestACL(unittest.TestCase):
             )
             entities = [acl.entity for acl in acls]
             self.assertEqual(entities, expected, msg=predefined)
-            object_names = [acl.object for acl in acls]
-            self.assertEqual(object_names, len(acls) * [""], msg=predefined)
 
     def test_compute_predefined_object_acl(self):
         acls = testbench.acl.compute_predefined_object_acl(
