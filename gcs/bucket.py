@@ -153,14 +153,14 @@ class Bucket:
     @classmethod
     def __preprocess_rest_acl(cls, acl):
         copy = acl.copy()
-        for k in ["kind", "bucket", "id", "etag"]:
+        for k in ["kind", "bucket", "etag"]:
             copy.pop(k, None)
         return copy
 
     @classmethod
     def __preprocess_rest_default_object_acl(cls, acl):
         copy = acl.copy()
-        for k in ["kind", "bucket", "object", "id", "etag"]:
+        for k in ["kind", "bucket", "object", "etag"]:
             copy.pop(k, None)
         return copy
 
@@ -281,9 +281,8 @@ class Bucket:
         copy = acl.copy()
         copy["kind"] = "storage#bucketAccessControl"
         copy["bucket"] = bucket_name
-        copy["id"] = bucket_name + "/" + copy["entity"]
         copy["etag"] = hashlib.md5(
-            (copy["id"] + "#" + copy["role"]).encode("utf-8")
+            "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
         ).hexdigest()
         return copy
 
@@ -292,9 +291,8 @@ class Bucket:
         copy = acl.copy()
         copy["kind"] = "storage#objectAccessControl"
         copy["bucket"] = bucket_name
-        copy["id"] = bucket_name + "/" + copy["entity"]
         copy["etag"] = hashlib.md5(
-            (copy["id"] + "#" + copy["role"]).encode("utf-8")
+            "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
         ).hexdigest()
         return copy
 
