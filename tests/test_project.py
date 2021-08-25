@@ -18,13 +18,14 @@
 
 import json
 import unittest
-
+import testbench
 import gcs.project
 
 
 class TestProject(unittest.TestCase):
     def setUp(self):
-        _, app = gcs.project.get_projects_app()
+        db = testbench.database.Database.init()
+        _, app = gcs.project.get_projects_app(db)
         self.client = app.test_client()
 
     def test_projects_get(self):

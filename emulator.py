@@ -90,21 +90,7 @@ def root_put_object_with_bucket(bucket_name, object_name):
     return xml_put_object(bucket_name, object_name)
 
 
-# Needs to be defined in emulator.py to keep context of flask and db global variables
-def retry_test(method):
-    db.insert_supported_methods([method])
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            response_handler = testbench.common.handle_retry_test_instruction(
-                db, flask.request, method
-            )
-            return response_handler(func(*args, **kwargs))
-
-        return wrapper
-
-    return decorator
+retry_test = testbench.common.gen_retry_test_decorator(db)
 
 
 @root.route("/retry_tests", methods=["GET"])
@@ -874,8 +860,8 @@ def delete_resumable_upload(bucket_name):
 
 # === SERVER === #
 
-# Define the WSGI application to handle HMAC key requests
-(PROJECTS_HANDLER_PATH, projects_app) = gcs_type.project.get_projects_app()
+# Define the WSGI application to handle HMAC key and service account requests
+(PROJECTS_HANDLER_PATH, projects_app) = gcs_type.project.get_projects_app(db)
 
 # Define the WSGI application to handle IAM requests
 (IAM_HANDLER_PATH, iam_app) = gcs_type.iam.get_iam_app()
