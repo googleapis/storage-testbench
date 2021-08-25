@@ -15,6 +15,7 @@
 """Common utils"""
 
 import base64
+from functools import wraps
 import flask
 import json
 import random
@@ -443,6 +444,25 @@ def handle_retry_test_instruction(database, request, method):
                     context=None,
                 )
     return __get_default_response_fn
+
+
+def gen_retry_test_decorator(db):
+    def retry_test(method):
+        db.insert_supported_methods([method])
+
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                response_handler = handle_retry_test_instruction(
+                    db, flask.request, method
+                )
+                return response_handler(func(*args, **kwargs))
+
+            return wrapper
+
+        return decorator
+
+    return retry_test
 
 
 def rest_crc32c_to_proto(crc32c):

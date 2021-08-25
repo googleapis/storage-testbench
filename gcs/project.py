@@ -15,6 +15,7 @@
 """Implement a class to simulate projects (service accounts and HMAC keys)."""
 
 import base64
+from functools import wraps
 import flask
 import json
 import random
@@ -195,13 +196,9 @@ class GcsProject(object):
         return sa.update_key(key_id, payload)
 
 
-PROJECTS_HANDLER_PATH = "/storage/v1/projects"
-projects = flask.Flask(__name__)
-projects.debug = False
-projects.register_error_handler(Exception, testbench.error.RestException.handler)
 
 VALID_PROJECTS = {}
-
+PROJECTS_HANDLER_PATH = "/storage/v1/projects"
 
 def get_project(project_id):
     """Find a project and return the GcsProject object."""
@@ -210,82 +207,94 @@ def get_project(project_id):
     # to test the GCS client library, not the IAM client library.
     return VALID_PROJECTS.setdefault(project_id, GcsProject(project_id))
 
+def get_projects_app(db):
 
-@projects.route("/<project_id>/serviceAccount")
-def projects_get(project_id):
-    """Implement the `Projects.serviceAccount: get` API."""
-    project = get_project(project_id)
-    email = project.service_account_email()
-    response = {"kind": "storage#serviceAccount", "email_address": email}
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
+    retry_test = testbench.common.gen_retry_test_decorator(db)
 
+    projects = flask.Flask(__name__)
+    projects.debug = False
+    projects.register_error_handler(Exception, testbench.error.RestException.handler)
 
-@projects.route("/<project_id>/hmacKeys", methods=["POST"])
-def hmac_keys_insert(project_id):
-    """Implement the `HmacKeys: insert` API."""
-    project = get_project(project_id)
-    service_account = flask.request.args.get("serviceAccountEmail")
-    if service_account is None:
-        testbench.error.missing("serviceAccountEmail", None)
-    response = project.insert_hmac_key(service_account)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
+    @projects.route("/<project_id>/serviceAccount")
+    @retry_test("storage.serviceaccount.get")
+    def projects_get(project_id):
+        """Implement the `Projects.serviceAccount: get` API."""
+        project = get_project(project_id)
+        email = project.service_account_email()
+        response = {"kind": "storage#serviceAccount", "email_address": email}
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(response, None, fields)
 
 
-@projects.route("/<project_id>/hmacKeys")
-def hmac_keys_list(project_id):
-    """Implement the 'HmacKeys: list' API: return the HMAC keys in a project."""
-    # Lookup the bucket, if this fails the bucket does not exist, and this
-    # function should return an error.
-    project = get_project(project_id)
-    result = {"kind": "storage#hmacKeysMetadata", "next_page_token": "", "items": []}
-
-    state_filter = lambda x: x.get("state") != "DELETED"
-    if flask.request.args.get("deleted") == "true":
-        state_filter = lambda x: True
-
-    items = []
-    if flask.request.args.get("serviceAccountEmail"):
-        sa = flask.request.args.get("serviceAccountEmail")
-        service_account = project.service_account(sa)
-        if service_account:
-            items = service_account.key_items()
-    else:
-        for sa in project.service_accounts.values():
-            items.extend(sa.key_items())
-
-    result["items"] = [i for i in items if state_filter(i)]
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(result, None, fields)
+    @projects.route("/<project_id>/hmacKeys", methods=["POST"])
+    @retry_test("storage.hmacKey.create")
+    def hmac_keys_insert(project_id):
+        """Implement the `HmacKeys: insert` API."""
+        project = get_project(project_id)
+        service_account = flask.request.args.get("serviceAccountEmail")
+        if service_account is None:
+            testbench.error.missing("serviceAccountEmail", None)
+        response = project.insert_hmac_key(service_account)
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(response, None, fields)
 
 
-@projects.route("/<project_id>/hmacKeys/<access_id>", methods=["DELETE"])
-def hmac_keys_delete(project_id, access_id):
-    """Implement the `HmacKeys: delete` API."""
-    project = get_project(project_id)
-    project.delete_hmac_key(access_id)
-    return ""
+    @projects.route("/<project_id>/hmacKeys")
+    @retry_test("storage.hmacKey.list")
+    def hmac_keys_list(project_id):
+        """Implement the 'HmacKeys: list' API: return the HMAC keys in a project."""
+        # Lookup the bucket, if this fails the bucket does not exist, and this
+        # function should return an error.
+        project = get_project(project_id)
+        result = {"kind": "storage#hmacKeysMetadata", "next_page_token": "", "items": []}
+
+        state_filter = lambda x: x.get("state") != "DELETED"
+        if flask.request.args.get("deleted") == "true":
+            state_filter = lambda x: True
+
+        items = []
+        if flask.request.args.get("serviceAccountEmail"):
+            sa = flask.request.args.get("serviceAccountEmail")
+            service_account = project.service_account(sa)
+            if service_account:
+                items = service_account.key_items()
+        else:
+            for sa in project.service_accounts.values():
+                items.extend(sa.key_items())
+
+        result["items"] = [i for i in items if state_filter(i)]
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(result, None, fields)
 
 
-@projects.route("/<project_id>/hmacKeys/<access_id>")
-def hmac_keys_get(project_id, access_id):
-    """Implement the `HmacKeys: get` API."""
-    project = get_project(project_id)
-    response = project.get_hmac_key(access_id)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
+    @projects.route("/<project_id>/hmacKeys/<access_id>", methods=["DELETE"])
+    @retry_test("storage.hmacKey.delete")
+    def hmac_keys_delete(project_id, access_id):
+        """Implement the `HmacKeys: delete` API."""
+        project = get_project(project_id)
+        project.delete_hmac_key(access_id)
+        return ""
 
 
-@projects.route("/<project_id>/hmacKeys/<access_id>", methods=["PUT"])
-def hmac_keys_update(project_id, access_id):
-    """Implement the `HmacKeys: update` API."""
-    project = get_project(project_id)
-    payload = json.loads(flask.request.data)
-    response = project.update_hmac_key(access_id, payload)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
+    @projects.route("/<project_id>/hmacKeys/<access_id>")
+    @retry_test("storage.hmacKey.get")
+    def hmac_keys_get(project_id, access_id):
+        """Implement the `HmacKeys: get` API."""
+        project = get_project(project_id)
+        response = project.get_hmac_key(access_id)
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(response, None, fields)
 
 
-def get_projects_app():
+    @projects.route("/<project_id>/hmacKeys/<access_id>", methods=["PUT"])
+    @retry_test("storage.hmacKey.update")
+    def hmac_keys_update(project_id, access_id):
+        """Implement the `HmacKeys: update` API."""
+        project = get_project(project_id)
+        payload = json.loads(flask.request.data)
+        response = project.update_hmac_key(access_id, payload)
+        fields = flask.request.args.get("fields", None)
+        return testbench.common.filter_response_rest(response, None, fields)
+
+
     return PROJECTS_HANDLER_PATH, projects
