@@ -208,11 +208,15 @@ class TestBucket(unittest.TestCase):
         bucket, projection = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(bucket.metadata.name, "bucket")
         self.assertEqual(projection, "full")
+
+        def acl_sort(x):
+            return (x.entity, x.role)
+
         self.assertEqual(
-            list(bucket.metadata.acl),
+            bucket.metadata.acl.sort(key=acl_sort),
             testbench.acl.compute_predefined_bucket_acl(
                 "bucket", "authenticatedRead", None
-            ),
+            ).sort(key=acl_sort),
         )
 
     def test_init_rest_pap(self):

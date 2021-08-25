@@ -95,13 +95,18 @@ def create_bucket_acl(bucket_name, entity, role, context):
     entity = get_canonical_entity(entity)
     if role not in ["OWNER", "WRITER", "READER"]:
         testbench.error.invalid("Role %s for bucket acl" % role, context)
+    etag = hashlib.md5((bucket_name + entity + role).encode("utf-8")).hexdigest()
     acl = storage_pb2.BucketAccessControl(
         role=role,
+        id=etag,
         entity=entity,
         entity_id=hashlib.md5(entity.encode("utf-8")).hexdigest(),
         email=__extract_email(entity),
         domain=__extract_domain(entity),
-        project_team={"project_number": PROJECT_NUMBER, "team": __extract_team(entity)},
+        project_team={
+            "project_number": PROJECT_NUMBER,
+            "team": __extract_team(entity),
+        },
     )
     return acl
 
