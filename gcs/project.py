@@ -192,9 +192,9 @@ class GcsProject(object):
         return sa.update_key(key_id, payload)
 
 
-
 VALID_PROJECTS = {}
 PROJECTS_HANDLER_PATH = "/storage/v1/projects"
+
 
 def get_project(project_id):
     """Find a project and return the GcsProject object."""
@@ -202,6 +202,7 @@ def get_project(project_id):
     # to create projects, nor do we want to create such functions. The point is
     # to test the GCS client library, not the IAM client library.
     return VALID_PROJECTS.setdefault(project_id, GcsProject(project_id))
+
 
 def get_projects_app(db):
 
@@ -221,7 +222,6 @@ def get_projects_app(db):
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(response, None, fields)
 
-
     @projects.route("/<project_id>/hmacKeys", methods=["POST"])
     @retry_test("storage.hmacKey.create")
     def hmac_keys_insert(project_id):
@@ -234,7 +234,6 @@ def get_projects_app(db):
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(response, None, fields)
 
-
     @projects.route("/<project_id>/hmacKeys")
     @retry_test("storage.hmacKey.list")
     def hmac_keys_list(project_id):
@@ -242,7 +241,11 @@ def get_projects_app(db):
         # Lookup the bucket, if this fails the bucket does not exist, and this
         # function should return an error.
         project = get_project(project_id)
-        result = {"kind": "storage#hmacKeysMetadata", "next_page_token": "", "items": []}
+        result = {
+            "kind": "storage#hmacKeysMetadata",
+            "next_page_token": "",
+            "items": [],
+        }
 
         state_filter = lambda x: x.get("state") != "DELETED"
         if flask.request.args.get("deleted") == "true":
@@ -262,7 +265,6 @@ def get_projects_app(db):
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(result, None, fields)
 
-
     @projects.route("/<project_id>/hmacKeys/<access_id>", methods=["DELETE"])
     @retry_test("storage.hmacKey.delete")
     def hmac_keys_delete(project_id, access_id):
@@ -270,7 +272,6 @@ def get_projects_app(db):
         project = get_project(project_id)
         project.delete_hmac_key(access_id)
         return ""
-
 
     @projects.route("/<project_id>/hmacKeys/<access_id>")
     @retry_test("storage.hmacKey.get")
@@ -281,7 +282,6 @@ def get_projects_app(db):
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(response, None, fields)
 
-
     @projects.route("/<project_id>/hmacKeys/<access_id>", methods=["PUT"])
     @retry_test("storage.hmacKey.update")
     def hmac_keys_update(project_id, access_id):
@@ -291,6 +291,5 @@ def get_projects_app(db):
         response = project.update_hmac_key(access_id, payload)
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(response, None, fields)
-
 
     return PROJECTS_HANDLER_PATH, projects

@@ -93,6 +93,7 @@ def root_put_object_with_bucket(bucket_name, object_name):
 
 retry_test = testbench.common.gen_retry_test_decorator(db)
 
+
 @root.route("/retry_tests", methods=["GET"])
 def list_retry_tests():
     response = json.dumps({"retry_test": db.list_retry_tests()})
@@ -870,6 +871,7 @@ def delete_resumable_upload(bucket_name):
     upload_id = flask.request.args.get("upload_id")
     db.delete_upload(upload_id, None)
     return flask.make_response("", 499, {"content-length": 0})
+
 
 # === SERVER === #
 
