@@ -183,10 +183,6 @@ class GcsProject(object):
             testbench.error.notfound("service account for key=%s" % access_id, None)
         return sa.get_key(key_id)
 
-    def list_hmac_keys(self):
-        """List keys across all service accounts in the project"""
-        return [sa.key_items() for sa in self.service_accounts.items() for sa in sa]
-
     def update_hmac_key(self, access_id, payload):
         """Update an existing key in the project."""
         (service_account, key_id) = access_id.split(":", 2)
