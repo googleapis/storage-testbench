@@ -20,6 +20,7 @@ from google.iam.v1 import policy_pb2 as google_dot_iam_dot_v1_dot_policy__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import field_mask_pb2 as google_dot_protobuf_dot_field__mask__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from google.type import date_pb2 as google_dot_type_dot_date__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -28,9 +29,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'\n\025com.google.storage.v2B\014StorageProtoP\001Z8google.golang.org/genproto/googleapis/storage/v2;storage\352Ax\n!cloudkms.googleapis.com/CryptoKey\022Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x1fgoogle/storage/v2/storage.proto\x12\x11google.storage.v2\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1egoogle/iam/v1/iam_policy.proto\x1a\x1agoogle/iam/v1/policy.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd5\x04\n\x11ReadObjectRequest\x12\x0e\n\x06\x62ucket\x18\x01 \x01(\t\x12\x0e\n\x06object\x18\x02 \x01(\t\x12\x12\n\ngeneration\x18\x03 \x01(\x03\x12\x13\n\x0bread_offset\x18\x04 \x01(\x03\x12\x12\n\nread_limit\x18\x05 \x01(\x03\x12 \n\x13if_generation_match\x18\x06 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x08 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\t \x01(\x03H\x03\x88\x01\x01\x12R\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x0b \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\x12\x32\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x04\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask\"\xf5\x01\n\x12ReadObjectResponse\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32\".google.storage.v2.ChecksummedData\x12<\n\x10object_checksums\x18\x02 \x01(\x0b\x32\".google.storage.v2.ObjectChecksums\x12\x36\n\rcontent_range\x18\x03 \x01(\x0b\x32\x1f.google.storage.v2.ContentRange\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object\"\x86\x03\n\x0fWriteObjectSpec\x12+\n\x08resource\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.Object\x12>\n\x0epredefined_acl\x18\x02 \x01(\x0e\x32&.google.storage.v2.PredefinedObjectAcl\x12 \n\x13if_generation_match\x18\x03 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\xcd\x03\n\x12WriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32\".google.storage.v2.ChecksummedDataH\x01\x12<\n\x10object_checksums\x18\x06 \x01(\x0b\x32\".google.storage.v2.ObjectChecksums\x12\x14\n\x0c\x66inish_write\x18\x07 \x01(\x08\x12R\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\t \x01(\x0b\x32&.google.storage.v2.CommonRequestParamsB\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta\"n\n\x13WriteObjectResponse\x12\x18\n\x0e\x63ommitted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\xcc\x01\n\x17QueryWriteStatusRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12R\n\x1c\x63ommon_object_request_params\x18\x02 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x03 \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\"s\n\x18QueryWriteStatusResponse\x12\x18\n\x0e\x63ommitted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\xf6\x01\n\x1aStartResumableWriteRequest\x12=\n\x11write_object_spec\x18\x01 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpec\x12R\n\x1c\x63ommon_object_request_params\x18\x03 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x04 \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\"0\n\x1bStartResumableWriteResponse\x12\x11\n\tupload_id\x18\x01 \x01(\t\"p\n\x19\x43ommonObjectRequestParams\x12\x1c\n\x14\x65ncryption_algorithm\x18\x01 \x01(\t\x12\x16\n\x0e\x65ncryption_key\x18\x02 \x01(\t\x12\x1d\n\x15\x65ncryption_key_sha256\x18\x03 \x01(\t\"`\n\x13\x43ommonRequestParams\x12I\n\x0cuser_project\x18\x01 \x01(\tB3\xe0\x41\x02\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\"\xca\x05\n\x10ServiceConstants\"\xb5\x05\n\x06Values\x12\x16\n\x12VALUES_UNSPECIFIED\x10\x00\x12\x1b\n\x14MAX_READ_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x1c\n\x15MAX_WRITE_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x19\n\x12MAX_OBJECT_SIZE_MB\x10\x80\x80\xc0\x02\x12)\n$MAX_CUSTOM_METADATA_FIELD_NAME_BYTES\x10\x80\x08\x12*\n%MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES\x10\x80 \x12)\n$MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES\x10\x80@\x12*\n$MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES\x10\x80\xa0\x01\x12\'\n#MAX_NOTIFICATION_CONFIGS_PER_BUCKET\x10\x64\x12\"\n\x1eMAX_LIFECYCLE_RULES_PER_BUCKET\x10\x64\x12&\n\"MAX_NOTIFICATION_CUSTOM_ATTRIBUTES\x10\x05\x12\x31\n,MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH\x10\x80\x02\x12\x33\n.MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_VALUE_LENGTH\x10\x80\x08\x12\x1c\n\x18MAX_LABELS_ENTRIES_COUNT\x10@\x12\x1f\n\x1bMAX_LABELS_KEY_VALUE_LENGTH\x10?\x12\x1f\n\x1aMAX_LABELS_KEY_VALUE_BYTES\x10\x80\x01\x12.\n)MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST\x10\xe8\x07\x12\x1e\n\x1aSPLIT_TOKEN_MAX_VALID_DAYS\x10\x0e\x1a\x02\x10\x01\"\xd5\x15\n\x06\x42ucket\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x16\n\tbucket_id\x18\x02 \x01(\tB\x03\xe0\x41\x03\x12\x44\n\x07project\x18\x03 \x01(\tB3\xe0\x41\x05\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\x08location\x18\x05 \x01(\tB\x03\xe0\x41\x05\x12\x1a\n\rlocation_type\x18\x06 \x01(\tB\x03\xe0\x41\x03\x12\x15\n\rstorage_class\x18\x07 \x01(\t\x12\x33\n\x03\x61\x63l\x18\x08 \x03(\x0b\x32&.google.storage.v2.BucketAccessControl\x12\x42\n\x12\x64\x65\x66\x61ult_object_acl\x18\t \x03(\x0b\x32&.google.storage.v2.ObjectAccessControl\x12\x36\n\tlifecycle\x18\n \x01(\x0b\x32#.google.storage.v2.Bucket.Lifecycle\x12\x34\n\x0b\x63reate_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12,\n\x04\x63ors\x18\x0c \x03(\x0b\x32\x1e.google.storage.v2.Bucket.Cors\x12\x34\n\x0bupdate_time\x18\r \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12 \n\x18\x64\x65\x66\x61ult_event_based_hold\x18\x0e \x01(\x08\x12\x35\n\x06labels\x18\x0f \x03(\x0b\x32%.google.storage.v2.Bucket.LabelsEntry\x12\x32\n\x07website\x18\x10 \x01(\x0b\x32!.google.storage.v2.Bucket.Website\x12\x38\n\nversioning\x18\x11 \x01(\x0b\x32$.google.storage.v2.Bucket.Versioning\x12\x32\n\x07logging\x18\x12 \x01(\x0b\x32!.google.storage.v2.Bucket.Logging\x12,\n\x05owner\x18\x13 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12\x38\n\nencryption\x18\x14 \x01(\x0b\x32$.google.storage.v2.Bucket.Encryption\x12\x32\n\x07\x62illing\x18\x15 \x01(\x0b\x32!.google.storage.v2.Bucket.Billing\x12\x43\n\x10retention_policy\x18\x16 \x01(\x0b\x32).google.storage.v2.Bucket.RetentionPolicy\x12\x37\n\niam_config\x18\x17 \x01(\x0b\x32#.google.storage.v2.Bucket.IamConfig\x12\x1a\n\rzone_affinity\x18\x18 \x03(\tB\x03\xe0\x41\x05\x12\x15\n\rsatisfies_pzs\x18\x19 \x01(\x08\x1a!\n\x07\x42illing\x12\x16\n\x0erequester_pays\x18\x01 \x01(\x08\x1aX\n\x04\x43ors\x12\x0e\n\x06origin\x18\x01 \x03(\t\x12\x0e\n\x06method\x18\x02 \x03(\t\x12\x17\n\x0fresponse_header\x18\x03 \x03(\t\x12\x17\n\x0fmax_age_seconds\x18\x04 \x01(\x05\x1aM\n\nEncryption\x12?\n\x0f\x64\x65\x66\x61ult_kms_key\x18\x01 \x01(\tB&\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x1a\xfa\x02\n\tIamConfig\x12\x61\n\x1buniform_bucket_level_access\x18\x01 \x01(\x0b\x32<.google.storage.v2.Bucket.IamConfig.UniformBucketLevelAccess\x12\\\n\x18public_access_prevention\x18\x02 \x01(\x0e\x32:.google.storage.v2.Bucket.IamConfig.PublicAccessPrevention\x1aZ\n\x18UniformBucketLevelAccess\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12-\n\tlock_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"P\n\x16PublicAccessPrevention\x12(\n$PUBLIC_ACCESS_PREVENTION_UNSPECIFIED\x10\x00\x12\x0c\n\x08\x45NFORCED\x10\x01\x1a\x94\x05\n\tLifecycle\x12\x36\n\x04rule\x18\x01 \x03(\x0b\x32(.google.storage.v2.Bucket.Lifecycle.Rule\x1a\xce\x04\n\x04Rule\x12?\n\x06\x61\x63tion\x18\x01 \x01(\x0b\x32/.google.storage.v2.Bucket.Lifecycle.Rule.Action\x12\x45\n\tcondition\x18\x02 \x01(\x0b\x32\x32.google.storage.v2.Bucket.Lifecycle.Rule.Condition\x1a-\n\x06\x41\x63tion\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x15\n\rstorage_class\x18\x02 \x01(\t\x1a\x8e\x03\n\tCondition\x12\x10\n\x08\x61ge_days\x18\x01 \x01(\x05\x12\x37\n\x13\x63reated_before_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x14\n\x07is_live\x18\x03 \x01(\x08H\x00\x88\x01\x01\x12\x1a\n\x12num_newer_versions\x18\x04 \x01(\x05\x12\x1d\n\x15matches_storage_class\x18\x05 \x03(\t\x12\x17\n\x0fmatches_pattern\x18\x06 \x01(\t\x12\x1e\n\x16\x64\x61ys_since_custom_time\x18\x07 \x01(\x05\x12;\n\x17\x63ustom_time_before_time\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\"\n\x1a\x64\x61ys_since_noncurrent_time\x18\t \x01(\x05\x12?\n\x1bnoncurrent_time_before_time\x18\n \x01(\x0b\x32\x1a.google.protobuf.TimestampB\n\n\x08_is_live\x1a\x38\n\x07Logging\x12\x12\n\nlog_bucket\x18\x01 \x01(\t\x12\x19\n\x11log_object_prefix\x18\x02 \x01(\t\x1ar\n\x0fRetentionPolicy\x12\x32\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\tis_locked\x18\x02 \x01(\x08\x12\x18\n\x10retention_period\x18\x03 \x01(\x03\x1a\x1d\n\nVersioning\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x1a;\n\x07Website\x12\x18\n\x10main_page_suffix\x18\x01 \x01(\t\x12\x16\n\x0enot_found_page\x18\x02 \x01(\t\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01:G\xea\x41\x44\n\x1dstorage.googleapis.com/Bucket\x12#projects/{project}/buckets/{bucket}\"\xa7\x01\n\x13\x42ucketAccessControl\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\x0e\n\x06\x65ntity\x18\x03 \x01(\t\x12\x11\n\tentity_id\x18\x04 \x01(\t\x12\r\n\x05\x65mail\x18\x05 \x01(\t\x12\x0e\n\x06\x64omain\x18\x06 \x01(\t\x12\x34\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeam\"B\n\x0f\x43hecksummedData\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x13\n\x06\x63rc32c\x18\x02 \x01(\x07H\x00\x88\x01\x01\x42\t\n\x07_crc32c\"C\n\x0fObjectChecksums\x12\x13\n\x06\x63rc32c\x18\x01 \x01(\x07H\x00\x88\x01\x01\x12\x10\n\x08md5_hash\x18\x02 \x01(\x0c\x42\t\n\x07_crc32c\"\xc3\t\n\x06Object\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x35\n\x06\x62ucket\x18\x02 \x01(\tB%\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x05\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\rstorage_class\x18\x05 \x01(\t\x12\x11\n\x04size\x18\x06 \x01(\x03\x42\x03\xe0\x41\x03\x12\x18\n\x10\x63ontent_encoding\x18\x07 \x01(\t\x12\x1b\n\x13\x63ontent_disposition\x18\x08 \x01(\t\x12\x15\n\rcache_control\x18\t \x01(\t\x12\x33\n\x03\x61\x63l\x18\n \x03(\x0b\x32&.google.storage.v2.ObjectAccessControl\x12\x18\n\x10\x63ontent_language\x18\x0b \x01(\t\x12\x34\n\x0b\x64\x65lete_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x14\n\x0c\x63ontent_type\x18\r \x01(\t\x12\x34\n\x0b\x63reate_time\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1c\n\x0f\x63omponent_count\x18\x0f \x01(\x05\x42\x03\xe0\x41\x03\x12:\n\tchecksums\x18\x10 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x11 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x37\n\x07kms_key\x18\x12 \x01(\tB&\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x42\n\x19update_storage_class_time\x18\x13 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x16\n\x0etemporary_hold\x18\x14 \x01(\x08\x12\x39\n\x15retention_expire_time\x18\x15 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x39\n\x08metadata\x18\x16 \x03(\x0b\x32\'.google.storage.v2.Object.MetadataEntry\x12\x1d\n\x10\x65vent_based_hold\x18\x17 \x01(\x08H\x00\x88\x01\x01\x12,\n\x05owner\x18\x18 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12I\n\x13\x63ustomer_encryption\x18\x19 \x01(\x0b\x32,.google.storage.v2.Object.CustomerEncryption\x12/\n\x0b\x63ustom_time\x18\x1a \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x1a\x46\n\x12\x43ustomerEncryption\x12\x1c\n\x14\x65ncryption_algorithm\x18\x01 \x01(\t\x12\x12\n\nkey_sha256\x18\x02 \x01(\t\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x13\n\x11_event_based_hold\"\xa7\x01\n\x13ObjectAccessControl\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\x0e\n\x06\x65ntity\x18\x03 \x01(\t\x12\x11\n\tentity_id\x18\x04 \x01(\t\x12\r\n\x05\x65mail\x18\x05 \x01(\t\x12\x0e\n\x06\x64omain\x18\x06 \x01(\t\x12\x34\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeam\"3\n\x0bProjectTeam\x12\x16\n\x0eproject_number\x18\x01 \x01(\t\x12\x0c\n\x04team\x18\x02 \x01(\t\"*\n\x05Owner\x12\x0e\n\x06\x65ntity\x18\x01 \x01(\t\x12\x11\n\tentity_id\x18\x02 \x01(\t\"C\n\x0c\x43ontentRange\x12\r\n\x05start\x18\x01 \x01(\x03\x12\x0b\n\x03\x65nd\x18\x02 \x01(\x03\x12\x17\n\x0f\x63omplete_length\x18\x03 \x01(\x03*\xff\x01\n\x13PredefinedObjectAcl\x12%\n!PREDEFINED_OBJECT_ACL_UNSPECIFIED\x10\x00\x12!\n\x1dOBJECT_ACL_AUTHENTICATED_READ\x10\x01\x12(\n$OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL\x10\x02\x12 \n\x1cOBJECT_ACL_BUCKET_OWNER_READ\x10\x03\x12\x16\n\x12OBJECT_ACL_PRIVATE\x10\x04\x12\x1e\n\x1aOBJECT_ACL_PROJECT_PRIVATE\x10\x05\x12\x1a\n\x16OBJECT_ACL_PUBLIC_READ\x10\x06\x32\x93\x06\n\x07Storage\x12\x88\x01\n\nReadObject\x12$.google.storage.v2.ReadObjectRequest\x1a%.google.storage.v2.ReadObjectResponse\"+\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation0\x01\x12`\n\x0bWriteObject\x12%.google.storage.v2.WriteObjectRequest\x1a&.google.storage.v2.WriteObjectResponse\"\x00(\x01\x12v\n\x13StartResumableWrite\x12-.google.storage.v2.StartResumableWriteRequest\x1a..google.storage.v2.StartResumableWriteResponse\"\x00\x12y\n\x10QueryWriteStatus\x12*.google.storage.v2.QueryWriteStatusRequest\x1a+.google.storage.v2.QueryWriteStatusResponse\"\x0c\xda\x41\tupload_id\x1a\xa7\x02\xca\x41\x16storage.googleapis.com\xd2\x41\x8a\x02https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_writeB\xdc\x01\n\x15\x63om.google.storage.v2B\x0cStorageProtoP\x01Z8google.golang.org/genproto/googleapis/storage/v2;storage\xea\x41x\n!cloudkms.googleapis.com/CryptoKey\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}b\x06proto3'
+  serialized_pb=b'\n\x1fgoogle/storage/v2/storage.proto\x12\x11google.storage.v2\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1egoogle/iam/v1/iam_policy.proto\x1a\x1agoogle/iam/v1/policy.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16google/type/date.proto\"\xd5\x04\n\x11ReadObjectRequest\x12\x0e\n\x06\x62ucket\x18\x01 \x01(\t\x12\x0e\n\x06object\x18\x02 \x01(\t\x12\x12\n\ngeneration\x18\x03 \x01(\x03\x12\x13\n\x0bread_offset\x18\x04 \x01(\x03\x12\x12\n\nread_limit\x18\x05 \x01(\x03\x12 \n\x13if_generation_match\x18\x06 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x08 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\t \x01(\x03H\x03\x88\x01\x01\x12R\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x0b \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\x12\x32\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x04\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask\"\xf5\x01\n\x12ReadObjectResponse\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32\".google.storage.v2.ChecksummedData\x12<\n\x10object_checksums\x18\x02 \x01(\x0b\x32\".google.storage.v2.ObjectChecksums\x12\x36\n\rcontent_range\x18\x03 \x01(\x0b\x32\x1f.google.storage.v2.ContentRange\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object\"\x86\x03\n\x0fWriteObjectSpec\x12+\n\x08resource\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.Object\x12>\n\x0epredefined_acl\x18\x02 \x01(\x0e\x32&.google.storage.v2.PredefinedObjectAcl\x12 \n\x13if_generation_match\x18\x03 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\xcd\x03\n\x12WriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32\".google.storage.v2.ChecksummedDataH\x01\x12<\n\x10object_checksums\x18\x06 \x01(\x0b\x32\".google.storage.v2.ObjectChecksums\x12\x14\n\x0c\x66inish_write\x18\x07 \x01(\x08\x12R\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\t \x01(\x0b\x32&.google.storage.v2.CommonRequestParamsB\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta\"n\n\x13WriteObjectResponse\x12\x18\n\x0e\x63ommitted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\xcc\x01\n\x17QueryWriteStatusRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12R\n\x1c\x63ommon_object_request_params\x18\x02 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x03 \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\"s\n\x18QueryWriteStatusResponse\x12\x18\n\x0e\x63ommitted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\xf6\x01\n\x1aStartResumableWriteRequest\x12=\n\x11write_object_spec\x18\x01 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpec\x12R\n\x1c\x63ommon_object_request_params\x18\x03 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParams\x12\x45\n\x15\x63ommon_request_params\x18\x04 \x01(\x0b\x32&.google.storage.v2.CommonRequestParams\"0\n\x1bStartResumableWriteResponse\x12\x11\n\tupload_id\x18\x01 \x01(\t\"|\n\x19\x43ommonObjectRequestParams\x12\x1c\n\x14\x65ncryption_algorithm\x18\x01 \x01(\t\x12\x1c\n\x14\x65ncryption_key_bytes\x18\x04 \x01(\x0c\x12#\n\x1b\x65ncryption_key_sha256_bytes\x18\x05 \x01(\x0c\"`\n\x13\x43ommonRequestParams\x12I\n\x0cuser_project\x18\x01 \x01(\tB3\xe0\x41\x02\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\"\xca\x05\n\x10ServiceConstants\"\xb5\x05\n\x06Values\x12\x16\n\x12VALUES_UNSPECIFIED\x10\x00\x12\x1b\n\x14MAX_READ_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x1c\n\x15MAX_WRITE_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x19\n\x12MAX_OBJECT_SIZE_MB\x10\x80\x80\xc0\x02\x12)\n$MAX_CUSTOM_METADATA_FIELD_NAME_BYTES\x10\x80\x08\x12*\n%MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES\x10\x80 \x12)\n$MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES\x10\x80@\x12*\n$MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES\x10\x80\xa0\x01\x12\'\n#MAX_NOTIFICATION_CONFIGS_PER_BUCKET\x10\x64\x12\"\n\x1eMAX_LIFECYCLE_RULES_PER_BUCKET\x10\x64\x12&\n\"MAX_NOTIFICATION_CUSTOM_ATTRIBUTES\x10\x05\x12\x31\n,MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH\x10\x80\x02\x12\x33\n.MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_VALUE_LENGTH\x10\x80\x08\x12\x1c\n\x18MAX_LABELS_ENTRIES_COUNT\x10@\x12\x1f\n\x1bMAX_LABELS_KEY_VALUE_LENGTH\x10?\x12\x1f\n\x1aMAX_LABELS_KEY_VALUE_BYTES\x10\x80\x01\x12.\n)MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST\x10\xe8\x07\x12\x1e\n\x1aSPLIT_TOKEN_MAX_VALID_DAYS\x10\x0e\x1a\x02\x10\x01\"\x84\x16\n\x06\x42ucket\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x16\n\tbucket_id\x18\x02 \x01(\tB\x03\xe0\x41\x03\x12\x44\n\x07project\x18\x03 \x01(\tB3\xe0\x41\x05\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\x08location\x18\x05 \x01(\tB\x03\xe0\x41\x05\x12\x1a\n\rlocation_type\x18\x06 \x01(\tB\x03\xe0\x41\x03\x12\x15\n\rstorage_class\x18\x07 \x01(\t\x12\x33\n\x03\x61\x63l\x18\x08 \x03(\x0b\x32&.google.storage.v2.BucketAccessControl\x12\x42\n\x12\x64\x65\x66\x61ult_object_acl\x18\t \x03(\x0b\x32&.google.storage.v2.ObjectAccessControl\x12\x36\n\tlifecycle\x18\n \x01(\x0b\x32#.google.storage.v2.Bucket.Lifecycle\x12\x34\n\x0b\x63reate_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12,\n\x04\x63ors\x18\x0c \x03(\x0b\x32\x1e.google.storage.v2.Bucket.Cors\x12\x34\n\x0bupdate_time\x18\r \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12 \n\x18\x64\x65\x66\x61ult_event_based_hold\x18\x0e \x01(\x08\x12\x35\n\x06labels\x18\x0f \x03(\x0b\x32%.google.storage.v2.Bucket.LabelsEntry\x12\x32\n\x07website\x18\x10 \x01(\x0b\x32!.google.storage.v2.Bucket.Website\x12\x38\n\nversioning\x18\x11 \x01(\x0b\x32$.google.storage.v2.Bucket.Versioning\x12\x32\n\x07logging\x18\x12 \x01(\x0b\x32!.google.storage.v2.Bucket.Logging\x12,\n\x05owner\x18\x13 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12\x38\n\nencryption\x18\x14 \x01(\x0b\x32$.google.storage.v2.Bucket.Encryption\x12\x32\n\x07\x62illing\x18\x15 \x01(\x0b\x32!.google.storage.v2.Bucket.Billing\x12\x43\n\x10retention_policy\x18\x16 \x01(\x0b\x32).google.storage.v2.Bucket.RetentionPolicy\x12\x37\n\niam_config\x18\x17 \x01(\x0b\x32#.google.storage.v2.Bucket.IamConfig\x12\x1a\n\rzone_affinity\x18\x18 \x03(\tB\x03\xe0\x41\x05\x12\x15\n\rsatisfies_pzs\x18\x19 \x01(\x08\x1a!\n\x07\x42illing\x12\x16\n\x0erequester_pays\x18\x01 \x01(\x08\x1aX\n\x04\x43ors\x12\x0e\n\x06origin\x18\x01 \x03(\t\x12\x0e\n\x06method\x18\x02 \x03(\t\x12\x17\n\x0fresponse_header\x18\x03 \x03(\t\x12\x17\n\x0fmax_age_seconds\x18\x04 \x01(\x05\x1aM\n\nEncryption\x12?\n\x0f\x64\x65\x66\x61ult_kms_key\x18\x01 \x01(\tB&\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x1a\xfa\x02\n\tIamConfig\x12\x61\n\x1buniform_bucket_level_access\x18\x01 \x01(\x0b\x32<.google.storage.v2.Bucket.IamConfig.UniformBucketLevelAccess\x12\\\n\x18public_access_prevention\x18\x02 \x01(\x0e\x32:.google.storage.v2.Bucket.IamConfig.PublicAccessPrevention\x1aZ\n\x18UniformBucketLevelAccess\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x12-\n\tlock_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"P\n\x16PublicAccessPrevention\x12(\n$PUBLIC_ACCESS_PREVENTION_UNSPECIFIED\x10\x00\x12\x0c\n\x08\x45NFORCED\x10\x01\x1a\xc3\x05\n\tLifecycle\x12\x36\n\x04rule\x18\x01 \x03(\x0b\x32(.google.storage.v2.Bucket.Lifecycle.Rule\x1a\xfd\x04\n\x04Rule\x12?\n\x06\x61\x63tion\x18\x01 \x01(\x0b\x32/.google.storage.v2.Bucket.Lifecycle.Rule.Action\x12\x45\n\tcondition\x18\x02 \x01(\x0b\x32\x32.google.storage.v2.Bucket.Lifecycle.Rule.Condition\x1a-\n\x06\x41\x63tion\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x15\n\rstorage_class\x18\x02 \x01(\t\x1a\xbd\x03\n\tCondition\x12\x15\n\x08\x61ge_days\x18\x01 \x01(\x05H\x00\x88\x01\x01\x12)\n\x0e\x63reated_before\x18\x02 \x01(\x0b\x32\x11.google.type.Date\x12\x14\n\x07is_live\x18\x03 \x01(\x08H\x01\x88\x01\x01\x12\x1f\n\x12num_newer_versions\x18\x04 \x01(\x05H\x02\x88\x01\x01\x12\x1d\n\x15matches_storage_class\x18\x05 \x03(\t\x12#\n\x16\x64\x61ys_since_custom_time\x18\x07 \x01(\x05H\x03\x88\x01\x01\x12-\n\x12\x63ustom_time_before\x18\x08 \x01(\x0b\x32\x11.google.type.Date\x12\'\n\x1a\x64\x61ys_since_noncurrent_time\x18\t \x01(\x05H\x04\x88\x01\x01\x12\x31\n\x16noncurrent_time_before\x18\n \x01(\x0b\x32\x11.google.type.DateB\x0b\n\t_age_daysB\n\n\x08_is_liveB\x15\n\x13_num_newer_versionsB\x19\n\x17_days_since_custom_timeB\x1d\n\x1b_days_since_noncurrent_time\x1a\x38\n\x07Logging\x12\x12\n\nlog_bucket\x18\x01 \x01(\t\x12\x19\n\x11log_object_prefix\x18\x02 \x01(\t\x1ar\n\x0fRetentionPolicy\x12\x32\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\tis_locked\x18\x02 \x01(\x08\x12\x18\n\x10retention_period\x18\x03 \x01(\x03\x1a\x1d\n\nVersioning\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x1a;\n\x07Website\x12\x18\n\x10main_page_suffix\x18\x01 \x01(\t\x12\x16\n\x0enot_found_page\x18\x02 \x01(\t\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01:G\xea\x41\x44\n\x1dstorage.googleapis.com/Bucket\x12#projects/{project}/buckets/{bucket}\"\xa7\x01\n\x13\x42ucketAccessControl\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\x0e\n\x06\x65ntity\x18\x03 \x01(\t\x12\x11\n\tentity_id\x18\x04 \x01(\t\x12\r\n\x05\x65mail\x18\x05 \x01(\t\x12\x0e\n\x06\x64omain\x18\x06 \x01(\t\x12\x34\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeam\"B\n\x0f\x43hecksummedData\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x13\n\x06\x63rc32c\x18\x02 \x01(\x07H\x00\x88\x01\x01\x42\t\n\x07_crc32c\"C\n\x0fObjectChecksums\x12\x13\n\x06\x63rc32c\x18\x01 \x01(\x07H\x00\x88\x01\x01\x12\x10\n\x08md5_hash\x18\x02 \x01(\x0c\x42\t\n\x07_crc32c\"\xc3\t\n\x06Object\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x35\n\x06\x62ucket\x18\x02 \x01(\tB%\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x05\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\rstorage_class\x18\x05 \x01(\t\x12\x11\n\x04size\x18\x06 \x01(\x03\x42\x03\xe0\x41\x03\x12\x18\n\x10\x63ontent_encoding\x18\x07 \x01(\t\x12\x1b\n\x13\x63ontent_disposition\x18\x08 \x01(\t\x12\x15\n\rcache_control\x18\t \x01(\t\x12\x33\n\x03\x61\x63l\x18\n \x03(\x0b\x32&.google.storage.v2.ObjectAccessControl\x12\x18\n\x10\x63ontent_language\x18\x0b \x01(\t\x12\x34\n\x0b\x64\x65lete_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x14\n\x0c\x63ontent_type\x18\r \x01(\t\x12\x34\n\x0b\x63reate_time\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1c\n\x0f\x63omponent_count\x18\x0f \x01(\x05\x42\x03\xe0\x41\x03\x12:\n\tchecksums\x18\x10 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x11 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x37\n\x07kms_key\x18\x12 \x01(\tB&\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x42\n\x19update_storage_class_time\x18\x13 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x16\n\x0etemporary_hold\x18\x14 \x01(\x08\x12\x39\n\x15retention_expire_time\x18\x15 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x39\n\x08metadata\x18\x16 \x03(\x0b\x32\'.google.storage.v2.Object.MetadataEntry\x12\x1d\n\x10\x65vent_based_hold\x18\x17 \x01(\x08H\x00\x88\x01\x01\x12,\n\x05owner\x18\x18 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12I\n\x13\x63ustomer_encryption\x18\x19 \x01(\x0b\x32,.google.storage.v2.Object.CustomerEncryption\x12/\n\x0b\x63ustom_time\x18\x1a \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x1a\x46\n\x12\x43ustomerEncryption\x12\x1c\n\x14\x65ncryption_algorithm\x18\x01 \x01(\t\x12\x12\n\nkey_sha256\x18\x02 \x01(\t\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x13\n\x11_event_based_hold\"\xa7\x01\n\x13ObjectAccessControl\x12\x0c\n\x04role\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12\x0e\n\x06\x65ntity\x18\x03 \x01(\t\x12\x11\n\tentity_id\x18\x04 \x01(\t\x12\r\n\x05\x65mail\x18\x05 \x01(\t\x12\x0e\n\x06\x64omain\x18\x06 \x01(\t\x12\x34\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeam\"3\n\x0bProjectTeam\x12\x16\n\x0eproject_number\x18\x01 \x01(\t\x12\x0c\n\x04team\x18\x02 \x01(\t\"*\n\x05Owner\x12\x0e\n\x06\x65ntity\x18\x01 \x01(\t\x12\x11\n\tentity_id\x18\x02 \x01(\t\"C\n\x0c\x43ontentRange\x12\r\n\x05start\x18\x01 \x01(\x03\x12\x0b\n\x03\x65nd\x18\x02 \x01(\x03\x12\x17\n\x0f\x63omplete_length\x18\x03 \x01(\x03*\xff\x01\n\x13PredefinedObjectAcl\x12%\n!PREDEFINED_OBJECT_ACL_UNSPECIFIED\x10\x00\x12!\n\x1dOBJECT_ACL_AUTHENTICATED_READ\x10\x01\x12(\n$OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL\x10\x02\x12 \n\x1cOBJECT_ACL_BUCKET_OWNER_READ\x10\x03\x12\x16\n\x12OBJECT_ACL_PRIVATE\x10\x04\x12\x1e\n\x1aOBJECT_ACL_PROJECT_PRIVATE\x10\x05\x12\x1a\n\x16OBJECT_ACL_PUBLIC_READ\x10\x06\x32\x93\x06\n\x07Storage\x12\x88\x01\n\nReadObject\x12$.google.storage.v2.ReadObjectRequest\x1a%.google.storage.v2.ReadObjectResponse\"+\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation0\x01\x12`\n\x0bWriteObject\x12%.google.storage.v2.WriteObjectRequest\x1a&.google.storage.v2.WriteObjectResponse\"\x00(\x01\x12v\n\x13StartResumableWrite\x12-.google.storage.v2.StartResumableWriteRequest\x1a..google.storage.v2.StartResumableWriteResponse\"\x00\x12y\n\x10QueryWriteStatus\x12*.google.storage.v2.QueryWriteStatusRequest\x1a+.google.storage.v2.QueryWriteStatusResponse\"\x0c\xda\x41\tupload_id\x1a\xa7\x02\xca\x41\x16storage.googleapis.com\xd2\x41\x8a\x02https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_writeB\xdc\x01\n\x15\x63om.google.storage.v2B\x0cStorageProtoP\x01Z8google.golang.org/genproto/googleapis/storage/v2;storage\xea\x41x\n!cloudkms.googleapis.com/CryptoKey\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}b\x06proto3'
   ,
-  dependencies=[google_dot_api_dot_client__pb2.DESCRIPTOR,google_dot_api_dot_field__behavior__pb2.DESCRIPTOR,google_dot_api_dot_resource__pb2.DESCRIPTOR,google_dot_iam_dot_v1_dot_iam__policy__pb2.DESCRIPTOR,google_dot_iam_dot_v1_dot_policy__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_field__mask__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
+  dependencies=[google_dot_api_dot_client__pb2.DESCRIPTOR,google_dot_api_dot_field__behavior__pb2.DESCRIPTOR,google_dot_api_dot_resource__pb2.DESCRIPTOR,google_dot_iam_dot_v1_dot_iam__policy__pb2.DESCRIPTOR,google_dot_iam_dot_v1_dot_policy__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_field__mask__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_type_dot_date__pb2.DESCRIPTOR,])
 
 _PREDEFINEDOBJECTACL = _descriptor.EnumDescriptor(
   name='PredefinedObjectAcl',
@@ -77,8 +78,8 @@ _PREDEFINEDOBJECTACL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=8306,
-  serialized_end=8561,
+  serialized_start=8389,
+  serialized_end=8644,
 )
 _sym_db.RegisterEnumDescriptor(_PREDEFINEDOBJECTACL)
 
@@ -192,8 +193,8 @@ _SERVICECONSTANTS_VALUES = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=b'\020\001',
-  serialized_start=2969,
-  serialized_end=3662,
+  serialized_start=3005,
+  serialized_end=3698,
 )
 _sym_db.RegisterEnumDescriptor(_SERVICECONSTANTS_VALUES)
 
@@ -217,8 +218,8 @@ _BUCKET_IAMCONFIG_PUBLICACCESSPREVENTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=5309,
-  serialized_end=5389,
+  serialized_start=5345,
+  serialized_end=5425,
 )
 _sym_db.RegisterEnumDescriptor(_BUCKET_IAMCONFIG_PUBLICACCESSPREVENTION)
 
@@ -352,8 +353,8 @@ _READOBJECTREQUEST = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=296,
-  serialized_end=893,
+  serialized_start=320,
+  serialized_end=917,
 )
 
 
@@ -405,8 +406,8 @@ _READOBJECTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=896,
-  serialized_end=1141,
+  serialized_start=920,
+  serialized_end=1165,
 )
 
 
@@ -492,8 +493,8 @@ _WRITEOBJECTSPEC = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=1144,
-  serialized_end=1534,
+  serialized_start=1168,
+  serialized_end=1558,
 )
 
 
@@ -583,8 +584,8 @@ _WRITEOBJECTREQUEST = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=1537,
-  serialized_end=1998,
+  serialized_start=1561,
+  serialized_end=2022,
 )
 
 
@@ -627,8 +628,8 @@ _WRITEOBJECTRESPONSE = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=2000,
-  serialized_end=2110,
+  serialized_start=2024,
+  serialized_end=2134,
 )
 
 
@@ -673,8 +674,8 @@ _QUERYWRITESTATUSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2113,
-  serialized_end=2317,
+  serialized_start=2137,
+  serialized_end=2341,
 )
 
 
@@ -717,8 +718,8 @@ _QUERYWRITESTATUSRESPONSE = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=2319,
-  serialized_end=2434,
+  serialized_start=2343,
+  serialized_end=2458,
 )
 
 
@@ -763,8 +764,8 @@ _STARTRESUMABLEWRITEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2437,
-  serialized_end=2683,
+  serialized_start=2461,
+  serialized_end=2707,
 )
 
 
@@ -795,8 +796,8 @@ _STARTRESUMABLEWRITERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2685,
-  serialized_end=2733,
+  serialized_start=2709,
+  serialized_end=2757,
 )
 
 
@@ -816,16 +817,16 @@ _COMMONOBJECTREQUESTPARAMS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='encryption_key', full_name='google.storage.v2.CommonObjectRequestParams.encryption_key', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
+      name='encryption_key_bytes', full_name='google.storage.v2.CommonObjectRequestParams.encryption_key_bytes', index=1,
+      number=4, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='encryption_key_sha256', full_name='google.storage.v2.CommonObjectRequestParams.encryption_key_sha256', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
+      name='encryption_key_sha256_bytes', full_name='google.storage.v2.CommonObjectRequestParams.encryption_key_sha256_bytes', index=2,
+      number=5, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -841,8 +842,8 @@ _COMMONOBJECTREQUESTPARAMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2735,
-  serialized_end=2847,
+  serialized_start=2759,
+  serialized_end=2883,
 )
 
 
@@ -873,8 +874,8 @@ _COMMONREQUESTPARAMS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2849,
-  serialized_end=2945,
+  serialized_start=2885,
+  serialized_end=2981,
 )
 
 
@@ -899,8 +900,8 @@ _SERVICECONSTANTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2948,
-  serialized_end=3662,
+  serialized_start=2984,
+  serialized_end=3698,
 )
 
 
@@ -931,8 +932,8 @@ _BUCKET_BILLING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4806,
-  serialized_end=4839,
+  serialized_start=4842,
+  serialized_end=4875,
 )
 
 _BUCKET_CORS = _descriptor.Descriptor(
@@ -983,8 +984,8 @@ _BUCKET_CORS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4841,
-  serialized_end=4929,
+  serialized_start=4877,
+  serialized_end=4965,
 )
 
 _BUCKET_ENCRYPTION = _descriptor.Descriptor(
@@ -1014,8 +1015,8 @@ _BUCKET_ENCRYPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4931,
-  serialized_end=5008,
+  serialized_start=4967,
+  serialized_end=5044,
 )
 
 _BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS = _descriptor.Descriptor(
@@ -1052,8 +1053,8 @@ _BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5217,
-  serialized_end=5307,
+  serialized_start=5253,
+  serialized_end=5343,
 )
 
 _BUCKET_IAMCONFIG = _descriptor.Descriptor(
@@ -1091,8 +1092,8 @@ _BUCKET_IAMCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5011,
-  serialized_end=5389,
+  serialized_start=5047,
+  serialized_end=5425,
 )
 
 _BUCKET_LIFECYCLE_RULE_ACTION = _descriptor.Descriptor(
@@ -1129,8 +1130,8 @@ _BUCKET_LIFECYCLE_RULE_ACTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5606,
-  serialized_end=5651,
+  serialized_start=5642,
+  serialized_end=5687,
 )
 
 _BUCKET_LIFECYCLE_RULE_CONDITION = _descriptor.Descriptor(
@@ -1149,7 +1150,7 @@ _BUCKET_LIFECYCLE_RULE_CONDITION = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='created_before_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.created_before_time', index=1,
+      name='created_before', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.created_before', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1177,35 +1178,28 @@ _BUCKET_LIFECYCLE_RULE_CONDITION = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='matches_pattern', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.matches_pattern', index=5,
-      number=6, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='days_since_custom_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.days_since_custom_time', index=6,
+      name='days_since_custom_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.days_since_custom_time', index=5,
       number=7, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='custom_time_before_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.custom_time_before_time', index=7,
+      name='custom_time_before', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.custom_time_before', index=6,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='days_since_noncurrent_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.days_since_noncurrent_time', index=8,
+      name='days_since_noncurrent_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.days_since_noncurrent_time', index=7,
       number=9, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='noncurrent_time_before_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.noncurrent_time_before_time', index=9,
+      name='noncurrent_time_before', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition.noncurrent_time_before', index=8,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1223,13 +1217,33 @@ _BUCKET_LIFECYCLE_RULE_CONDITION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='_is_live', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._is_live',
+      name='_age_days', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._age_days',
       index=0, containing_type=None,
       create_key=_descriptor._internal_create_key,
     fields=[]),
+    _descriptor.OneofDescriptor(
+      name='_is_live', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._is_live',
+      index=1, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+    _descriptor.OneofDescriptor(
+      name='_num_newer_versions', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._num_newer_versions',
+      index=2, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+    _descriptor.OneofDescriptor(
+      name='_days_since_custom_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._days_since_custom_time',
+      index=3, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+    _descriptor.OneofDescriptor(
+      name='_days_since_noncurrent_time', full_name='google.storage.v2.Bucket.Lifecycle.Rule.Condition._days_since_noncurrent_time',
+      index=4, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
   ],
-  serialized_start=5654,
-  serialized_end=6052,
+  serialized_start=5690,
+  serialized_end=6135,
 )
 
 _BUCKET_LIFECYCLE_RULE = _descriptor.Descriptor(
@@ -1266,8 +1280,8 @@ _BUCKET_LIFECYCLE_RULE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5462,
-  serialized_end=6052,
+  serialized_start=5498,
+  serialized_end=6135,
 )
 
 _BUCKET_LIFECYCLE = _descriptor.Descriptor(
@@ -1297,8 +1311,8 @@ _BUCKET_LIFECYCLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5392,
-  serialized_end=6052,
+  serialized_start=5428,
+  serialized_end=6135,
 )
 
 _BUCKET_LOGGING = _descriptor.Descriptor(
@@ -1335,8 +1349,8 @@ _BUCKET_LOGGING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6054,
-  serialized_end=6110,
+  serialized_start=6137,
+  serialized_end=6193,
 )
 
 _BUCKET_RETENTIONPOLICY = _descriptor.Descriptor(
@@ -1380,8 +1394,8 @@ _BUCKET_RETENTIONPOLICY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6112,
-  serialized_end=6226,
+  serialized_start=6195,
+  serialized_end=6309,
 )
 
 _BUCKET_VERSIONING = _descriptor.Descriptor(
@@ -1411,8 +1425,8 @@ _BUCKET_VERSIONING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6228,
-  serialized_end=6257,
+  serialized_start=6311,
+  serialized_end=6340,
 )
 
 _BUCKET_WEBSITE = _descriptor.Descriptor(
@@ -1449,8 +1463,8 @@ _BUCKET_WEBSITE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6259,
-  serialized_end=6318,
+  serialized_start=6342,
+  serialized_end=6401,
 )
 
 _BUCKET_LABELSENTRY = _descriptor.Descriptor(
@@ -1487,8 +1501,8 @@ _BUCKET_LABELSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6320,
-  serialized_end=6365,
+  serialized_start=6403,
+  serialized_end=6448,
 )
 
 _BUCKET = _descriptor.Descriptor(
@@ -1686,8 +1700,8 @@ _BUCKET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3665,
-  serialized_end=6438,
+  serialized_start=3701,
+  serialized_end=6521,
 )
 
 
@@ -1760,8 +1774,8 @@ _BUCKETACCESSCONTROL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6441,
-  serialized_end=6608,
+  serialized_start=6524,
+  serialized_end=6691,
 )
 
 
@@ -1804,8 +1818,8 @@ _CHECKSUMMEDDATA = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=6610,
-  serialized_end=6676,
+  serialized_start=6693,
+  serialized_end=6759,
 )
 
 
@@ -1848,8 +1862,8 @@ _OBJECTCHECKSUMS = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=6678,
-  serialized_end=6745,
+  serialized_start=6761,
+  serialized_end=6828,
 )
 
 
@@ -1887,8 +1901,8 @@ _OBJECT_CUSTOMERENCRYPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7827,
-  serialized_end=7897,
+  serialized_start=7910,
+  serialized_end=7980,
 )
 
 _OBJECT_METADATAENTRY = _descriptor.Descriptor(
@@ -1925,8 +1939,8 @@ _OBJECT_METADATAENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7899,
-  serialized_end=7946,
+  serialized_start=7982,
+  serialized_end=8029,
 )
 
 _OBJECT = _descriptor.Descriptor(
@@ -2136,8 +2150,8 @@ _OBJECT = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=6748,
-  serialized_end=7967,
+  serialized_start=6831,
+  serialized_end=8050,
 )
 
 
@@ -2210,8 +2224,8 @@ _OBJECTACCESSCONTROL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7970,
-  serialized_end=8137,
+  serialized_start=8053,
+  serialized_end=8220,
 )
 
 
@@ -2249,8 +2263,8 @@ _PROJECTTEAM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8139,
-  serialized_end=8190,
+  serialized_start=8222,
+  serialized_end=8273,
 )
 
 
@@ -2288,8 +2302,8 @@ _OWNER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8192,
-  serialized_end=8234,
+  serialized_start=8275,
+  serialized_end=8317,
 )
 
 
@@ -2334,8 +2348,8 @@ _CONTENTRANGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=8236,
-  serialized_end=8303,
+  serialized_start=8319,
+  serialized_end=8386,
 )
 
 _READOBJECTREQUEST.fields_by_name['common_object_request_params'].message_type = _COMMONOBJECTREQUESTPARAMS
@@ -2418,13 +2432,25 @@ _BUCKET_IAMCONFIG.fields_by_name['public_access_prevention'].enum_type = _BUCKET
 _BUCKET_IAMCONFIG.containing_type = _BUCKET
 _BUCKET_IAMCONFIG_PUBLICACCESSPREVENTION.containing_type = _BUCKET_IAMCONFIG
 _BUCKET_LIFECYCLE_RULE_ACTION.containing_type = _BUCKET_LIFECYCLE_RULE
-_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['created_before_time'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
-_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['custom_time_before_time'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
-_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['noncurrent_time_before_time'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['created_before'].message_type = google_dot_type_dot_date__pb2._DATE
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['custom_time_before'].message_type = google_dot_type_dot_date__pb2._DATE
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['noncurrent_time_before'].message_type = google_dot_type_dot_date__pb2._DATE
 _BUCKET_LIFECYCLE_RULE_CONDITION.containing_type = _BUCKET_LIFECYCLE_RULE
+_BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_age_days'].fields.append(
+  _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['age_days'])
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['age_days'].containing_oneof = _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_age_days']
 _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_is_live'].fields.append(
   _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['is_live'])
 _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['is_live'].containing_oneof = _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_is_live']
+_BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_num_newer_versions'].fields.append(
+  _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['num_newer_versions'])
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['num_newer_versions'].containing_oneof = _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_num_newer_versions']
+_BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_days_since_custom_time'].fields.append(
+  _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['days_since_custom_time'])
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['days_since_custom_time'].containing_oneof = _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_days_since_custom_time']
+_BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_days_since_noncurrent_time'].fields.append(
+  _BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['days_since_noncurrent_time'])
+_BUCKET_LIFECYCLE_RULE_CONDITION.fields_by_name['days_since_noncurrent_time'].containing_oneof = _BUCKET_LIFECYCLE_RULE_CONDITION.oneofs_by_name['_days_since_noncurrent_time']
 _BUCKET_LIFECYCLE_RULE.fields_by_name['action'].message_type = _BUCKET_LIFECYCLE_RULE_ACTION
 _BUCKET_LIFECYCLE_RULE.fields_by_name['condition'].message_type = _BUCKET_LIFECYCLE_RULE_CONDITION
 _BUCKET_LIFECYCLE_RULE.containing_type = _BUCKET_LIFECYCLE
@@ -2815,8 +2841,8 @@ _STORAGE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=b'\312A\026storage.googleapis.com\322A\212\002https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_write',
   create_key=_descriptor._internal_create_key,
-  serialized_start=8564,
-  serialized_end=9351,
+  serialized_start=8647,
+  serialized_end=9434,
   methods=[
   _descriptor.MethodDescriptor(
     name='ReadObject',

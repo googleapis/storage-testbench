@@ -8,13 +8,15 @@ is expected to be used by Storage library maintainers.
 
 
 ## Table of Contents
-* [Issue Policy](#issue-policy)
-* [What is this testbench?](#what-is-this-testbench)
-* [When to use](#when-to-use-this-testbench)
-* [How do I use this testbench?](#how-to-use-this-testvench)
-  - [Initial set up](#initial-set-up)
-  - [Run the testbench](#run-the-testbench)
-  - [Check that the testbench is running](#check-that-the-testbench-is-running)   
+- [Storage Testbench](#storage-testbench)
+  - [Table of Contents](#table-of-contents)
+  - [Issue Policy](#issue-policy)
+  - [What is this testbench?](#what-is-this-testbench)
+  - [When to use this testbench](#when-to-use-this-testbench)
+  - [How to use this testbench](#how-to-use-this-testbench)
+    - [Initial set up](#initial-set-up)
+    - [Check that the testbench is running](#check-that-the-testbench-is-running)
+  - [Updating Proto Files](#updating-proto-files)
 
 ## Issue Policy
 
@@ -90,21 +92,17 @@ run the grpc_tools generator:
 ```shell
 cd $HOME
 git clone https://github.com/googleapis/googleapis
-cd google-cloud-cpp
+cd storage-testbench
 python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=google/cloud/storage/emulator \
-    --grpc_python_out=google/cloud/storage/emulator \
+    --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/iam/v1/iam_policy.proto
 python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=google/cloud/storage/emulator \
-    --grpc_python_out=google/cloud/storage/emulator \
+    --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/iam/v1/options.proto
 python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=google/cloud/storage/emulator \
-    --grpc_python_out=google/cloud/storage/emulator \
+    --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/iam/v1/policy.proto
 python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=google/cloud/storage/emulator \
-    --grpc_python_out=google/cloud/storage/emulator \
+    --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/storage/v2/storage.proto
 ```
