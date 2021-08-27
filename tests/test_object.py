@@ -285,7 +285,7 @@ class TestObject(unittest.TestCase):
                 ),
             )
         )
-        request = storage_pb2.StartResumableWriteRequest(write_object_spec=spec)
+        request = storage_pb2.WriteObjectRequest(write_object_spec=spec)
         upload = gcs.holder.DataHolder.init_resumable_grpc(
             request, self.bucket.metadata, ""
         )

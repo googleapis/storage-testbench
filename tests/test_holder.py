@@ -16,7 +16,9 @@
 
 """Tests for the Object class (see gcs/object.py)."""
 
+import crc32c
 import base64
+import hashlib
 import flask
 import json
 import unittest
@@ -221,6 +223,72 @@ class TestHolder(unittest.TestCase):
         )
         self.assertEqual(match, 2)
         self.assertEqual(not_match, 3)
+
+    def test_init_resumable_grpc_with_checksums(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        proto_crc32c = crc32c.crc32c(media)
+        proto_md5_hash = hashlib.md5(media).digest()
+
+        TEST_CASES = {
+            "both": {
+                "checksums": storage_pb2.ObjectChecksums(
+                    crc32c=proto_crc32c, md5_hash=proto_md5_hash
+                ),
+                "expected": {
+                    "x_emulator_crc32c": testbench.common.rest_crc32c_from_proto(
+                        proto_crc32c
+                    ),
+                    "x_emulator_md5": testbench.common.rest_md5_from_proto(
+                        proto_md5_hash
+                    ),
+                },
+            },
+            "only md5": {
+                "checksums": storage_pb2.ObjectChecksums(md5_hash=proto_md5_hash),
+                "expected": {
+                    "x_emulator_md5": testbench.common.rest_md5_from_proto(
+                        proto_md5_hash
+                    ),
+                    "x_emulator_no_crc32c": "true",
+                },
+            },
+            "only crc32c": {
+                "checksums": storage_pb2.ObjectChecksums(crc32c=proto_crc32c),
+                "expected": {
+                    "x_emulator_crc32c": testbench.common.rest_crc32c_from_proto(
+                        proto_crc32c
+                    ),
+                    "x_emulator_no_md5": "true",
+                },
+            },
+        }
+        for name, test in TEST_CASES.items():
+            request = testbench.common.FakeRequest(
+                args={}, data=json.dumps({"name": "bucket-name"})
+            )
+            bucket, _ = gcs.bucket.Bucket.init(request, None)
+            spec = storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            )
+            request = storage_pb2.WriteObjectRequest(
+                write_object_spec=spec,
+                write_offset=0,
+                object_checksums=test["checksums"],
+            )
+            upload = gcs.holder.DataHolder.init_resumable_grpc(
+                request, bucket.metadata, ""
+            )
+            # Verify the annotations inserted by the emulator.
+            annotations = upload.metadata.metadata
+            expected = test["expected"]
+            print("annotations %s %s" % (name, annotations))
+            print("expected %s %s" % (name, expected))
+            self.maxDiff = None
+            self.assertEqual(
+                annotations,
+                {**annotations, **expected},
+                msg="Testing with %s checksums" % name,
+            )
 
     def test_resumable_rest(self):
         request = testbench.common.FakeRequest(

@@ -412,7 +412,7 @@ class Object:
                 "crc32c=%s" % testbench.common.rest_crc32c_from_proto(cs.crc32c)
             )
         if len(cs.md5_hash) != 0:
-            hashes.append("md5=%s" % base64.b64encode(cs.md5_hash).decode("utf-8"))
+            hashes.append("md5=%s" % testbench.common.rest_md5_from_proto(cs.md5_hash))
         return ",".join(hashes) if len(hashes) != 0 else None
 
     def rest_media(self, request, delay=time.sleep):
