@@ -486,7 +486,7 @@ class Bucket:
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
     def update(self, request, context):
-        # Bucket: patch only implemented for gRPC
+        # Support for `Bucket: update` over gRPC is not needed (and not implemented).
         assert context is None
         data = self.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(data, storage_pb2.Bucket())
@@ -503,7 +503,7 @@ class Bucket:
         )
 
     def patch(self, request, context):
-        # Bucket: patch only implemented for REST
+        # Support for `Bucket: patch` over gRPC is not needed (and not implemented).
         assert context is None
         rest = self.__preprocess_rest(
             testbench.common.rest_patch(self.rest(), json.loads(request.data))

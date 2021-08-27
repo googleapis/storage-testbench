@@ -598,6 +598,8 @@ def rest_patch(target: dict, patch: dict, path: list = None) -> dict:
         if isinstance(subtarget, dict) and isinstance(subpatch, dict):
             patched[key] = rest_patch(subtarget, subpatch, location)
         elif isinstance(subtarget, dict) == isinstance(subpatch, dict):
+            # Both `isinstance()` are equal, but not both true, so both
+            # are false and we can handle this with a simple assignment.
             patched[key] = subpatch
         else:
             raise Exception("Type mismatch at %s" % ".".join(location))
