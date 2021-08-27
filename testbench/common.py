@@ -24,7 +24,6 @@ import scalpl
 import socket
 import struct
 import types
-from typing import Any
 
 from grpc import StatusCode
 from google.protobuf import timestamp_pb2
@@ -570,9 +569,7 @@ def preprocess_object_metadata(metadata):
     return md
 
 
-def rest_patch(
-    target: dict[str, Any], patch: dict[str, Any], path=None
-) -> dict[str, Any]:
+def rest_patch(target: dict, patch: dict, path: list = None) -> dict:
     """
     Applies a REST-style patch to a target dictionary.
 
