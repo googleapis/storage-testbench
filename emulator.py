@@ -29,6 +29,9 @@ import testbench
 
 
 db = testbench.database.Database.init()
+# retry_test decorates a routing function to handle the Retry Test API, with
+# method names based on the JSON API
+retry_test = testbench.common.gen_retry_test_decorator(db)
 grpc_port = 0
 
 # === DEFAULT ENTRY FOR REST SERVER === #
@@ -71,26 +74,27 @@ def xml_get_object(bucket_name, object_name):
 
 
 @root.route("/<path:object_name>", subdomain="<bucket_name>")
+@retry_test(method="storage.objects.get")
 def root_get_object(bucket_name, object_name):
     return xml_get_object(bucket_name, object_name)
 
 
 @root.route("/<bucket_name>/<path:object_name>", subdomain="")
+@retry_test(method="storage.objects.get")
 def root_get_object_with_bucket(bucket_name, object_name):
     return xml_get_object(bucket_name, object_name)
 
 
 @root.route("/<path:object_name>", subdomain="<bucket_name>", methods=["PUT"])
+@retry_test(method="storage.objects.insert")
 def root_put_object(bucket_name, object_name):
     return xml_put_object(bucket_name, object_name)
 
 
 @root.route("/<bucket_name>/<path:object_name>", subdomain="", methods=["PUT"])
+@retry_test(method="storage.objects.insert")
 def root_put_object_with_bucket(bucket_name, object_name):
     return xml_put_object(bucket_name, object_name)
-
-
-retry_test = testbench.common.gen_retry_test_decorator(db)
 
 
 @root.route("/retry_tests", methods=["GET"])
