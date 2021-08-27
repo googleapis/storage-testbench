@@ -44,7 +44,9 @@ def extract(request, is_source, context):
     else:
         algorithm = request.common_object_request_params.encryption_algorithm
         key_b64 = request.common_object_request_params.encryption_key_bytes
-        key_sha256_b64 = request.common_object_request_params.encryption_key_sha256_bytes
+        key_sha256_b64 = (
+            request.common_object_request_params.encryption_key_sha256_bytes
+        )
     return algorithm, key_b64, key_sha256_b64
 
 
