@@ -119,27 +119,27 @@ backwards compatibility and provides the same functionality as
 ### return-broken-stream
 
 Set request headers with `x-goog-emulator-instructions: return-broken-stream`.
-Emulator will fail after sending 1024*1024 bytes.
+Testbench will fail after sending 1024*1024 bytes.
 
 ### return-corrupted-data
 
 Set request headers with `x-goog-emulator-instructions: return-corrupted-data`.
-Emulator will return corrupted data.
+Testbench will return corrupted data.
 
 ### stall-always
 
 Set request headers with `x-goog-emulator-instructions: stall-always`.
-Emulator will stall at the beginning.
+Testbench will stall at the beginning.
 
 ### stall-at-256KiB
 
 Set request headers with `x-goog-emulator-instructions: stall-at-256KiB`.
-Emulator will stall at 256KiB bytes.
+Testbench will stall at 256KiB bytes.
 
 ### return-503-after-256K
 
 Set request headers with `x-goog-emulator-instructions: return-503-after-256K`.
-Emulator will return a `HTTP 503` after sending 256KiB bytes.
+Testbench will return a `HTTP 503` after sending 256KiB bytes.
 
 ### return-503-after-256K/retry-N
 
@@ -156,9 +156,9 @@ instructions.
 The "Retry Test API" offers a mechanism to describe more complex retry scenarios
 while sending a single, constant header through all the HTTP requests from a
 test program. Retry Test provides accounting of failures used to validate
-the expected failures were experienced by the emulator and not accidentally missed.
+the expected failures were experienced by the testbench and not accidentally missed.
 
-Previous versions of the GCS emulator used a custom header in the RPC to
+Previous versions of the GCS testbench used a custom header in the RPC to
 control the behavior of each RPC, for some test scenarios this required sending
 different header with the first retry attempt vs. subsequent attempts. Producing
 different headers in each attempt is not easy to implement with some client libraries.
@@ -169,7 +169,7 @@ and to some degree decouples the test setup from the test execution.
 ### Creating a new Retry Test
 
 The following cURL request will create a Retry Test resource which emits a 503
-when a buckets list operation is received by the emulator with the returned
+when a buckets list operation is received by the testbench with the returned
 retry test ID.
 
 ```bash
@@ -195,7 +195,7 @@ curl -X DELETE "http://localhost:9000/retry_test/1d05c20627844214a9ff7cbcf696317
 
 ### Causing a failure using x-retry-test-id header
 
-The following cURL request will attempt to list buckets and the emulator will emit
+The following cURL request will attempt to list buckets and the testbench will emit
 a `503` error once based on the Retry Test created above. Subsequent list buckets
 operations will succeed.
 
@@ -207,7 +207,7 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 
 | Failure Id              | Description
 | ----------------------- | ---
-| return-X                | Emulator will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
-| return-X-after-YK       | Return X after YKiB of uploaded data
-| return-broken-stream    | Emulator will fail after sending 10 bytes
-| return-reset-connection | Emulator will fail with a reset connection
+| return-X                | Testbench will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
+| return-X-after-YK       | Testbench will return X after YKiB of uploaded data
+| return-broken-stream    | Testbench will fail after a few bytes
+| return-reset-connection | Testbench will fail with a reset connection
