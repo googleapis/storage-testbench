@@ -259,7 +259,7 @@ class Object:
 
     def update(self, request, context):
         # Support for `Object: update` over gRPC is not needed (and not implemented).
-        assert(context is None)
+        assert context is None
         data = json.loads(request.data)
         metadata = json_format.ParseDict(
             testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
@@ -274,7 +274,7 @@ class Object:
 
     def patch(self, request, context):
         # Support for `Object: patch` over gRPC is not needed (and not implemented).
-        assert(context is None)
+        assert context is None
         # The idea here is to convert the storage_pb2.Object proto to its REST
         # representation, apply the patch, and then convert it back to its
         # proto representation.
