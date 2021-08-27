@@ -377,6 +377,40 @@ class TestCommonUtils(unittest.TestCase):
         actual = testbench.common._extract_data(flask.Response(fox))
         self.assertEqual(actual.decode("utf-8"), fox)
 
+    def test_rest_patch(self):
+        TEST_CASES = [
+            {
+                "resource": {"a": "x", "b": "y"},
+                "patch": {"a": "z"},
+                "expected": {"a": "z", "b": "y"},
+            },
+            {
+                "resource": {"a": "x", "b": "y"},
+                "patch": {"a": None},
+                "expected": {"b": "y"},
+            },
+            {
+                "resource": {"a": {"c": 42}, "b": "y"},
+                "patch": {"a": None},
+                "expected": {"b": "y"},
+            },
+            {
+                "resource": {"a": "x", "b": {"c": {"d": 7}}},
+                "patch": {"b": {"e": "add-e", "c": {"d": 42}}},
+                "expected": {"a": "x", "b": {"e": "add-e", "c": {"d": 42}}},
+            },
+        ]
+        for index, test in enumerate(TEST_CASES):
+            self.assertEqual(
+                test["expected"],
+                testbench.common.rest_patch(test["resource"], test["patch"]),
+                msg="Entry %d" % index,
+            )
+
+        with self.assertRaises(Exception) as ex:
+            testbench.common.rest_patch({"a": {"b": "c"}}, {"a": {"b": {"ooops": 7}}})
+        self.assertIn("Type mismatch at a.b", "%s" % ex.exception)
+
 
 if __name__ == "__main__":
     unittest.main()

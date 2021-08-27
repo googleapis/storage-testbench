@@ -30,7 +30,7 @@ import testbench
 
 
 class Bucket:
-    modifiable_fields = [
+    modifiable_fields = {
         "acl",
         "default_object_acl",
         "lifecycle",
@@ -46,7 +46,7 @@ class Bucket:
         "retention_policy",
         "location_type",
         "iam_config",
-    ]
+    }
 
     def __init__(self, metadata, notifications, iam_policy):
         self.metadata = metadata
@@ -170,6 +170,12 @@ class Bucket:
             rest,
             {
                 "name": lambda x: ("name", x),
+                "id": lambda x: ("bucketId", x),
+                "kind": lambda x: (None, None),
+                "etag": lambda x: (None, None),
+                "projectNumber": lambda x: ("project", x),
+                "timeCreated": lambda x: ("create_time", x),
+                "updated": lambda x: ("update_time", x),
                 "iamConfiguration": lambda x: (
                     "iamConfig",
                     Bucket.__preprocess_rest_iam_configuration(x),
@@ -187,7 +193,7 @@ class Bucket:
         if rest.get("acl", None) is not None:
             rest["acl"] = [Bucket.__preprocess_rest_acl(a) for a in rest.get("acl")]
         if rest.get("defaultObjectAcl", None) is not None:
-            rest["acl"] = [
+            rest["defaultObjectAcl"] = [
                 Bucket.__preprocess_rest_default_object_acl(a)
                 for a in rest.get("defaultObjectAcl")
             ]
@@ -480,6 +486,8 @@ class Bucket:
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
     def update(self, request, context):
+        # Support for `Bucket: update` over gRPC is not needed (and not implemented).
+        assert context is None
         data = self.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(data, storage_pb2.Bucket())
         self.__update_metadata(metadata, None)
@@ -495,51 +503,13 @@ class Bucket:
         )
 
     def patch(self, request, context):
-        update_mask = field_mask_pb2.FieldMask()
-        data = self.__preprocess_rest(json.loads(request.data))
-        if "labels" in data:
-            if data["labels"] is None:
-                self.metadata.labels.clear()
-            else:
-                for key, value in data["labels"].items():
-                    if value is None:
-                        self.metadata.labels.pop(key, None)
-                    else:
-                        self.metadata.labels[key] = value
-        data.pop("labels", None)
-        data = self.__preprocess_rest(data)
-        metadata = json_format.ParseDict(data, storage_pb2.Bucket())
-        paths = set()
-        for key in testbench.common.nested_key(data):
-            key = testbench.common.to_snake_case(key)
-            head = key
-            for i, c in enumerate(key):
-                if c == "." or c == "[":
-                    head = key[0:i]
-                    break
-            if head in Bucket.modifiable_fields:
-                if "[" in key:
-                    paths.add(head)
-                else:
-                    self.metadata.labels[key] = value
-        data.pop("labels", None)
-        data = self.__preprocess_rest(data)
-        metadata = json_format.ParseDict(data, storage_pb2.Bucket())
-        paths = set()
-        for key in testbench.common.nested_key(data):
-            key = testbench.common.to_snake_case(key)
-            head = key
-            for i, c in enumerate(key):
-                if c == "." or c == "[":
-                    head = key[0:i]
-                    break
-            if head in Bucket.modifiable_fields:
-                if "[" in key:
-                    paths.add(head)
-                else:
-                    paths.add(key)
-        update_mask = field_mask_pb2.FieldMask(paths=list(paths))
-        self.__update_metadata(metadata, update_mask)
+        # Support for `Bucket: patch` over gRPC is not needed (and not implemented).
+        assert context is None
+        rest = self.__preprocess_rest(
+            testbench.common.rest_patch(self.rest(), json.loads(request.data))
+        )
+        metadata = json_format.ParseDict(rest, storage_pb2.Bucket())
+        self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
             testbench.acl.extract_predefined_acl(request, False, context),
