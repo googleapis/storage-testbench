@@ -29,7 +29,7 @@ import testbench
 
 
 db = testbench.database.Database.init()
-# retry_test decorates a routing function to handle the Retry Test API, with 
+# retry_test decorates a routing function to handle the Retry Test API, with
 # method names based on the JSON API
 retry_test = testbench.common.gen_retry_test_decorator(db)
 grpc_port = 0
