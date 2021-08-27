@@ -81,6 +81,17 @@ class TestEmulatorRetry(unittest.TestCase):
             "storage.object_acl." + op
             for op in ["list", "insert", "get", "update", "patch", "delete"]
         }
+        PROJECT_OPERATIONS = set({"storage.serviceaccount.get"})
+        HMAC_KEY_OPERATIONS = {
+            "storage.hmacKey." + op
+            for op in [
+                "create",
+                "list",
+                "delete",
+                "get",
+                "update",
+            ]
+        }
         groups = {
             "buckets": BUCKET_OPERATIONS,
             "bucket_acl": BUCKET_ACL_OPERATIONS,
@@ -88,6 +99,8 @@ class TestEmulatorRetry(unittest.TestCase):
             "notifications": NOTIFICATION_OPERATIONS,
             "objects": OBJECT_OPERATIONS,
             "object_acl": OBJECT_ACL_OPERATIONS,
+            "project": PROJECT_OPERATIONS,
+            "hmacKey": HMAC_KEY_OPERATIONS,
         }
         all = set(emulator.db.supported_methods)
         for name, operations in groups.items():
