@@ -283,6 +283,7 @@ class TestBucket(unittest.TestCase):
                     "name": "new_bucket",
                     "labels": {"method": "rest"},
                     "website": {"notFoundPage": "404.html"},
+                    "storageClass": "COLDLINE",
                 }
             ),
         )

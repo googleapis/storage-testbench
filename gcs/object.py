@@ -278,12 +278,12 @@ class Object:
         # The idea here is to convert the storage_pb2.Object proto to its REST
         # representation, apply the patch, and then convert it back to its
         # proto representation.
-        rest = Object.rest(self.metadata)
-        patch = json.loads(request.data)
-        rest.update(patch)
-        metadata = json_format.ParseDict(
-            testbench.common.preprocess_object_metadata(rest), storage_pb2.Object()
+        rest = testbench.common.preprocess_object_metadata(
+            testbench.common.rest_patch(
+                Object.rest(self.metadata), json.loads(request.data)
+            )
         )
+        metadata = json_format.ParseDict(rest, storage_pb2.Object())
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,

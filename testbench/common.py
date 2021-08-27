@@ -24,6 +24,7 @@ import scalpl
 import socket
 import struct
 import types
+from typing import Any
 
 from grpc import StatusCode
 from google.protobuf import timestamp_pb2
@@ -567,3 +568,40 @@ def preprocess_object_metadata(metadata):
             for field in ["kind", "bucket", "object", "generation"]:
                 a.pop(field, None)
     return md
+
+
+def rest_patch(
+    target: dict[str, Any], patch: dict[str, Any], path=None
+) -> dict[str, Any]:
+    """
+    Applies a REST-style patch to a target dictionary.
+
+    REST patches are more complicated than a simple `dict.update()`. Any `None` values
+    delete a key, and the changes need to be applied recursively.
+
+    :param target: the REST resource (in dict form) to be patched
+    :param patch: the changes to be applied
+    :param path: the path where this patch is being applied, used to report better errors.
+    """
+    if path is None:
+        path = []
+    patched = target.copy()
+    for key, subpatch in patch.items():
+        if subpatch is None:
+            patched.pop(key, None)
+            continue
+        location = path + [key]
+        if key not in patched:
+            if isinstance(subpatch, dict):
+                patched[key] = rest_patch({}, subpatch, location)
+            else:
+                patched[key] = subpatch
+            continue
+        subtarget = patched.get(key)
+        if isinstance(subtarget, dict) and isinstance(subpatch, dict):
+            patched[key] = rest_patch(subtarget, subpatch, location)
+        elif isinstance(subtarget, dict) == isinstance(subpatch, dict):
+            patched[key] = subpatch
+        else:
+            raise Exception("Type mismatch at %s" % ".".join(location))
+    return patched
