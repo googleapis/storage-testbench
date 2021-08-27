@@ -281,8 +281,6 @@ class TestHolder(unittest.TestCase):
             # Verify the annotations inserted by the emulator.
             annotations = upload.metadata.metadata
             expected = test["expected"]
-            print("annotations %s %s" % (name, annotations))
-            print("expected %s %s" % (name, expected))
             self.maxDiff = None
             self.assertEqual(
                 annotations,
