@@ -17,6 +17,8 @@ is expected to be used by Storage library maintainers.
     - [Initial set up](#initial-set-up)
     - [Check that the testbench is running](#check-that-the-testbench-is-running)
   - [Updating Proto Files](#updating-proto-files)
+  - [Force Failures](#force-failures)
+  - [Retry Test API](#retry-test-api)
 
 ## Issue Policy
 
@@ -106,3 +108,106 @@ python -m grpc_tools.protoc -I$HOME/googleapis \
     --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/storage/v2/storage.proto
 ```
+
+## Force Failures
+
+You can force the following failures by using the `x-goog-emulator-instructions` header.
+The `x-goog-testbench-instructions` header is deprecated, but supported for
+backwards compatibility and provides the same functionality as
+`x-goog-emulator-instructions`, please change your code to use `x-goog-emulator-instructions` instead.
+
+### return-broken-stream
+
+Set request headers with `x-goog-emulator-instructions: return-broken-stream`.
+Emulator will fail after sending 1024*1024 bytes.
+
+### return-corrupted-data
+
+Set request headers with `x-goog-emulator-instructions: return-corrupted-data`.
+Emulator will return corrupted data.
+
+### stall-always
+
+Set request headers with `x-goog-emulator-instructions: stall-always`.
+Emulator will stall at the beginning.
+
+### stall-at-256KiB
+
+Set request headers with `x-goog-emulator-instructions: stall-at-256KiB`.
+Emulator will stall at 256KiB bytes.
+
+### return-503-after-256K
+
+Set request headers with `x-goog-emulator-instructions: return-503-after-256K`.
+Emulator will return a `HTTP 503` after sending 256KiB bytes.
+
+### return-503-after-256K/retry-N
+
+Set request headers with `x-goog-emulator-instructions: return-503-after-256K/retry-1` up to `x-goog-emulator-instructions: return-503-after-256K/retry-N`.
+
+For N==1 and N==2 behave like `return-305-after-256K`, for `N>=3` ignore the
+failure instruction and return successfully. This is used to test failures during
+retry, the client cooperates by sending the retry counter in the failure
+instructions.
+
+
+## Retry Test API
+
+The "Retry Test API" offers a mechanism to describe more complex retry scenarios
+while sending a single, constant header through all the HTTP requests from a
+test program. Retry Test provides accounting of failures used to validate
+the expected failures were experienced by the emulator and not accidentally missed.
+
+Previous versions of the GCS emulator used a custom header in the RPC to
+control the behavior of each RPC, for some test scenarios this required sending
+different header with the first retry attempt vs. subsequent attempts. Producing
+different headers in each attempt is not easy to implement with some client libraries.
+
+Sending a constant header with all RPCs can be implemented across all client libraries,
+and to some degree decouples the test setup from the test execution.
+
+### Creating a new Retry Test
+
+The following cURL request will create a Retry Test resource which emits a 503
+when a buckets list operation is received by the emulator with the returned
+retry test ID.
+
+```bash
+curl -X POST "http://localhost:9000/retry_test" -H 'Content-Type: application/json' \
+     -d '{"instructions":{"storage.buckets.list": ["return-503"]}}'
+```
+
+### Get a Retry Test resource
+
+Get Retry Test resource by id "1d05c20627844214a9ff7cbcf696317d".
+
+```bash
+curl -X GET "http://localhost:9000/retry_test/1d05c20627844214a9ff7cbcf696317d"
+```
+
+### Delete a Retry Test resource
+
+Delete Retry Test resource by id "1d05c20627844214a9ff7cbcf696317d".
+
+```bash
+curl -X DELETE "http://localhost:9000/retry_test/1d05c20627844214a9ff7cbcf696317d"
+```
+
+### Causing a failure using x-retry-test-id header
+
+The following cURL request will attempt to list buckets and the emulator will emit
+a `503` error once based on the Retry Test created above. Subsequent list buckets
+operations will succeed.
+
+```bash
+curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:9100/storage/v1/b?project=test"
+```
+
+### Forced Failures Supported
+
+| Failure Id              | Description
+| ----------------------- | ---
+| return-X                | Emulator will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
+| return-X-after-YK       | Return X after YKiB of uploaded data
+| return-broken-stream    | Emulator will fail after sending 10 bytes
+| return-reset-connection | Emulator will fail with a reset connection
