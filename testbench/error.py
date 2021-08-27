@@ -16,7 +16,6 @@
 
 import json
 import traceback
-
 import flask
 import grpc
 from werkzeug.exceptions import HTTPException

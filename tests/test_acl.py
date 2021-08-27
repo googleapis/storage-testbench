@@ -17,10 +17,8 @@
 """Unit test for testbench.acl"""
 
 import unittest
-import testbench
 
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
-from google.storage.v2 import storage_pb2
+import testbench
 
 
 class TestACL(unittest.TestCase):
@@ -143,12 +141,6 @@ class TestACL(unittest.TestCase):
             entities,
             [testbench.acl.get_object_entity("OWNER", None), "allAuthenticatedUsers"],
         )
-
-        object_names = [acl.object for acl in acls]
-        self.assertEqual(object_names, 2 * ["object"])
-
-        generations = [acl.generation for acl in acls]
-        self.assertEqual(generations, 2 * [123456789])
 
 
 if __name__ == "__main__":

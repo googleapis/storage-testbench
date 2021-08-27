@@ -22,7 +22,7 @@ import unittest
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
+from google.storage.v2 import storage_pb2
 
 import testbench
 
@@ -83,7 +83,7 @@ class TestCommonUtils(unittest.TestCase):
         request = testbench.common.FakeRequest.init_protobuf(
             protobuf_request, MockContext()
         )
-        print("\n\n%s\n\n" % request)
+        self.assertIsNotNone(request)
 
     def test_nested_key(self):
         doc = {
@@ -298,7 +298,7 @@ class TestCommonUtils(unittest.TestCase):
     def test_crc32c_to_from_proto(self):
         # used an external tool to get the CRC32C of:
         #    /bin/echo -n 'The quick brown fox jumps over the lazy dog' > fox.txt
-        #    gsutil hash foo.txt
+        #    gsutil hash fox.txt
         # it prints
         #    Hash (crc32c):		ImIEBA==
         # then use:
@@ -308,6 +308,27 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(0x22620404, testbench.common.rest_crc32c_to_proto("ImIEBA=="))
         self.assertEqual(
             "ImIEBA==", testbench.common.rest_crc32c_from_proto(0x22620404)
+        )
+
+    def test_md5_to_from_proto(self):
+        # used an external tool to get the CRC32C of:
+        #    /bin/echo -n 'The quick brown fox jumps over the lazy dog' > fox.txt
+        #    gsutil hash fox.txt
+        # it prints
+        #    Hash (md5):		nhB9nTcrtoJr2B01QqQZ1g==
+        # then use:
+        #    echo nhB9nTcrtoJr2B01QqQZ1g== | openssl base64 -d | xxd -p
+        # that prints
+        #    9e107d9d372bb6826bd81d3542a419d6
+        self.assertEqual(
+            b"\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6",
+            testbench.common.rest_md5_to_proto("nhB9nTcrtoJr2B01QqQZ1g=="),
+        )
+        self.assertEqual(
+            "nhB9nTcrtoJr2B01QqQZ1g==",
+            testbench.common.rest_md5_from_proto(
+                b"\x9e\x10\x7d\x9d\x37\x2b\xb6\x82\x6b\xd8\x1d\x35\x42\xa4\x19\xd6"
+            ),
         )
 
     def test_rfc3339_to_proto(self):

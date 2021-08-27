@@ -119,7 +119,6 @@ class TestCSEK(unittest.TestCase):
                 "x-goog-encryption-key-sha256": key_sha256_b64,
             },
         )
-        print("%s\n" % key_sha256_b64)
         csek.validation(Request(environ), key_sha256_b64, False, None)
 
     def test_validation_failure(self):

@@ -135,7 +135,7 @@ class TestEmulatorObjectSpecial(unittest.TestCase):
         response = self.client.post(
             "/storage/v1/b/bucket-name/o/fox/copyTo/b/bucket-name/o/fox2"
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, msg=response.data)
         self.assertTrue(
             response.headers.get("content-type").startswith("application/json")
         )
@@ -244,7 +244,7 @@ class TestEmulatorObjectSpecial(unittest.TestCase):
                 query_string={"maxBytesRewrittenPerCall": 10, "rewriteToken": token},
                 data=json.dumps({"metadata": metadata}),
             )
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200, msg=response.data)
             self.assertTrue(
                 response.headers.get("content-type").startswith("application/json")
             )

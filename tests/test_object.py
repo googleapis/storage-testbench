@@ -20,11 +20,11 @@ import base64
 import hashlib
 import json
 import unittest
+import unittest.mock
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.cloud.storage_v1.proto import storage_pb2 as storage_pb2
-from google.cloud.storage_v1.proto import storage_resources_pb2 as resources_pb2
+from google.storage.v2 import storage_pb2
 
 import gcs
 import testbench
@@ -254,8 +254,8 @@ class TestObject(unittest.TestCase):
 
     def test_grpc_to_rest(self):
         # Make sure that object created by `gRPC` works with `REST`'s request.
-        spec = storage_pb2.InsertObjectSpec(
-            resource=resources_pb2.Object(
+        spec = storage_pb2.WriteObjectSpec(
+            resource=storage_pb2.Object(
                 name="test-object-name",
                 bucket="bucket",
                 metadata={"label0": "value0"},
@@ -265,33 +265,38 @@ class TestObject(unittest.TestCase):
                 content_language="test-value",
                 content_type="octet-stream",
                 storage_class="regional",
-                customer_encryption=resources_pb2.Object.CustomerEncryption(
+                customer_encryption=storage_pb2.Object.CustomerEncryption(
                     encryption_algorithm="AES", key_sha256="123456"
                 ),
-                # TODO(#58) - add these fields when moving to storage/v2
-                #   custom_time=testbench.common.rest_rfc3339_to_proto("2021-08-01T12:00:00Z"),
-                event_based_hold={"value": True},
-                kms_key_name="test-value",
-                retention_expiration_time=testbench.common.rest_rfc3339_to_proto(
+                custom_time=testbench.common.rest_rfc3339_to_proto(
+                    "2021-08-01T12:00:00Z"
+                ),
+                event_based_hold=True,
+                kms_key="test-value",
+                retention_expire_time=testbench.common.rest_rfc3339_to_proto(
                     "2022-01-01T00:00:00Z"
                 ),
                 temporary_hold=True,
-                time_deleted=testbench.common.rest_rfc3339_to_proto(
+                delete_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-06-01T00:00:00Z"
                 ),
-                time_storage_class_updated=testbench.common.rest_rfc3339_to_proto(
+                update_storage_class_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-07-01T00:00:00Z"
                 ),
             )
         )
-        request = storage_pb2.StartResumableWriteRequest(insert_object_spec=spec)
+        request = storage_pb2.WriteObjectRequest(write_object_spec=spec)
         upload = gcs.holder.DataHolder.init_resumable_grpc(
             request, self.bucket.metadata, ""
         )
         blob, _ = gcs.object.Object.init(
-            upload.request, upload.metadata, b"123456789", upload.bucket, False, ""
+            upload.request,
+            upload.metadata,
+            b"123456789",
+            upload.bucket,
+            False,
+            "FakeContext",
         )
-        self.assertDictEqual(blob.rest_only, {})
         self.assertEqual(blob.metadata.bucket, "bucket")
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
@@ -348,6 +353,7 @@ class TestObject(unittest.TestCase):
                 "contentEncoding": "test-value",
                 "contentLanguage": "test-value",
                 "contentType": "octet-stream",
+                "customTime": "2021-08-01T12:00:00Z",
                 "eventBasedHold": True,
                 "crc32c": "4waSgw==",
                 "customerEncryption": {
