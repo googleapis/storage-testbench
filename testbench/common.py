@@ -541,6 +541,8 @@ def preprocess_object_metadata(metadata):
     md = rest_adjust(
         metadata,
         {
+            "kind": lambda x: (None, None),
+            "id": lambda x: (None, None),
             "timeCreated": lambda x: ("createTime", x),
             "updated": lambda x: ("updateTime", x),
             "kmsKeyName": lambda x: ("kmsKey", x),

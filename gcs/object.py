@@ -258,14 +258,12 @@ class Object:
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
     def update(self, request, context):
-        metadata = None
-        if context is not None:
-            metadata = request.metadata
-        else:
-            data = json.loads(request.data)
-            metadata = json_format.ParseDict(
-                testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
-            )
+        # Support for `Object: update` over gRPC is not needed (and not implemented).
+        assert(context is None)
+        data = json.loads(request.data)
+        metadata = json_format.ParseDict(
+            testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
+        )
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
@@ -275,56 +273,18 @@ class Object:
         )
 
     def patch(self, request, context):
-        update_mask = field_mask_pb2.FieldMask()
-        metadata = None
-        if context is not None:
-            metadata = request.metadata
-            update_mask = request.update_mask
-        else:
-            data = json.loads(request.data)
-            if "metadata" in data:
-                if data["metadata"] is None:
-                    self.metadata.metadata.clear()
-                else:
-                    for key, value in data["metadata"].items():
-                        if value is None:
-                            self.metadata.metadata.pop(key, None)
-                        else:
-                            self.metadata.metadata[key] = value
-            data.pop("metadata", None)
-            metadata = json_format.ParseDict(
-                testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
-            )
-            paths = set()
-            for key in testbench.common.nested_key(data):
-                key = testbench.common.to_snake_case(key)
-                head = key
-                for i, c in enumerate(key):
-                    if c == "." or c == "[":
-                        head = key[0:i]
-                        break
-                if head in Object.modifiable_fields:
-                    if "[" in key:
-                        paths.add(head)
-                    else:
-                        self.metadata.metadata[key] = value
-        data.pop("metadata", None)
-        metadata = json_format.ParseDict(data, storage_pb2.Object())
-        paths = set()
-        for key in testbench.common.nested_key(data):
-            key = testbench.common.to_snake_case(key)
-            head = key
-            for i, c in enumerate(key):
-                if c == "." or c == "[":
-                    head = key[0:i]
-                    break
-            if head in Object.modifiable_fields:
-                if "[" in key:
-                    paths.add(head)
-                else:
-                    paths.add(key)
-        update_mask = field_mask_pb2.FieldMask(paths=list(paths))
-        self.__update_metadata(metadata, update_mask)
+        # Support for `Object: patch` over gRPC is not needed (and not implemented).
+        assert(context is None)
+        # The idea here is to convert the storage_pb2.Object proto to its REST
+        # representation, apply the patch, and then convert it back to its
+        # proto representation.
+        rest = Object.rest(self.metadata)
+        patch = json.loads(request.data)
+        rest.update(patch)
+        metadata = json_format.ParseDict(
+            testbench.common.preprocess_object_metadata(rest), storage_pb2.Object()
+        )
+        self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
             self.bucket,
@@ -389,7 +349,6 @@ class Object:
         response = cls.__postprocess_object_metadata(
             json_format.MessageToDict(metadata)
         )
-        response["kind"] = "storage#object"
         old_metadata = {}
         if "metadata" in response:
             for key, value in response["metadata"].items():
