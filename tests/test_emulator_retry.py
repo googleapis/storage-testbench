@@ -20,7 +20,6 @@ import json
 import os
 import re
 import unittest
-from unittest.mock import MagicMock, patch
 
 import emulator
 import testbench
