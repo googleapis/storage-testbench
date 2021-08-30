@@ -14,6 +14,8 @@
 
 """Implement a holder for resumable upload's data and rewrite's data"""
 
+from typing import ClassVar
+import crc32c
 import flask
 import hashlib
 import json
@@ -114,33 +116,118 @@ class DataHolder(types.SimpleNamespace):
         return cls.init_upload(request, metadata, bucket, location, upload_id)
 
     @classmethod
-    def init_resumable_grpc(cls, request, bucket, context):
+    def init_resumable_grpc(
+        cls,
+        request: storage_pb2.StartResumableWriteRequest,
+        bucket: storage_pb2.Bucket,
+        context,
+    ):
         metadata = request.write_object_spec.resource
-        # Add some annotations to make it easier to write tests
         metadata.metadata["x_emulator_upload"] = "resumable"
-        if request.HasField("object_checksums"):
-            cs = request.object_checksums
-            if cs.HasField("crc32c"):
-                metadata.metadata[
-                    "x_emulator_crc32c"
-                ] = testbench.common.rest_crc32c_from_proto(cs.crc32c)
-            else:
-                metadata.metadata["x_emulator_no_crc32c"] = "true"
-            if cs.md5_hash is not None and cs.md5_hash != b"":
-                metadata.metadata[
-                    "x_emulator_md5"
-                ] = testbench.common.rest_md5_from_proto(cs.md5_hash)
-            else:
-                metadata.metadata["x_emulator_no_md5"] = "true"
-        else:
-            metadata.metadata["x_emulator_no_crc32c"] = "true"
-            metadata.metadata["x_emulator_no_md5"] = "true"
         upload_id = cls.__create_upload_id(bucket.name, metadata.name)
         fake_request = testbench.common.FakeRequest.init_protobuf(
             request.write_object_spec, context
         )
         fake_request.update_protobuf(request.write_object_spec, context)
         return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
+
+    @classmethod
+    def __init_first_write_grpc(
+        cls,
+        request: storage_pb2.WriteObjectRequest,
+        bucket: storage_pb2.Bucket,
+        context,
+    ):
+        metadata = request.write_object_spec.resource
+        metadata.metadata["x_emulator_upload"] = "grpc"
+        upload_id = cls.__create_upload_id(bucket.name, metadata.name)
+        fake_request = testbench.common.FakeRequest.init_protobuf(request, context)
+        fake_request.update_protobuf(request.write_object_spec, context)
+        return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
+
+    @classmethod
+    def init_write_object_grpc(cls, db, request_iterator, context):
+        """Process an WriteObject streaming RPC, returning the upload object associated with it."""
+        upload, object_checksums, is_resumable = None, None, False
+        for request in request_iterator:
+            first_message = request.WhichOneof("first_message")
+            if first_message == "upload_id":
+                upload = db.get_upload(request.upload_id, context)
+                if upload.complete:
+                    testbench.error.invalid(
+                        "Uploading to a completed upload %s" % upload.upload_id, context
+                    )
+                    return None, False
+                is_resumable = True
+            elif first_message == "write_object_spec":
+                bucket = db.get_bucket_without_generation(
+                    request.write_object_spec.resource.bucket, context
+                ).metadata
+                upload = cls.__init_first_write_grpc(request, bucket, context)
+            elif upload is None:
+                testbench.error.invalid("Upload missing a first_message field", context)
+                return None, False
+
+            if request.HasField("object_checksums"):
+                # The object checksums may appear only in the first message *or* the last message, but not both
+                if first_message is None and request.finish_write == False:
+                    testbench.error.invalid(
+                        "Object checksums can be included only in the first or last message",
+                        context,
+                    )
+                    return None, False
+                if object_checksums is not None:
+                    testbench.error.invalid(
+                        "Duplicate object checksums in upload",
+                        context,
+                    )
+                    return None, False
+                object_checksums = request.object_checksums
+
+            data = request.WhichOneof("data")
+            if data == "checksummed_data":
+                checksummed_data = request.checksummed_data
+            else:
+                print("WARNING unexpected data field %s\n" % data)
+                continue
+            content = checksummed_data.content
+            crc32c_hash = (
+                checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None
+            )
+            if crc32c_hash is not None:
+                actual_crc32c = crc32c.crc32c(content)
+                if actual_crc32c != crc32c_hash:
+                    testbench.error.mismatch(
+                        "crc32c in checksummed data",
+                        crc32c_hash,
+                        actual_crc32c,
+                        context,
+                    )
+                    return None, False
+            upload.media += checksummed_data.content
+            if request.finish_write:
+                upload.complete = True
+
+        if upload is None:
+            testbench.error.invalid("Upload missing a first_message field", context)
+            return None, False
+        if object_checksums is None:
+            upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
+            upload.metadata.metadata["x_emulator_no_md5"] = "true"
+            return upload, is_resumable
+        if object_checksums.HasField("crc32c"):
+            upload.metadata.metadata[
+                "x_emulator_crc32c"
+            ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+        else:
+            upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
+        if object_checksums.md5_hash is not None and object_checksums.md5_hash != b"":
+            upload.metadata.metadata[
+                "x_emulator_md5"
+            ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+        else:
+            upload.metadata.metadata["x_emulator_no_md5"] = "true"
+        return upload, is_resumable
 
     def resumable_status_rest(self):
         response = flask.make_response()

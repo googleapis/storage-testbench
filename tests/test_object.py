@@ -36,8 +36,7 @@ class TestObject(unittest.TestCase):
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket"})
         )
-        bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.bucket = bucket
+        self.bucket, _ = gcs.bucket.Bucket.init(request, None)
 
     def test_init_media(self):
         request = testbench.common.FakeRequest(
@@ -255,7 +254,7 @@ class TestObject(unittest.TestCase):
     ]
 
     def test_grpc_to_rest(self):
-        # Make sure that object created by `gRPC` works with `REST`'s request.
+        """Make sure that objects created by `gRPC` work with `REST`'s requests."""
         spec = storage_pb2.WriteObjectSpec(
             resource=storage_pb2.Object(
                 name="test-object-name",
@@ -287,14 +286,21 @@ class TestObject(unittest.TestCase):
                 ),
             )
         )
-        request = storage_pb2.WriteObjectRequest(write_object_spec=spec)
-        upload = gcs.holder.DataHolder.init_resumable_grpc(
-            request, self.bucket.metadata, ""
+        request = storage_pb2.WriteObjectRequest(
+            write_object_spec=spec,
+            checksummed_data=storage_pb2.ChecksummedData(content=b"123456789"),
+            finish_write=True,
         )
+        context = unittest.mock.Mock()
+        db = unittest.mock.Mock()
+        db.get_bucket_without_generation = unittest.mock.MagicMock(
+            return_value=self.bucket
+        )
+        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [request], context)
         blob, _ = gcs.object.Object.init(
             upload.request,
             upload.metadata,
-            b"123456789",
+            upload.media,
             upload.bucket,
             False,
             "FakeContext",
@@ -367,10 +373,10 @@ class TestObject(unittest.TestCase):
                 "metadata": {
                     "label0": "value0",
                     # The emulator adds useful annotations
-                    "x_emulator_upload": "resumable",
+                    "x_emulator_upload": "grpc",
                     "x_emulator_no_crc32c": "true",
                     "x_emulator_no_md5": "true",
-                    "x_testbench_upload": "resumable",
+                    "x_testbench_upload": "grpc",
                     "x_testbench_no_crc32c": "true",
                     "x_testbench_no_md5": "true",
                 },
