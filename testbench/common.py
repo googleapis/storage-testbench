@@ -73,11 +73,6 @@ class FakeRequest(types.SimpleNamespace):
         "if_metageneration_not_match": "ifMetagenerationNotMatch",
     }
 
-    protobuf_scalar_to_json_args = {
-        "predefined_acl": "predefinedAcl",
-        "generation": "generation",
-    }
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -131,6 +126,8 @@ class FakeRequest(types.SimpleNamespace):
             if hasattr(request, proto_field) and request.HasField(proto_field):
                 self.args[args_field] = getattr(request, proto_field)
                 setattr(self, proto_field, getattr(request, proto_field))
+            else:
+                setattr(self, proto_field, None)
 
         if hasattr(request, "generation"):
             self.args["generation"] = request.generation
@@ -141,6 +138,8 @@ class FakeRequest(types.SimpleNamespace):
                 request.predefined_acl
             ]
             self.predefined_acl = request.predefined_acl
+        else:
+            self.predefined_acl = None
 
         csek_field = "common_object_request_params"
         if hasattr(request, csek_field):
@@ -151,7 +150,7 @@ class FakeRequest(types.SimpleNamespace):
             self.headers["x-goog-encryption-key"] = key_b64
             self.headers["x-goog-encryption-key-sha256"] = key_sha256_b64
             setattr(self, csek_field, getattr(request, csek_field))
-        elif not hasattr(self, csek_field):
+        else:
             setattr(
                 self,
                 csek_field,

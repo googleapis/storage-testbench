@@ -215,8 +215,6 @@ class TestCommonUtils(unittest.TestCase):
         class MockContext(object):
             pass
 
-        key_bytes = b"\001\002\003\004\005\006\007\010"
-        key_sh256_bytes = hashlib.sha256(key_bytes).digest()
         protobuf_request = storage_pb2.ReadObjectRequest(
             bucket="projects/_/buckets/bucket-name",
             object="object",
@@ -225,6 +223,11 @@ class TestCommonUtils(unittest.TestCase):
         request = testbench.common.FakeRequest.init_protobuf(
             protobuf_request, MockContext()
         )
+        self.assertIsNone(request.if_generation_match)
+        self.assertIsNone(request.if_generation_not_match)
+        self.assertIsNone(request.if_metageneration_match)
+        self.assertIsNone(request.if_metageneration_not_match)
+        self.assertIsNone(request.predefined_acl)
         self.assertEqual(request.generation, 0)
         p = request.common_object_request_params
         self.assertEqual(p.encryption_algorithm, "")
