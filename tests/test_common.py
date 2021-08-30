@@ -411,6 +411,28 @@ class TestCommonUtils(unittest.TestCase):
             testbench.common.rest_patch({"a": {"b": "c"}}, {"a": {"b": {"ooops": 7}}})
         self.assertIn("Type mismatch at a.b", "%s" % ex.exception)
 
+    def test_bucket_to_from_proto(self):
+        self.assertIsNone(testbench.common.bucket_name_from_proto(None))
+        self.assertEqual(
+            "bucket-name", testbench.common.bucket_name_from_proto("bucket-name")
+        )
+        self.assertEqual(
+            "bucket-name",
+            testbench.common.bucket_name_from_proto("projects/_/buckets/bucket-name"),
+        )
+        self.assertEqual(
+            "bucket-name",
+            testbench.common.bucket_name_from_proto(
+                testbench.common.bucket_name_to_proto("bucket-name")
+            ),
+        )
+        self.assertEqual(
+            "bucket.example.com",
+            testbench.common.bucket_name_from_proto(
+                testbench.common.bucket_name_to_proto("bucket.example.com")
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

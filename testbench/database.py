@@ -68,8 +68,13 @@ class Database:
             metageneration, match, not_match, True, context
         )
 
+    def __bucket_key(self, bucket_name, context):
+        # TODO(#58) - remove this assert when we support gRPC operations
+        assert context is None
+        return testbench.common.bucket_name_to_proto(bucket_name)
+
     def get_bucket_without_generation(self, bucket_name, context):
-        bucket = self.buckets.get(bucket_name)
+        bucket = self.buckets.get(self.__bucket_key(bucket_name, context))
         if bucket is None:
             testbench.error.notfound("Bucket %s" % bucket_name, context)
         return bucket
@@ -108,7 +113,7 @@ class Database:
         bucket_name = os.environ.get("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         if bucket_name is None:
             return
-        if self.buckets.get(bucket_name) is None:
+        if self.buckets.get(self.__bucket_key(bucket_name, context)) is None:
             request = testbench.common.FakeRequest(
                 args={}, data=json.dumps({"name": bucket_name})
             )
@@ -120,7 +125,7 @@ class Database:
     # === OBJECT === #
 
     def __get_bucket_for_object(self, bucket_name, context):
-        bucket = self.objects.get(bucket_name)
+        bucket = self.objects.get(self.__bucket_key(bucket_name, context))
         if bucket is None:
             testbench.error.notfound("Bucket %s" % bucket_name, context)
         return bucket
@@ -146,6 +151,18 @@ class Database:
             include_trailing_delimiter,
         )
 
+    def __get_live_generation(self, bucket_name, object_name, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        return self.live_generations[bucket_key].get(object_name)
+
+    def __set_live_generation(self, bucket_name, object_name, generation, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        self.live_generations[bucket_key][object_name] = generation
+
+    def __del_live_generation(self, bucket_name, object_name, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        self.live_generations[bucket_key].pop(object_name, None)
+
     def list_object(self, request, bucket_name, context):
         bucket = self.__get_bucket_for_object(bucket_name, context)
         (
@@ -161,8 +178,8 @@ class Database:
         for obj in bucket.values():
             generation = obj.metadata.generation
             name = obj.metadata.name
-            if not versions and generation != self.live_generations[bucket_name].get(
-                name
+            if not versions and generation != self.__get_live_generation(
+                bucket_name, name, context
             ):
                 continue
             if name.find(prefix) != 0:
@@ -187,7 +204,9 @@ class Database:
             request, is_source, context
         )
         if generation == 0:
-            generation = self.live_generations[bucket_name].get(object_name, 0)
+            generation = self.__get_live_generation(bucket_name, object_name, context)
+            if generation is None:
+                generation = 0
         match, not_match = testbench.generation.extract_precondition(
             request, False, is_source, context
         )
@@ -227,16 +246,18 @@ class Database:
         name = blob.metadata.name
         generation = blob.metadata.generation
         bucket["%s#%d" % (name, generation)] = blob
-        self.live_generations[bucket_name][name] = generation
+        self.__set_live_generation(bucket_name, name, generation, context)
 
     def delete_object(self, request, bucket_name, object_name, context):
         _ = self.get_object(request, bucket_name, object_name, False, context)
         generation = testbench.generation.extract_generation(request, False, context)
-        live_generation = self.live_generations[bucket_name].get(object_name)
+        live_generation = self.__get_live_generation(bucket_name, object_name, context)
         if generation == 0 or live_generation == generation:
-            self.live_generations[bucket_name].pop(object_name, None)
+            self.__del_live_generation(bucket_name, object_name, context)
         if generation != 0:
-            del self.objects[bucket_name]["%s#%d" % (object_name, generation)]
+            self.objects[self.__bucket_key(bucket_name, context)].pop(
+                "%s#%d" % (object_name, generation), None
+            )
 
     # === UPLOAD === #
 

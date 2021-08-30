@@ -169,7 +169,7 @@ class Bucket:
         rest = testbench.common.rest_adjust(
             rest,
             {
-                "name": lambda x: ("name", x),
+                "name": lambda x: ("name", testbench.common.bucket_name_to_proto(x)),
                 "id": lambda x: ("bucketId", x),
                 "kind": lambda x: (None, None),
                 "etag": lambda x: (None, None),
@@ -283,20 +283,20 @@ class Bucket:
         return lc
 
     @classmethod
-    def __postprocess_rest_bucket_acl(cls, bucket_name, acl):
+    def __postprocess_rest_bucket_acl(cls, bucket_id, acl):
         copy = acl.copy()
         copy["kind"] = "storage#bucketAccessControl"
-        copy["bucket"] = bucket_name
+        copy["bucket"] = bucket_id
         copy["etag"] = hashlib.md5(
             "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
         ).hexdigest()
         return copy
 
     @classmethod
-    def __postprocess_rest_default_object_acl(cls, bucket_name, acl):
+    def __postprocess_rest_default_object_acl(cls, bucket_id, acl):
         copy = acl.copy()
         copy["kind"] = "storage#objectAccessControl"
-        copy["bucket"] = bucket_name
+        copy["bucket"] = bucket_id
         copy["etag"] = hashlib.md5(
             "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
         ).hexdigest()
@@ -304,11 +304,12 @@ class Bucket:
 
     @classmethod
     def __postprocess_rest(cls, data):
-        bucket_name = data["name"]
+        bucket_id = testbench.common.bucket_name_from_proto(data["name"])
         data = testbench.common.rest_adjust(
             data,
             {
-                "bucketId": lambda x: ("id", x),
+                "name": lambda x: ("name", bucket_id),
+                "bucketId": lambda x: ("id", bucket_id),
                 "project": lambda x: ("projectNumber", x.replace("project/", "")),
                 "createTime": lambda x: ("timeCreated", x),
                 "updateTime": lambda x: ("updated", x),
@@ -326,12 +327,12 @@ class Bucket:
                 ),
                 "acl": lambda x: (
                     "acl",
-                    [Bucket.__postprocess_rest_bucket_acl(bucket_name, a) for a in x],
+                    [Bucket.__postprocess_rest_bucket_acl(bucket_id, a) for a in x],
                 ),
                 "defaultObjectAcl": lambda x: (
                     "defaultObjectAcl",
                     [
-                        Bucket.__postprocess_rest_default_object_acl(bucket_name, a)
+                        Bucket.__postprocess_rest_default_object_acl(bucket_id, a)
                         for a in x
                     ],
                 ),
@@ -386,7 +387,9 @@ class Bucket:
         time_created = datetime.datetime.now()
         metadata = cls.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(metadata, storage_pb2.Bucket())
-        cls.__validate_json_bucket_name(metadata.name, context)
+        cls.__validate_json_bucket_name(
+            testbench.common.bucket_name_from_proto(metadata.name), context
+        )
         default_projection = "noAcl"
         if len(metadata.acl) != 0 or len(metadata.default_object_acl) != 0:
             default_projection = "full"
@@ -423,7 +426,7 @@ class Bucket:
                 metadata, predefined_default_object_acl, context
             )
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
-        metadata.bucket_id = metadata.name
+        metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
         metadata.project = "project/" + testbench.acl.PROJECT_NUMBER
         metadata.metageneration = 1
         metadata.create_time.FromDatetime(time_created)

@@ -604,3 +604,16 @@ def rest_patch(target: dict, patch: dict, path: list = None) -> dict:
         else:
             raise Exception("Type mismatch at %s" % ".".join(location))
     return patched
+
+
+def bucket_name_from_proto(bucket_name):
+    if bucket_name is None:
+        return None
+    prefix = "projects/_/buckets/"
+    if bucket_name.startswith(prefix):
+        return bucket_name[len(prefix) :]
+    return bucket_name[:]
+
+
+def bucket_name_to_proto(bucket_name):
+    return "projects/_/buckets/" + bucket_name

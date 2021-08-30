@@ -77,9 +77,13 @@ class Object:
     def __postprocess_object_metadata(cls, metadata):
         """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
         # For some fields the storage/v2 name just needs to change slightly.
+        bucket_id = testbench.common.bucket_name_from_proto(
+            metadata.get("bucket", None)
+        )
         metadata = testbench.common.rest_adjust(
             metadata,
             {
+                "bucket": lambda x: ("bucket", bucket_id),
                 "createTime": lambda x: ("timeCreated", x),
                 "updateTime": lambda x: ("updated", x),
                 "kmsKey": lambda x: ("kmsKeyName", x),
@@ -107,7 +111,8 @@ class Object:
         if "acl" in metadata:
             for a in metadata["acl"]:
                 a["kind"] = "storage#objectAccessControl"
-                a["bucket"] = metadata.get("bucket", None)
+                if bucket_id is not None:
+                    a["bucket"] = bucket_id
                 a["object"] = metadata.get("name", None)
                 a["generation"] = metadata.get("generation", None)
         return metadata
@@ -189,7 +194,7 @@ class Object:
         if object_name is None:
             testbench.error.missing("name", None)
         metadata = {
-            "bucket": bucket.name,
+            "bucket": testbench.common.bucket_name_from_proto(bucket.name),
             "name": object_name,
             "metadata": {"x_emulator_upload": "simple"},
         }
@@ -212,7 +217,7 @@ class Object:
                 metadata.get("contentType"),
                 None,
             )
-        metadata["bucket"] = bucket.name
+        metadata["bucket"] = testbench.common.bucket_name_from_proto(bucket.name)
         if "contentType" not in metadata:
             metadata["contentType"] = media_headers.get("content-type")
         metadata["metadata"] = (

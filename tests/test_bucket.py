@@ -73,7 +73,8 @@ class TestBucket(unittest.TestCase):
             data=json.dumps({"name": "bucket"}),
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.assertEqual(bucket.metadata.name, "bucket")
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/bucket")
+        self.assertEqual(bucket.metadata.bucket_id, "bucket")
         self.assertLess(0, bucket.metadata.metageneration)
 
     def test_init_validates_names(self):
@@ -83,7 +84,8 @@ class TestBucket(unittest.TestCase):
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(
-            bucket.metadata.name, "short.names.for.domain.buckets.example.com"
+            bucket.metadata.name,
+            "projects/_/buckets/short.names.for.domain.buckets.example.com",
         )
         invalid_names = [
             "goog-is-not-a-valid-prefix",
@@ -157,7 +159,7 @@ class TestBucket(unittest.TestCase):
         bucket, projection = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(projection, "full")
         # Verify the name is stored in the correct format for gRPC
-        self.assertEqual(bucket.metadata.name, "test-bucket-name")
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
         bucket_rest = bucket.rest()
         # Some fields must exist in the REST message
         for required in ["metageneration", "kind", "name"]:
@@ -206,7 +208,7 @@ class TestBucket(unittest.TestCase):
             ),
         )
         bucket, projection = gcs.bucket.Bucket.init(request, None)
-        self.assertEqual(bucket.metadata.name, "bucket")
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/bucket")
         self.assertEqual(projection, "full")
 
         def acl_sort(x):
@@ -289,7 +291,7 @@ class TestBucket(unittest.TestCase):
         )
         bucket.patch(request, None)
         # REST should only update modifiable field.
-        self.assertEqual(bucket.metadata.name, "bucket")
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/bucket")
         # REST can update a part of map field.
         self.assertIsNone(bucket.metadata.labels.get("init"))
         self.assertEqual(bucket.metadata.labels.get("patch"), "true")

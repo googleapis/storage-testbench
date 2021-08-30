@@ -727,7 +727,7 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
-    db.insert_object(flask.request, bucket.name, blob, None)
+    db.insert_object(flask.request, bucket_name, blob, None)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(
         blob.rest_metadata(), projection, fields
