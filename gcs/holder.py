@@ -142,10 +142,6 @@ class DataHolder(types.SimpleNamespace):
         fake_request.update_protobuf(request.write_object_spec, context)
         return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
 
-    @classmethod
-    def create_upload_id(cls, bucket_name, object_name):
-        return cls.__create_upload_id(bucket_name, object_name)
-
     def resumable_status_rest(self):
         response = flask.make_response()
         if len(self.media) > 1 and not self.complete:
