@@ -16,6 +16,8 @@
 
 """Unit test for utils"""
 
+import base64
+import hashlib
 import flask
 import json
 import unittest
@@ -75,15 +77,159 @@ class TestCommonUtils(unittest.TestCase):
         }
         self.assertEqual(request.args, {**request.args, **subset})
 
-    def test_fake_request_init_protobuf(self):
+    def test_fake_request_init_protobuf_start_resumable_write(self):
         class MockContext(object):
             pass
 
-        protobuf_request = storage_pb2.QueryWriteStatusRequest()
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_sh256_bytes = hashlib.sha256(key_bytes).digest()
+        protobuf_request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+                predefined_acl=storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE,
+                if_generation_match=1,
+                if_generation_not_match=2,
+                if_metageneration_match=3,
+                if_metageneration_not_match=4,
+            ),
+            common_object_request_params=storage_pb2.CommonObjectRequestParams(
+                encryption_algorithm="RSA256",
+                encryption_key_bytes=key_bytes,
+                encryption_key_sha256_bytes=key_sh256_bytes,
+            ),
+            common_request_params=storage_pb2.CommonRequestParams(
+                user_project="projects/123456",
+            ),
+        )
+
         request = testbench.common.FakeRequest.init_protobuf(
             protobuf_request, MockContext()
         )
-        self.assertIsNotNone(request)
+        expected_headers = {
+            "x-goog-encryption-algorithm": "RSA256",
+            "x-goog-encryption-key": base64.b64encode(key_bytes),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+        }
+        self.assertEqual(request.headers, {**request.headers, **expected_headers})
+        self.assertEqual(request.args, {"userProject": "123456"})
+
+        request.update_protobuf(protobuf_request.write_object_spec, MockContext())
+        expected_args = {
+            "ifGenerationMatch": 1,
+            "ifGenerationNotMatch": 2,
+            "ifMetagenerationMatch": 3,
+            "ifMetagenerationNotMatch": 4,
+            "predefinedAcl": "projectPrivate",
+        }
+        self.assertEqual(request.args, {**request.args, **expected_args})
+
+    def test_fake_request_init_protobuf_write_object(self):
+        class MockContext(object):
+            pass
+
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_sh256_bytes = hashlib.sha256(key_bytes).digest()
+        protobuf_request = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+                predefined_acl=storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE,
+                if_generation_match=1,
+                if_generation_not_match=2,
+                if_metageneration_match=3,
+                if_metageneration_not_match=4,
+            ),
+            common_object_request_params=storage_pb2.CommonObjectRequestParams(
+                encryption_algorithm="RSA256",
+                encryption_key_bytes=key_bytes,
+                encryption_key_sha256_bytes=key_sh256_bytes,
+            ),
+            common_request_params=storage_pb2.CommonRequestParams(
+                user_project="projects/123456",
+            ),
+        )
+
+        request = testbench.common.FakeRequest.init_protobuf(
+            protobuf_request, MockContext()
+        )
+        expected_headers = {
+            "x-goog-encryption-algorithm": "RSA256",
+            "x-goog-encryption-key": base64.b64encode(key_bytes),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+        }
+        self.assertEqual(request.headers, {**request.headers, **expected_headers})
+        self.assertEqual(request.args, {"userProject": "123456"})
+
+        request.update_protobuf(protobuf_request.write_object_spec, MockContext())
+        expected_args = {
+            "ifGenerationMatch": 1,
+            "ifGenerationNotMatch": 2,
+            "ifMetagenerationMatch": 3,
+            "ifMetagenerationNotMatch": 4,
+            "predefinedAcl": "projectPrivate",
+        }
+        self.assertEqual(request.args, {**request.args, **expected_args})
+
+    def test_fake_request_init_protobuf_read_object(self):
+        class MockContext(object):
+            pass
+
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_sh256_bytes = hashlib.sha256(key_bytes).digest()
+        protobuf_request = storage_pb2.ReadObjectRequest(
+            bucket="projects/_/buckets/bucket-name",
+            object="object",
+            generation=7,
+            if_generation_match=1,
+            if_generation_not_match=2,
+            if_metageneration_match=3,
+            if_metageneration_not_match=4,
+            common_object_request_params=storage_pb2.CommonObjectRequestParams(
+                encryption_algorithm="RSA256",
+                encryption_key_bytes=key_bytes,
+                encryption_key_sha256_bytes=key_sh256_bytes,
+            ),
+            common_request_params=storage_pb2.CommonRequestParams(
+                user_project="projects/123456",
+            ),
+        )
+
+        request = testbench.common.FakeRequest.init_protobuf(
+            protobuf_request, MockContext()
+        )
+        expected_headers = {
+            "x-goog-encryption-algorithm": "RSA256",
+            "x-goog-encryption-key": base64.b64encode(key_bytes),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+        }
+        self.assertEqual(request.headers, {**request.headers, **expected_headers})
+        expected_args = {
+            "ifGenerationMatch": 1,
+            "ifGenerationNotMatch": 2,
+            "ifMetagenerationMatch": 3,
+            "ifMetagenerationNotMatch": 4,
+            "userProject": "123456",
+        }
+        self.assertEqual(request.args, {**request.args, **expected_args})
+
+    def test_fake_request_init_protobuf_read_object_simple(self):
+        class MockContext(object):
+            pass
+
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_sh256_bytes = hashlib.sha256(key_bytes).digest()
+        protobuf_request = storage_pb2.ReadObjectRequest(
+            bucket="projects/_/buckets/bucket-name",
+            object="object",
+        )
+
+        request = testbench.common.FakeRequest.init_protobuf(
+            protobuf_request, MockContext()
+        )
+        self.assertEqual(request.generation, 0)
+        p = request.common_object_request_params
+        self.assertEqual(p.encryption_algorithm, "")
+        self.assertEqual(p.encryption_key_bytes, b"")
+        self.assertEqual(p.encryption_key_sha256_bytes, b"")
 
     def test_nested_key(self):
         doc = {
