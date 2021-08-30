@@ -29,6 +29,7 @@ from grpc import StatusCode
 from google.protobuf import timestamp_pb2
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
+from google.storage.v2 import storage_pb2
 
 import testbench
 
@@ -56,23 +57,20 @@ def remove_index(string):
 
 
 class FakeRequest(types.SimpleNamespace):
+    """
+    Adapt requests to JSON API requests.
+
+    Converts gRPC and XML requests to an equivalent representation as a JSON request.
+
+    TODO(#86) - this is used as a helper to treat some XML and gRPC requests as-if
+        they where JSON requests, but seems like the work is incomplete.
+    """
+
     protobuf_wrapper_to_json_args = {
         "if_generation_match": "ifGenerationMatch",
         "if_generation_not_match": "ifGenerationNotMatch",
         "if_metageneration_match": "ifMetagenerationMatch",
         "if_metageneration_not_match": "ifMetagenerationNotMatch",
-        "if_source_generation_match": "ifSourceGenerationMatch",
-        "if_source_generation_not_match": "ifSourceGenerationNotMatch",
-        "if_source_metageneration_match": "ifSourceMetagenerationMatch",
-        "if_source_metageneration_not_match": "ifSourceMetagenerationNotMatch",
-    }
-
-    protobuf_scalar_to_json_args = {
-        "predefined_acl": "predefinedAcl",
-        "destination_predefined_acl": "destinationPredefinedAcl",
-        "generation": "generation",
-        "source_generation": "sourceGeneration",
-        "projection": "projection",
     }
 
     def __init__(self, **kwargs):
@@ -102,16 +100,25 @@ class FakeRequest(types.SimpleNamespace):
                 args[field_json] = headers[field_xml]
         return args
 
-    def HasField(self, field):
-        return hasattr(self, field) and getattr(self, field) is not None
+    _PREDEFINED_ACL_MAP = {
+        storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED: "",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_AUTHENTICATED_READ: "authenticatedREad",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL: "bucketOwnerFullControl",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_BUCKET_OWNER_READ: "bucketOwnerRead",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PRIVATE: "private",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE: "projectPrivate",
+        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PUBLIC_READ: "publicRead",
+    }
 
     @classmethod
     def init_protobuf(cls, request, context):
+        assert context is not None
         fake_request = FakeRequest(args={}, headers={})
         fake_request.update_protobuf(request, context)
         return fake_request
 
     def update_protobuf(self, request, context):
+        assert context is not None
         for (
             proto_field,
             args_field,
@@ -119,13 +126,23 @@ class FakeRequest(types.SimpleNamespace):
             if hasattr(request, proto_field) and request.HasField(proto_field):
                 self.args[args_field] = getattr(request, proto_field)
                 setattr(self, proto_field, getattr(request, proto_field))
-        for (
-            proto_field,
-            args_field,
-        ) in FakeRequest.protobuf_scalar_to_json_args.items():
-            if hasattr(request, proto_field):
-                self.args[args_field] = getattr(request, proto_field)
-                setattr(self, proto_field, getattr(request, proto_field))
+            else:
+                setattr(self, proto_field, None)
+
+        if hasattr(request, "generation"):
+            self.args["generation"] = request.generation
+            self.generation = request.generation
+        else:
+            self.generation = 0
+
+        if hasattr(request, "predefined_acl"):
+            self.args["predefinedAcl"] = FakeRequest._PREDEFINED_ACL_MAP[
+                request.predefined_acl
+            ]
+            self.predefined_acl = request.predefined_acl
+        else:
+            self.predefined_acl = None
+
         csek_field = "common_object_request_params"
         if hasattr(request, csek_field):
             algorithm, key_b64, key_sha256_b64 = testbench.csek.extract(
@@ -135,16 +152,23 @@ class FakeRequest(types.SimpleNamespace):
             self.headers["x-goog-encryption-key"] = key_b64
             self.headers["x-goog-encryption-key-sha256"] = key_sha256_b64
             setattr(self, csek_field, getattr(request, csek_field))
-        elif not hasattr(self, csek_field):
+        else:
             setattr(
                 self,
                 csek_field,
                 types.SimpleNamespace(
                     encryption_algorithm="",
-                    encryption_key_bytes="",
-                    encryption_key_sha256_bytes="",
+                    encryption_key_bytes=b"",
+                    encryption_key_sha256_bytes=b"",
                 ),
             )
+
+        if hasattr(request, "common_request_params"):
+            self.common_request_params = request.common_request_params
+            project = self.common_request_params.user_project
+            if project.startswith("projects/"):
+                project = project[len("projects/") :]
+            self.args["userProject"] = project
 
 
 # === REST === #
