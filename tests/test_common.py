@@ -234,6 +234,30 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(p.encryption_key_bytes, b"")
         self.assertEqual(p.encryption_key_sha256_bytes, b"")
 
+    def test_fake_request_init_protobuf_write_object_simple(self):
+        class MockContext(object):
+            pass
+
+        protobuf_request = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            ),
+        )
+
+        request = testbench.common.FakeRequest.init_protobuf(
+            protobuf_request, MockContext()
+        )
+        self.assertIsNone(request.if_generation_match)
+        self.assertIsNone(request.if_generation_not_match)
+        self.assertIsNone(request.if_metageneration_match)
+        self.assertIsNone(request.if_metageneration_not_match)
+        self.assertIsNone(request.predefined_acl)
+        self.assertEqual(request.generation, 0)
+        p = request.common_object_request_params
+        self.assertEqual(p.encryption_algorithm, "")
+        self.assertEqual(p.encryption_key_bytes, b"")
+        self.assertEqual(p.encryption_key_sha256_bytes, b"")
+
     def test_nested_key(self):
         doc = {
             "name": "bucket",

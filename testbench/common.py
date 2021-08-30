@@ -132,6 +132,8 @@ class FakeRequest(types.SimpleNamespace):
         if hasattr(request, "generation"):
             self.args["generation"] = request.generation
             self.generation = request.generation
+        else:
+            self.generation = 0
 
         if hasattr(request, "predefined_acl"):
             self.args["predefinedAcl"] = FakeRequest._PREDEFINED_ACL_MAP[
