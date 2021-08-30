@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+from testbench import grpc_server
 import flask
 import httpbin
 import json
@@ -33,6 +34,8 @@ db = testbench.database.Database.init()
 # method names based on the JSON API
 retry_test = testbench.common.gen_retry_test_decorator(db)
 grpc_port = 0
+grpc_service = None
+
 
 # === DEFAULT ENTRY FOR REST SERVER === #
 root = flask.Flask(__name__)
@@ -128,6 +131,25 @@ def get_retry_test(test_id):
 def delete_retry_test(test_id):
     db.delete_retry_test(test_id)
     return flask.Response("Deleted {}".format(test_id), 200, content_type="text/plain")
+
+
+@root.route("/start_grpc")
+def start_grpc():
+    # We need to do this because `gunicorn` will spawn a new subprocess ( a worker )
+    # when running `Flask` server. If we start `gRPC` server before the spawn of
+    # the subprocess, it's nearly impossible to share the `database` with the new
+    # subprocess because Python will copy everything in the memory from the parent
+    # process to the subprocess ( So we have 2 separate instance of `database` ).
+    # The endpoint will start the `gRPC` server in the same subprocess so there is
+    # only one instance of `database`.
+    global grpc_port
+    global grpc_service
+    global db
+    if grpc_port == 0:
+        port = flask.request.args.get("port", "0")
+        grpc_port, grpc_service = testbench.grpc_server.run(int(port), db)
+        return str(grpc_port)
+    return str(grpc_port)
 
 
 # === WSGI APP TO HANDLE JSON API === #
