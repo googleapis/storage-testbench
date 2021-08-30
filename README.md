@@ -18,7 +18,18 @@ is expected to be used by Storage library maintainers.
     - [Check that the testbench is running](#check-that-the-testbench-is-running)
   - [Updating Proto Files](#updating-proto-files)
   - [Force Failures](#force-failures)
+    - [return-broken-stream](#return-broken-stream)
+    - [return-corrupted-data](#return-corrupted-data)
+    - [stall-always](#stall-always)
+    - [stall-at-256KiB](#stall-at-256kib)
+    - [return-503-after-256K](#return-503-after-256k)
+    - [return-503-after-256K/retry-N](#return-503-after-256kretry-n)
   - [Retry Test API](#retry-test-api)
+    - [Creating a new Retry Test](#creating-a-new-retry-test)
+    - [Get a Retry Test resource](#get-a-retry-test-resource)
+    - [Delete a Retry Test resource](#delete-a-retry-test-resource)
+    - [Causing a failure using x-retry-test-id header](#causing-a-failure-using-x-retry-test-id-header)
+    - [Forced Failures Supported](#forced-failures-supported)
 
 ## Issue Policy
 
@@ -67,7 +78,7 @@ It is useful as well to test features that are not yet deployed to production: y
 To start the testbench, run this command from a terminal:
 
 ```bash
-gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --reload --access-logfile - "emulator:run()"
+gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --reload --access-logfile - "testbench:run()"
 ```
 
 > ⚠️ Ensure that the virtual environment you created to install the dependencies is active.

@@ -26,7 +26,7 @@ import unittest
 from requests.models import iter_slices
 
 
-class TestEmulatorContinueAfterFaultInjection(unittest.TestCase):
+class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
         self.gunicorn = subprocess.Popen(
             [
@@ -36,7 +36,7 @@ class TestEmulatorContinueAfterFaultInjection(unittest.TestCase):
                 "--threads=2",
                 "--reload",
                 "--access-logfile=-",
-                "emulator:run()",
+                "testbench:run()",
             ],
             stderr=subprocess.PIPE,
             stdout=None,

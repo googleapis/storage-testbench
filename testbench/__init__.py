@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from testbench import (
+from . import (
     error,
     acl,
     common,
     csek,
     database,
     generation,
-    grpc_server,
     handle_gzip,
+    grpc_server,
+    rest_server,
 )
+
+run = rest_server._run

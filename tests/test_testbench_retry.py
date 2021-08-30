@@ -14,24 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for "retry" (should be "fault injection") operations in emulator.py."""
+"""Unit test for "retry" (should be "fault injection") operations in the testbench."""
 
 import json
 import os
 import re
 import unittest
 
-import emulator
 import testbench
+from testbench import rest_server
 
 
 UPLOAD_QUANTUM = 256 * 1024
 
 
-class TestEmulatorRetry(unittest.TestCase):
+class TestTestbenchRetry(unittest.TestCase):
     def setUp(self):
-        emulator.db.clear()
-        self.client = emulator.server.test_client()
+        rest_server.db.clear()
+        self.client = rest_server.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 
@@ -99,12 +99,12 @@ class TestEmulatorRetry(unittest.TestCase):
             "object_acl": OBJECT_ACL_OPERATIONS,
             "project": PROJECT_OPERATIONS,
         }
-        all = set(emulator.db.supported_methods)
+        all = set(rest_server.db.supported_methods)
         for name, operations in groups.items():
             self.assertEqual(all, all | operations)
 
     def test_retry_test_crud(self):
-        self.assertIn("storage.buckets.list", emulator.db.supported_methods)
+        self.assertIn("storage.buckets.list", rest_server.db.supported_methods)
         response = self.client.post(
             "/retry_test",
             data=json.dumps({"instructions": {"storage.buckets.list": ["return-429"]}}),

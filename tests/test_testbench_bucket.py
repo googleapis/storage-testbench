@@ -14,21 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for bucket operations in emulator.py."""
+"""Unit test for bucket operations in the testbench."""
 
 import json
 import os
-from testbench import database
+from testbench import rest_server
 from testbench.common import rest_adjust
 import unittest
 
-import emulator
 
-
-class TestEmulatorBucket(unittest.TestCase):
+class TestTestbenchBucket(unittest.TestCase):
     def setUp(self):
-        emulator.db.clear()
-        self.client = emulator.server.test_client()
+        rest_server.db.clear()
+        self.client = rest_server.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

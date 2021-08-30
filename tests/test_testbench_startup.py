@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Verify the emulator.py script starts a usable service."""
+"""Verify the testbench module starts a usable service."""
 
 import re
 import requests
@@ -23,7 +23,7 @@ import time
 import unittest
 
 
-class TestEmulatorStartup(unittest.TestCase):
+class TestTestbenchStartup(unittest.TestCase):
     def setUp(self):
         self.gunicorn = subprocess.Popen(
             [
@@ -33,7 +33,7 @@ class TestEmulatorStartup(unittest.TestCase):
                 "--threads=2",
                 "--reload",
                 "--access-logfile=-",
-                "emulator:run()",
+                "testbench:run()",
             ],
             stderr=subprocess.PIPE,
             stdout=None,
@@ -44,7 +44,7 @@ class TestEmulatorStartup(unittest.TestCase):
             [
                 "python3",
                 "-m",
-                "emulator",
+                "testbench",
                 "--port=0",
             ],
             stderr=subprocess.PIPE,
