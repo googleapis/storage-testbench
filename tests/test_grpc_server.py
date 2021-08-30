@@ -239,7 +239,7 @@ class TestGrpc(unittest.TestCase):
         )
 
         offset = 2 * QUANTUM
-        content = media[QUANTUM:]
+        content = media[2 * QUANTUM:]
         r3 = storage_pb2.WriteObjectRequest(
             write_offset=QUANTUM,
             checksummed_data=storage_pb2.ChecksummedData(
