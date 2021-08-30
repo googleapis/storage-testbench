@@ -335,7 +335,7 @@ class TestHolder(unittest.TestCase):
             upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
                 db, [request], context
             )
-            # Verify the annotations inserted by the emulator.
+            # Verify the annotations inserted by the testbench.
             annotations = upload.metadata.metadata
             expected = test["expected"]
             self.maxDiff = None
@@ -359,13 +359,13 @@ class TestHolder(unittest.TestCase):
         )
         request = storage_pb2.StartResumableWriteRequest(write_object_spec=spec)
         upload = gcs.holder.DataHolder.init_resumable_grpc(request, bucket.metadata, "")
-        # Verify the annotations inserted by the emulator.
+        # Verify the annotations inserted by the testbench.
         annotations = upload.metadata.metadata
         self.assertGreaterEqual(
             set(["x_emulator_upload", "x_emulator_no_crc32c", "x_emulator_no_md5"]),
             set(annotations.keys()),
         )
-        # Clear any annotations created by the emulator
+        # Clear any annotations created by the testbench.
         upload.metadata.metadata.clear()
         self.assertEqual(
             upload.metadata,

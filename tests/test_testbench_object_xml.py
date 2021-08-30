@@ -14,25 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for Object XML operations in emulator.py."""
+"""Unit test for Object XML operations in the testbench."""
 
 import json
 import os
 import unittest
 from werkzeug.test import create_environ
 
-import emulator
-import testbench
+from testbench import rest_server
 
 
-class TestEmulatorObjectXML(unittest.TestCase):
+class TestTestbenchObjectXML(unittest.TestCase):
     def setUp(self):
-        emulator.db.clear()
-        emulator.server.config["PREFERRED_URL_SCHEME"] = "https"
-        emulator.server.config["SERVER_NAME"] = "storage.googleapis.com"
-        emulator.root.config["PREFERRED_URL_SCHEME"] = "https"
-        emulator.root.config["SERVER_NAME"] = "storage.googleapis.com"
-        self.client = emulator.server.test_client(allow_subdomain_redirects=True)
+        rest_server.db.clear()
+        rest_server.server.config["PREFERRED_URL_SCHEME"] = "https"
+        rest_server.server.config["SERVER_NAME"] = "storage.googleapis.com"
+        rest_server.root.config["PREFERRED_URL_SCHEME"] = "https"
+        rest_server.root.config["SERVER_NAME"] = "storage.googleapis.com"
+        self.client = rest_server.server.test_client(allow_subdomain_redirects=True)
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

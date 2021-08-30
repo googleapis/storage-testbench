@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for Object Upload operations in emulator.py."""
+"""Unit test for Object Upload operations in the testbench."""
 
 import json
 import os
@@ -22,18 +22,17 @@ import re
 import unittest
 from werkzeug.test import create_environ
 
-import emulator
-import testbench
+from testbench import rest_server
 from tests.format_multipart_upload import format_multipart_upload
 
 
 UPLOAD_QUANTUM = 256 * 1024
 
 
-class TestEmulatorObjectUpload(unittest.TestCase):
+class TestTestbenchObjectUpload(unittest.TestCase):
     def setUp(self):
-        emulator.db.clear()
-        self.client = emulator.server.test_client()
+        rest_server.db.clear()
+        self.client = rest_server.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

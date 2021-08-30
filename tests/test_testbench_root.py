@@ -14,18 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit test for the root paths in emulator.py."""
+"""Unit test for the root paths in the testbench."""
 
 import os
 import unittest
 
-import emulator
+from testbench import rest_server
 
 
-class TestEmulatorRoot(unittest.TestCase):
+class TestTestbenchRoot(unittest.TestCase):
     def setUp(self):
-        emulator.db.clear()
-        self.client = emulator.server.test_client()
+        rest_server.db.clear()
+        self.client = rest_server.server.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

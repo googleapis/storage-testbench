@@ -198,7 +198,7 @@ PROJECTS_HANDLER_PATH = "/storage/v1/projects"
 
 def get_project(project_id):
     """Find a project and return the GcsProject object."""
-    # Dynamically create the projects. The GCS emulator does not have functions
+    # Dynamically create the projects. The GCS testbench does not have functions
     # to create projects, nor do we want to create such functions. The point is
     # to test the GCS client library, not the IAM client library.
     return VALID_PROJECTS.setdefault(project_id, GcsProject(project_id))

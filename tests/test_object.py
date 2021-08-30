@@ -372,7 +372,7 @@ class TestObject(unittest.TestCase):
                 "md5Hash": "JfnnlDI7RTiF9RgfG2JNCw==",
                 "metadata": {
                     "label0": "value0",
-                    # The emulator adds useful annotations
+                    # The testbench adds useful annotations
                     "x_emulator_upload": "grpc",
                     "x_emulator_no_crc32c": "true",
                     "x_emulator_no_md5": "true",
@@ -413,7 +413,7 @@ class TestObject(unittest.TestCase):
             "retentionExpirationTime": "2022-01-01T00:00:00Z",
             "temporaryHold": True,
             # These are a bit artificial, but good to test the
-            # emulator preserves valid fields.
+            # testbench preserves valid fields.
             "timeDeleted": "2021-07-01T01:02:03Z",
             "timeStorageClassUpdated": "2021-07-01T02:03:04Z",
             "storageClass": "regional",

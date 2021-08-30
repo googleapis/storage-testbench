@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+#
 # Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,18 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM python:3.9@sha256:8f642902ba368481c9aca0a100f08daf93793c6fa14d3002253ea3cd210383a7
 
-EXPOSE 9000
-WORKDIR /opt/storage-testbench
+from . import rest_server
 
-COPY . /opt/storage-testbench/
 
-RUN python3 -m pip install -r requirements.txt
-
-CMD ["gunicorn", \
-      "--bind", "localhost:9000", \
-      "--worker-class", "sync", \
-      "--threads", "10", \
-      "--access-logfile", "-", \
-      "testbench:run()"]
+if __name__ == "__main__":
+    rest_server._main()
