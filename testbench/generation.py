@@ -19,6 +19,20 @@ import testbench
 
 
 def extract_precondition(request, is_meta, is_source, context):
+    if context is not None:
+        assert is_source == False, "special object operations unimplemented over gRPC"
+
+        def normalize(proto_precondition):
+            return None if proto_precondition == 0 else proto_precondition
+
+        if is_meta:
+            return normalize(request.if_metageneration_match), normalize(
+                request.if_metageneration_not_match
+            )
+        return normalize(request.if_generation_match), normalize(
+            request.if_generation_not_match
+        )
+
     match_field, not_match_field = "", ""
     if is_meta:
         match_field = (

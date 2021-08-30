@@ -214,12 +214,12 @@ class TestHolder(unittest.TestCase):
             predefined_acl, storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
         )
         match, not_match = testbench.generation.extract_precondition(
-            upload.request, False, False, ""
+            upload.request, False, False, None
         )
         self.assertIsNone(match)
         self.assertEqual(not_match, 1)
         match, not_match = testbench.generation.extract_precondition(
-            upload.request, True, False, ""
+            upload.request, True, False, None
         )
         self.assertEqual(match, 2)
         self.assertEqual(not_match, 3)

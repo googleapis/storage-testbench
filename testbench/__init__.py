@@ -12,4 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from testbench import error, acl, common, csek, database, generation, handle_gzip
+from testbench import (
+    error,
+    acl,
+    common,
+    csek,
+    database,
+    generation,
+    grpc_server,
+    handle_gzip,
+)

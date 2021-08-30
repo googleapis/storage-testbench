@@ -69,8 +69,8 @@ class Database:
         )
 
     def __bucket_key(self, bucket_name, context):
-        # TODO(#58) - remove this assert when we support gRPC operations
-        assert context is None
+        if context is not None:
+            return bucket_name
         return testbench.common.bucket_name_to_proto(bucket_name)
 
     def get_bucket_without_generation(self, bucket_name, context):
