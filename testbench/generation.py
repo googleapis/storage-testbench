@@ -20,13 +20,7 @@ import testbench
 
 def extract_precondition(request, is_meta, is_source, context):
     if context is not None:
-        if is_source:
-            testbench.error.generic(
-                "special object operations unimplemented over gRPC",
-                rest_code=500,
-                grpc_code=grpc.StatusCode.UNIMPLEMENTED,
-                context=context,
-            )
+        assert is_source == False, "special object operations unimplemented over gRPC"
 
         def normalize(proto_precondition):
             return None if proto_precondition == 0 else proto_precondition
