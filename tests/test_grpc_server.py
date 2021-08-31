@@ -168,15 +168,23 @@ class TestGrpc(unittest.TestCase):
 
         def streamer():
             media = TestGrpc._create_block(517 * 1024).encode("utf-8")
-            id = start.upload_id
-            step = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
-            for offset in range(0, len(media), step):
-                upload_id = id
-                id = None
+            step = 256 * 1024
+            end = min(step, len(media))
+            content = media[0:end]
+            # The first message is special, it should have a an upload id.
+            yield storage_pb2.WriteObjectRequest(
+                upload_id=start.upload_id,
+                write_offset=0,
+                checksummed_data=storage_pb2.ChecksummedData(
+                    content=content, crc32c=crc32c.crc32c(content)
+                ),
+                finish_write=(end == len(media)),
+            )
+
+            for offset in range(step, len(media), step):
                 end = min(offset + step, len(media))
                 content = media[offset:end]
                 yield storage_pb2.WriteObjectRequest(
-                    upload_id=upload_id,
                     write_offset=offset,
                     checksummed_data=storage_pb2.ChecksummedData(
                         content=content, crc32c=crc32c.crc32c(content)
@@ -239,7 +247,7 @@ class TestGrpc(unittest.TestCase):
         )
 
         offset = 2 * QUANTUM
-        content = media[2 * QUANTUM:]
+        content = media[2 * QUANTUM :]
         r3 = storage_pb2.WriteObjectRequest(
             write_offset=QUANTUM,
             checksummed_data=storage_pb2.ChecksummedData(
