@@ -103,7 +103,7 @@ class DataHolder(types.SimpleNamespace):
         location = (
             request.host_url
             + "upload/storage/v1/b/%s/o?uploadType=resumable&upload_id=%s"
-            % (bucket.name, upload_id)
+            % (bucket.bucket_id, upload_id)
         )
         headers = {
             key.lower(): value
