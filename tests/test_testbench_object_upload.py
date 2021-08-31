@@ -497,6 +497,99 @@ class TestTestbenchObjectUpload(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def get_upload_id(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("location", response.headers)
+        location = response.headers.get("location")
+        self.assertIn("upload_id=", location)
+        match = re.search("[&?]upload_id=([^&]+)", location)
+        self.assertIsNotNone(match, msg=location)
+        return match.group(1)
+
+    def test_upload_pre_conditions_success(self):
+        FIXED_QUERY_STRING = {"uploadType": "resumable", "name": "zebra"}
+        TEST_CASES = {
+            "ifGenerationMatch": lambda object: {
+                "ifGenerationMatch": object["generation"]
+            },
+            "ifMetagenerationMatch": lambda object: {
+                "ifMetagenerationMatch": object["metageneration"]
+            },
+        }
+
+        for name, action in TEST_CASES.items():
+            # First create an object using the a simple upload, then try to
+            # overwrite it. Using a precondition that should succeed.
+            media = "How vexingly quick daft zebras jump!"
+            response = self.client.post(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={"uploadType": "media", "name": "zebra"},
+                content_type="text/plain",
+                data=media.encode("utf-8"),
+            )
+            self.assertEqual(response.status_code, 200)
+            insert_rest = json.loads(response.data)
+
+            media = "The quick brown fox jumps over the lazy dog"
+            response = self.client.post(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={**FIXED_QUERY_STRING, **action(insert_rest)},
+                content_type="application/json",
+                data=json.dumps({"name": "zebra"}),
+            )
+            upload_id = self.get_upload_id(response)
+
+            response = self.client.put(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={"upload_id": upload_id},
+                data=media,
+            )
+            self.assertEqual(response.status_code, 200, msg=name)
+            self.assertTrue(
+                response.headers.get("content-type").startswith("application/json")
+            )
+            upload_rest = json.loads(response.data)
+            self.assertNotEqual(
+                upload_rest.get("generation"), insert_rest["generation"]
+            )
+
+    def test_upload_pre_conditions_failure(self):
+        FIXED_QUERY_STRING = {"uploadType": "resumable", "name": "zebra"}
+        TEST_CASES = {
+            "ifGenerationMatch": lambda _: {"ifGenerationMatch": -1},
+            "ifMetagenerationMatch": lambda _: {"ifMetagenerationMatch": -1},
+        }
+
+        for name, action in TEST_CASES.items():
+            # First create an object using the a simple upload, then try to
+            # overwrite it. Using a precondition that should fail.
+            media = "How vexingly quick daft zebras jump!"
+            response = self.client.post(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={"uploadType": "media", "name": "zebra"},
+                content_type="text/plain",
+                data=media.encode("utf-8"),
+            )
+            self.assertEqual(response.status_code, 200)
+            insert_rest = json.loads(response.data)
+            self.assertIn("generation", insert_rest)
+
+            media = "The quick brown fox jumps over the lazy dog"
+            response = self.client.post(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={**FIXED_QUERY_STRING, **action(insert_rest)},
+                content_type="application/json",
+                data=json.dumps({"name": "zebra"}),
+            )
+            upload_id = self.get_upload_id(response)
+
+            response = self.client.put(
+                "/upload/storage/v1/b/bucket-name/o",
+                query_string={"upload_id": upload_id},
+                data=media,
+            )
+            self.assertEqual(response.status_code, 412, msg=name)
+
 
 if __name__ == "__main__":
     unittest.main()
