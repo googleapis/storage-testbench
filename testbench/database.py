@@ -241,7 +241,7 @@ class Database:
     def insert_object(self, request, bucket_name, blob, context):
         name = blob.metadata.name
         _, _, bucket = self._check_object_generation(
-            request, bucket_name, blob, False, context
+            request, bucket_name, name, False, context
         )
         generation = blob.metadata.generation
         bucket["%s#%d" % (name, generation)] = blob
