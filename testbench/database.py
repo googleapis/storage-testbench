@@ -196,7 +196,7 @@ class Database:
             items.append(obj.metadata)
         return items, list(prefixes)
 
-    def check_object_generation(
+    def _check_object_generation(
         self, request, bucket_name, object_name, is_source, context
     ):
         bucket = self.__get_bucket_for_object(bucket_name, context)
@@ -221,10 +221,10 @@ class Database:
         testbench.generation.check_precondition(
             metageneration, match, not_match, True, context
         )
-        return blob, generation
+        return blob, generation, bucket
 
     def get_object(self, request, bucket_name, object_name, is_source, context):
-        blob, generation = self.check_object_generation(
+        blob, generation, _ = self._check_object_generation(
             request, bucket_name, object_name, is_source, context
         )
         if blob is None:
@@ -239,11 +239,10 @@ class Database:
         return blob
 
     def insert_object(self, request, bucket_name, blob, context):
-        self.check_object_generation(
-            request, bucket_name, blob.metadata.name, False, context
-        )
-        bucket = self.__get_bucket_for_object(bucket_name, context)
         name = blob.metadata.name
+        _, _, bucket = self._check_object_generation(
+            request, bucket_name, blob, False, context
+        )
         generation = blob.metadata.generation
         bucket["%s#%d" % (name, generation)] = blob
         self.__set_live_generation(bucket_name, name, generation, context)

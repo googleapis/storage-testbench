@@ -19,7 +19,9 @@
 import crc32c
 import json
 import unittest
-from google.storage.v2 import storage_pb2
+import unittest.mock
+import grpc
+from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 import gcs
 import testbench
@@ -37,12 +39,12 @@ class TestGrpc(unittest.TestCase):
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
     @staticmethod
-    def _create_block(desired_kib):
+    def _create_block(desired_bytes):
         line = "A" * 127 + "\n"
-        return 1024 * int(desired_kib / len(line)) * line
+        return int(desired_bytes / len(line)) * line
 
     def test_read_object(self):
-        media = TestGrpc._create_block(5 * 1024).encode("utf-8")
+        media = TestGrpc._create_block(5 * 1024 * 1024).encode("utf-8")
         request = testbench.common.FakeRequest(
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
@@ -70,6 +72,271 @@ class TestGrpc(unittest.TestCase):
             crc32c.crc32c(media),
             crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
         )
+
+    def test_object_write(self):
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
+
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={
+                    "name": "object-name",
+                    "bucket": "projects/_/buckets/bucket-name",
+                },
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        offset = QUANTUM
+        content = media[QUANTUM : 2 * QUANTUM]
+        r2 = storage_pb2.WriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        offset = 2 * QUANTUM
+        content = media[QUANTUM:]
+        r3 = storage_pb2.WriteObjectRequest(
+            write_offset=QUANTUM,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=True,
+        )
+
+        write = self.grpc.WriteObject([r1, r2, r3], "fake-context")
+        self.assertIsNotNone(write)
+        self.assertIsNotNone(write.resource)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name", msg=write)
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_object_write_invalid_request(self):
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        write = self.grpc.WriteObject([], context)
+        context.abort.assert_called_once()
+        self.assertIsNone(write)
+
+    def test_object_write_incomplete(self):
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
+
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={
+                    "name": "object-name",
+                    "bucket": "projects/_/buckets/bucket-name",
+                },
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        write = self.grpc.WriteObject([r1], context)
+        context.abort.assert_called_once()
+        self.assertIsNone(write)
+
+    def test_resumable_write(self):
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context="fake-context",
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        def streamer():
+            media = TestGrpc._create_block(517 * 1024).encode("utf-8")
+            step = 256 * 1024
+            end = min(step, len(media))
+            content = media[0:end]
+            # The first message is special, it should have a an upload id.
+            yield storage_pb2.WriteObjectRequest(
+                upload_id=start.upload_id,
+                write_offset=0,
+                checksummed_data=storage_pb2.ChecksummedData(
+                    content=content, crc32c=crc32c.crc32c(content)
+                ),
+                finish_write=(end == len(media)),
+            )
+
+            for offset in range(step, len(media), step):
+                end = min(offset + step, len(media))
+                content = media[offset:end]
+                yield storage_pb2.WriteObjectRequest(
+                    write_offset=offset,
+                    checksummed_data=storage_pb2.ChecksummedData(
+                        content=content, crc32c=crc32c.crc32c(content)
+                    ),
+                    finish_write=(end == len(media)),
+                )
+
+        write = self.grpc.WriteObject(streamer(), "fake-context")
+        self.assertIsNotNone(write)
+        self.assertIsNotNone(write.resource)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name", msg=write)
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_resumable_resumes(self):
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context=unittest.mock.MagicMock(),
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
+
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+        write = self.grpc.WriteObject([r1], "fake-context")
+        self.assertIsNotNone(write)
+        self.assertEqual(write.committed_size, QUANTUM)
+
+        status = self.grpc.QueryWriteStatus(
+            storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
+            "fake-context",
+        )
+        self.assertEqual(status.committed_size, QUANTUM)
+
+        offset = QUANTUM
+        content = media[QUANTUM : 2 * QUANTUM]
+        r2 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        offset = 2 * QUANTUM
+        content = media[2 * QUANTUM :]
+        r3 = storage_pb2.WriteObjectRequest(
+            write_offset=QUANTUM,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=True,
+        )
+        write = self.grpc.WriteObject([r2, r3], "fake-context")
+        self.assertIsNotNone(write)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_resumable_query_completed(self):
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context=unittest.mock.MagicMock(),
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM).encode("utf-8")
+
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        offset = QUANTUM
+        content = media[QUANTUM:]
+        r2 = storage_pb2.WriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=True,
+        )
+        write = self.grpc.WriteObject([r1, r2], "fake-context")
+        self.assertIsNotNone(write)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+        # If the application crashes before checkpointing the upload status, it
+        # may query the upload status on restart.  The testbench should return
+        # the full object metadata.
+
+        status = self.grpc.QueryWriteStatus(
+            storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
+            "fake-context",
+        )
+        self.assertTrue(status.HasField("resource"))
+        blob = status.resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(blob.size, len(media))
+
+    def test_run(self):
+        port, server = testbench.grpc_server.run(0, self.db)
+        self.assertNotEqual(port, 0)
+        self.assertIsNotNone(server)
+
+        stub = storage_pb2_grpc.StorageStub(
+            grpc.insecure_channel("localhost:%d" % port)
+        )
+        start = stub.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+        )
+        self.assertIsNotNone(start.upload_id)
+        self.assertNotEqual(start.upload_id, "")
+        server.stop(grace=0)
 
 
 if __name__ == "__main__":
