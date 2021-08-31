@@ -148,7 +148,6 @@ def start_grpc():
     if grpc_port == 0:
         port = flask.request.args.get("port", "0")
         grpc_port, grpc_service = testbench.grpc_server.run(int(port), db)
-        return str(grpc_port)
     return str(grpc_port)
 
 
