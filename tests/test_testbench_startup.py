@@ -16,11 +16,14 @@
 
 """Verify the testbench module starts a usable service."""
 
+import json
 import re
 import requests
 import subprocess
 import time
 import unittest
+import grpc
+from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 
 class TestTestbenchStartup(unittest.TestCase):
@@ -60,7 +63,7 @@ class TestTestbenchStartup(unittest.TestCase):
             p.kill()
             p.wait(30)
 
-    def test_startup_gunicorn(self):
+    def wait_gunicorn(self):
         started = False
         port = None
         start = time.time()
@@ -73,10 +76,40 @@ class TestTestbenchStartup(unittest.TestCase):
                     started = True
                     port = m[1]
         self.assertTrue(started)
+        return port
+
+    def test_startup_gunicorn(self):
+        port = self.wait_gunicorn()
         self.assertIsNotNone(port)
         response = requests.get("http://localhost:" + port)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "OK")
+
+    def test_startup_gunicorn_grpc(self):
+        port = self.wait_gunicorn()
+        self.assertIsNotNone(port)
+        response = requests.post(
+            "http://localhost:%s/storage/v1/b?project=test-only" % port,
+            data=json.dumps({"name": "bucket-name"}),
+        )
+        self.assertEqual(response.status_code, 200, msg=response.text)
+        response = requests.get("http://localhost:%s/start_grpc" % port)
+        self.assertEqual(response.status_code, 200, msg=response.text)
+        grpc_port = int(response.text)
+        stub = storage_pb2_grpc.StorageStub(
+            grpc.insecure_channel("localhost:%d" % grpc_port)
+        )
+        start = stub.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+        )
+        self.assertIsNotNone(start.upload_id)
+        self.assertNotEqual(start.upload_id, "")
 
     def test_startup_plain(self):
         started = False
