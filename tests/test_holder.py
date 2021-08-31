@@ -184,7 +184,7 @@ class TestHolder(unittest.TestCase):
 
     def test_resumable_rest(self):
         request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket"})
+            args={}, data=json.dumps({"name": "bucket-name"})
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
         data = json.dumps(
@@ -205,6 +205,11 @@ class TestHolder(unittest.TestCase):
         upload = gcs.holder.DataHolder.init_resumable_rest(
             Request(environ), bucket.metadata
         )
+        self.assertIn(
+            "http://localhost:8080/upload/storage/v1/b/bucket-name/o", upload.location
+        )
+        self.assertIn("uploadType=resumable", upload.location)
+        self.assertIn("upload_id=" + upload.upload_id, upload.location)
         self.assertEqual(upload.metadata.name, "test-object-name")
         self.assertEqual(upload.metadata.checksums.crc32c, 0)
         self.assertEqual(
