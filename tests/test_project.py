@@ -18,8 +18,9 @@
 
 import json
 import unittest
-import testbench
+
 import gcs.project
+import testbench
 
 
 class TestProject(unittest.TestCase):

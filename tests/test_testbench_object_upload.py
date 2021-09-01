@@ -20,7 +20,6 @@ import json
 import os
 import re
 import unittest
-from werkzeug.test import create_environ
 
 from testbench import rest_server
 from tests.format_multipart_upload import format_multipart_upload

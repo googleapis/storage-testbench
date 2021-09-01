@@ -18,12 +18,11 @@
 
 import json
 import re
-import requests
 import subprocess
 import time
 import unittest
 
-from requests.models import iter_slices
+import requests
 
 
 class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):

@@ -19,7 +19,6 @@
 import json
 import unittest
 
-from google.storage.v2 import storage_pb2
 from google.protobuf import json_format
 
 import gcs

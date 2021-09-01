@@ -16,11 +16,12 @@
 
 """Test for error handling helpers."""
 
-from testbench import error
-
-import grpc
 import unittest
 from unittest.mock import ANY, Mock
+
+import grpc
+
+from testbench import error
 
 
 class TestError(unittest.TestCase):

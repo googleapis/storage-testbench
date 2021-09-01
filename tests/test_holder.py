@@ -16,19 +16,20 @@
 
 """Tests for the Object class (see gcs/object.py)."""
 
-import crc32c
 import base64
 import hashlib
 import flask
 import json
 import unittest
 import unittest.mock
-from google.storage.v2 import storage_pb2
+
+import crc32c
 import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
 import gcs
+from google.storage.v2 import storage_pb2
 import testbench
 
 

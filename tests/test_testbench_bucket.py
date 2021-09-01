@@ -18,9 +18,9 @@
 
 import json
 import os
-from testbench import rest_server
-from testbench.common import rest_adjust
 import unittest
+
+from testbench import rest_server
 
 
 class TestTestbenchBucket(unittest.TestCase):
