@@ -76,6 +76,8 @@ class TestCommonUtils(unittest.TestCase):
             "predefinedAcl": "projectPrivate",
         }
         self.assertEqual(request.args, {**request.args, **subset})
+        self.assertTrue(hasattr(request, "environ"))
+        self.assertIn("REQUEST_METHOD", request.environ)
 
     def test_fake_request_init_protobuf_start_resumable_write(self):
         class MockContext(object):

@@ -85,7 +85,7 @@ class FakeRequest(types.SimpleNamespace):
         }
         args = request.args.to_dict()
         args.update(cls.xml_headers_to_json_args(headers))
-        return cls(args=args, headers=headers)
+        return cls(args=args, headers=headers, environ=getattr(request, "environ", {}))
 
     @classmethod
     def xml_headers_to_json_args(cls, headers):
@@ -460,7 +460,7 @@ def handle_retry_test_instruction(database, request, method):
             if upload is not None and len(upload.media) >= after_bytes:
                 database.dequeue_next_instruction(test_id, method)
                 testbench.error.generic(
-                    "Fault injected after uploadng %d bytes" % len(upload.media),
+                    "Fault injected after uploading %d bytes" % len(upload.media),
                     rest_code=error_code,
                     grpc_code=StatusCode.INTERNAL,  # not really used
                     context=None,

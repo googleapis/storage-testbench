@@ -679,6 +679,12 @@ class TestObject(unittest.TestCase):
             response = blob.rest_media(request)
             self.assertEqual(response.status_code, status_code, msg=instruction)
 
+            request = testbench.common.FakeRequest.init_xml(request)
+            response = blob.rest_media(request)
+            self.assertEqual(
+                response.status_code, status_code, msg="XML " + instruction
+            )
+
         request = Request(
             create_environ(
                 base_url="http://localhost:8080",
@@ -686,6 +692,11 @@ class TestObject(unittest.TestCase):
                 data=json.dumps({}),
             )
         )
+        response = blob.rest_media(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.data, b"How vexingly quick daft zebras jump!")
+
+        request = testbench.common.FakeRequest.init_xml(request)
         response = blob.rest_media(request)
         self.assertEqual(response.status_code, 200)
         self.assertNotEqual(response.data, b"How vexingly quick daft zebras jump!")
@@ -710,6 +721,17 @@ class TestObject(unittest.TestCase):
                 response.data,
                 b"How vexingly quick daft zebras jump!",
                 msg=instruction,
+            )
+
+            request = testbench.common.FakeRequest.init_xml(request)
+            response = blob.rest_media(request)
+            self.assertEqual(
+                response.status_code, status_code, msg="XML " + instruction
+            )
+            self.assertEqual(
+                response.data,
+                b"How vexingly quick daft zebras jump!",
+                msg="XML " + instruction,
             )
 
     def test_stall_always(self):
