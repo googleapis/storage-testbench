@@ -16,21 +16,21 @@
 
 import base64
 from functools import wraps
-import flask
 import json
 import random
 import re
-import scalpl
 import socket
 import struct
 import types
 
-from grpc import StatusCode
+import flask
 from google.protobuf import timestamp_pb2
+from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
-from google.storage.v2 import storage_pb2
+import scalpl
 
+from google.storage.v2 import storage_pb2
 import testbench
 
 re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")

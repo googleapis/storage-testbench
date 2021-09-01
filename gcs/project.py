@@ -15,11 +15,11 @@
 """Implement a class to simulate projects (service accounts and HMAC keys)."""
 
 import base64
-from functools import wraps
-import flask
 import json
 import random
 import time
+
+import flask
 
 import testbench
 

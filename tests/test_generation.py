@@ -17,8 +17,8 @@
 """Unit tests for testbench.generation."""
 
 import unittest
-from google.storage.v2 import storage_pb2
 
+from google.storage.v2 import storage_pb2
 import testbench.generation
 
 

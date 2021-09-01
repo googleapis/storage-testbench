@@ -14,16 +14,15 @@
 
 """Implement a holder for resumable upload's data and rewrite's data"""
 
-from typing import ClassVar
-import crc32c
-import flask
 import hashlib
 import json
 import types
 
-from google.storage.v2 import storage_pb2
+import crc32c
+import flask
 from google.protobuf import json_format
 
+from google.storage.v2 import storage_pb2
 import testbench
 
 

@@ -19,7 +19,6 @@
 import json
 import os
 import unittest
-from werkzeug.test import create_environ
 
 from testbench import rest_server
 

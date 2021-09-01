@@ -13,18 +13,16 @@
 # limitations under the License.
 
 import argparse
-from testbench import grpc_server
-import flask
 import httpbin
 import json
 import logging
-from functools import wraps
+
+import flask
+from google.protobuf import json_format
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from google.storage.v2 import storage_pb2
-from google.protobuf import json_format
-
 import gcs as gcs_type
 import testbench
 

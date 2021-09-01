@@ -18,11 +18,13 @@
 
 import json
 import re
-import requests
 import subprocess
 import time
 import unittest
+
 import grpc
+import requests
+
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 

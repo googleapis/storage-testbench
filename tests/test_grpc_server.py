@@ -16,14 +16,15 @@
 
 """Unit test for testbench.grpc."""
 
-import crc32c
 import json
 import unittest
 import unittest.mock
+
+import crc32c
 import grpc
-from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 import gcs
+from google.storage.v2 import storage_pb2, storage_pb2_grpc
 import testbench
 
 

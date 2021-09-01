@@ -20,12 +20,11 @@ import hashlib
 import json
 import random
 import re
-import scalpl
+
+from google.protobuf import field_mask_pb2, json_format
 
 from google.storage.v2 import storage_pb2
 from google.iam.v1 import policy_pb2
-from google.protobuf import field_mask_pb2, json_format
-
 import testbench
 
 

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import crc32c
-import grpc
-import testbench
 from concurrent import futures
+
+import crc32c
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
+import grpc
 
 import gcs
+import testbench
 
 
 class StorageServicer(storage_pb2_grpc.StorageServicer):

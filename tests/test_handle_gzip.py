@@ -18,8 +18,8 @@
 
 import gzip
 import unittest
+
 from werkzeug.test import create_environ
-from werkzeug.wrappers import Request
 
 import testbench
 

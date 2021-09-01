@@ -24,9 +24,9 @@ import unittest.mock
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.storage.v2 import storage_pb2
 
 import gcs
+from google.storage.v2 import storage_pb2
 import testbench
 from tests.format_multipart_upload import format_multipart_upload
 

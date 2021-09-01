@@ -16,8 +16,9 @@
 
 import base64
 import binascii
-import flask
 import json
+
+import flask
 
 import testbench
 
