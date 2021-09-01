@@ -14,12 +14,12 @@
 
 """Implement a holder for resumable upload's data and rewrite's data"""
 
-import flask
 import hashlib
 import json
 import types
 
 import crc32c
+import flask
 from google.protobuf import json_format
 
 from google.storage.v2 import storage_pb2

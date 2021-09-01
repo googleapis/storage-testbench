@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import argparse
-import flask
 import httpbin
 import json
 import logging
+
+import flask
+from google.protobuf import json_format
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-
-from google.protobuf import json_format
 
 from google.storage.v2 import storage_pb2
 import gcs as gcs_type

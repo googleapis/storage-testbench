@@ -18,12 +18,12 @@
 
 import base64
 import hashlib
-import flask
 import json
 import unittest
 import unittest.mock
 
 import crc32c
+import flask
 import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
