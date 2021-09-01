@@ -456,7 +456,7 @@ def handle_retry_test_instruction(database, request, method):
         # Upload failures should allow to not complete after certain bytes
         upload_id = request.args.get("upload_id", None)
         if upload_id is not None:
-            upload = database.uploads.get(upload_id)
+            upload = database.get_upload(upload_id, None)
             if upload is not None and len(upload.media) >= after_bytes:
                 database.dequeue_next_instruction(test_id, method)
                 testbench.error.generic(
