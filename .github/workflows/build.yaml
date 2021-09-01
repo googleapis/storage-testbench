@@ -28,10 +28,8 @@ jobs:
           PYTHONPATH: "."
         run: |
           pytest --cov=./ --cov-report=xml
-      # Upload code coverage reports only for 3.9
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
-        if: ${{ matrix.python-version == "3.9" }}
         with:
           env_vars: OS,PYTHON
           fail_ci_if_error: true
