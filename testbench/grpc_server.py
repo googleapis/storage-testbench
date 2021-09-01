@@ -59,6 +59,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     @staticmethod
     def _log_rpc_passthrough(function, request, response):
+        """
+        Log the request and response from an RPC, returning the response.
+
+        Returning the response makes the code more succint at the call site, without
+        much loss of readability.
+
+        Note that some functions (streaming RPCs mostly), cannot log their inputs
+        or outputs as they are too large.
+        """
         input = None if request is None else StorageServicer._format(request)
         output = None if response is None else StorageServicer._format(response)
         print("GRPC %s(%s) -> %s" % (function, input, output))
