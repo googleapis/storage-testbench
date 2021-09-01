@@ -57,7 +57,7 @@ def raise_error():
 
 
 def xml_put_object(bucket_name, object_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket = db.get_bucket_without_generation(bucket_name, None).metadata
     blob, fake_request = gcs_type.object.Object.init_xml(
         flask.request, bucket, object_name
@@ -162,7 +162,7 @@ gcs.register_error_handler(Exception, testbench.error.RestException.handler)
 @gcs.route("/b", methods=["GET"])
 @retry_test(method="storage.buckets.list")
 def bucket_list():
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     project = flask.request.args.get("project")
     projection = flask.request.args.get("projection", "noAcl")
     fields = flask.request.args.get("fields", None)
@@ -178,7 +178,7 @@ def bucket_list():
 @gcs.route("/b", methods=["POST"])
 @retry_test(method="storage.buckets.insert")
 def bucket_insert():
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket, projection = gcs_type.bucket.Bucket.init(flask.request, None)
     fields = flask.request.args.get("fields", None)
     db.insert_bucket(flask.request, bucket, None)
@@ -188,8 +188,8 @@ def bucket_insert():
 @gcs.route("/b/<bucket_name>")
 @retry_test(method="storage.buckets.get")
 def bucket_get(bucket_name):
-    db.insert_test_bucket(None)
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
+    db.insert_test_bucket()
     bucket = db.get_bucket(flask.request, bucket_name, None)
     projection = testbench.common.extract_projection(flask.request, "noAcl", None)
     fields = flask.request.args.get("fields", None)
@@ -199,7 +199,7 @@ def bucket_get(bucket_name):
 @gcs.route("/b/<bucket_name>", methods=["PUT"])
 @retry_test(method="storage.buckets.update")
 def bucket_update(bucket_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.update(flask.request, None)
     projection = testbench.common.extract_projection(flask.request, "full", None)
@@ -392,7 +392,7 @@ def bucket_notification_delete(bucket_name, notification_id):
 @gcs.route("/b/<bucket_name>/iam")
 @retry_test(method="storage.buckets.getIamPolicy")
 def bucket_get_iam_policy(bucket_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket = db.get_bucket(flask.request, bucket_name, None)
     response = json_format.MessageToDict(bucket.iam_policy)
     response["kind"] = "storage#policy"
@@ -402,7 +402,7 @@ def bucket_get_iam_policy(bucket_name):
 @gcs.route("/b/<bucket_name>/iam", methods=["PUT"])
 @retry_test(method="storage.buckets.setIamPolicy")
 def bucket_set_iam_policy(bucket_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.set_iam_policy(flask.request, None)
     response = json_format.MessageToDict(bucket.iam_policy)
@@ -433,7 +433,7 @@ def bucket_lock_retention_policy(bucket_name):
 @gcs.route("/b/<bucket_name>/o")
 @retry_test(method="storage.objects.list")
 def object_list(bucket_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     items, prefixes = db.list_object(flask.request, bucket_name, None)
     response = {
         "kind": "storage#objects",
@@ -545,7 +545,7 @@ def objects_compose(bucket_name, object_name):
 )
 @retry_test(method="storage.objects.copy")
 def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     dst_bucket = db.get_bucket_without_generation(dst_bucket_name, None).metadata
     src_object = db.get_object(
         flask.request, src_bucket_name, src_object_name, True, None
@@ -579,7 +579,7 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
 )
 @retry_test(method="storage.objects.rewrite")
 def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_object_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     token, rewrite = flask.request.args.get("rewriteToken"), None
     src_object = None
     if token is None:
@@ -728,7 +728,7 @@ upload.register_error_handler(Exception, testbench.error.RestException.handler)
 @upload.route("/b/<bucket_name>/o", methods=["POST"])
 @retry_test(method="storage.objects.insert")
 def object_insert(bucket_name):
-    db.insert_test_bucket(None)
+    db.insert_test_bucket()
     bucket = db.get_bucket_without_generation(bucket_name, None).metadata
     upload_type = flask.request.args.get("uploadType")
     if upload_type is None:

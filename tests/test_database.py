@@ -94,12 +94,12 @@ class TestDatabaseBucket(unittest.TestCase):
             data=json.dumps({}),
         )
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
-        database.insert_test_bucket(None)
+        database.insert_test_bucket()
         names = {b.metadata.name for b in database.list_bucket(request, "", None)}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
-        database.insert_test_bucket(None)
+        database.insert_test_bucket()
         get_result = database.get_bucket(request, "test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
 

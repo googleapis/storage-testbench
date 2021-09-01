@@ -102,7 +102,7 @@ class Database:
         del self.objects[bucket.metadata.name]
         del self.live_generations[bucket.metadata.name]
 
-    def insert_test_bucket(self, context):
+    def insert_test_bucket(self):
         """Automatically create a bucket if needed.
 
         Many of the integration tests for `google-cloud-cpp` assume a
@@ -113,12 +113,12 @@ class Database:
         bucket_name = os.environ.get("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         if bucket_name is None:
             return
-        if self.buckets.get(self.__bucket_key(bucket_name, context)) is None:
+        if self.buckets.get(self.__bucket_key(bucket_name, None)) is None:
             request = testbench.common.FakeRequest(
                 args={}, data=json.dumps({"name": bucket_name})
             )
-            bucket_test, _ = gcs.bucket.Bucket.init(request, context)
-            self.insert_bucket(request, bucket_test, context)
+            bucket_test, _ = gcs.bucket.Bucket.init(request, None)
+            self.insert_bucket(request, bucket_test, None)
             bucket_test.metadata.metageneration = 4
             bucket_test.metadata.versioning.enabled = True
 
