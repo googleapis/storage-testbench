@@ -404,19 +404,19 @@ class Object:
 
         instructions = testbench.common.extract_instruction(request, None)
         if instructions == "return-broken-stream":
-            socket = request.environ.get("gunicorn.socket", None)
+            request_socket = request.environ.get("gunicorn.socket", None)
 
             def streamer():
                 chunk_size = 64 * 1024
                 for r in range(0, len(response_payload), chunk_size):
                     if r >= 1024 * 1024:
-                        if socket is not None:
-                            socket.setsockopt(
+                        if request_socket is not None:
+                            request_socket.setsockopt(
                                 socket.SOL_SOCKET,
                                 socket.SO_LINGER,
                                 struct.pack("ii", 1, 0),
                             )
-                            socket.close()
+                            request_socket.close()
                         # This exception is raised to abort the flow control. The
                         # connection has already been closed, causing the client to
                         # receive a "connection reset by peer" (or a similar error).
@@ -460,19 +460,19 @@ class Object:
             u"return-503-after-256K"
         ):
             if begin == 0:
-                socket = request.environ.get("gunicorn.socket", None)
+                request_socket = request.environ.get("gunicorn.socket", None)
 
                 def streamer():
                     chunk_size = 4 * 1024
                     for r in range(0, len(response_payload), chunk_size):
                         if r >= 256 * 1024:
-                            if socket is not None:
-                                socket.setsockopt(
+                            if request_socket is not None:
+                                request_socket.setsockopt(
                                     socket.SOL_SOCKET,
                                     socket.SO_LINGER,
                                     struct.pack("ii", 1, 0),
                                 )
-                                socket.close()
+                                request_socket.close()
                             # This exception is raised to abort the flow control. The
                             # connection has already been closed, causing the client to
                             # receive a "connection reset by peer" (or a similar error).
