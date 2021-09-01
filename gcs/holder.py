@@ -17,6 +17,7 @@
 import hashlib
 import json
 import types
+import uuid
 
 import crc32c
 import flask
@@ -27,8 +28,6 @@ import testbench
 
 
 class DataHolder(types.SimpleNamespace):
-    __upload_id_generator = 0
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -53,11 +52,10 @@ class DataHolder(types.SimpleNamespace):
 
     @classmethod
     def __create_upload_id(cls, bucket_name, object_name):
-        cls.__upload_id_generator = cls.__upload_id_generator + 1
         return hashlib.sha256(
-            (
-                "%d/%s/o/%s" % (cls.__upload_id_generator, bucket_name, object_name)
-            ).encode("utf-8")
+            ("%s/%s/o/%s" % (uuid.uuid4().hex, bucket_name, object_name)).encode(
+                "utf-8"
+            )
         ).hexdigest()
 
     @classmethod
