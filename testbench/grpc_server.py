@@ -52,21 +52,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return self.db.get_bucket_without_generation(bucket_name, context).metadata
 
     @staticmethod
-    def FormatProtobufMessage(message):
+    def _format(message):
         return text_format.MessageToString(
             message, as_one_line=True, use_short_repeated_primitives=True
         )
 
     @staticmethod
-    def LogRequest(function, request, response):
-        input = (
-            None if request is None else StorageServicer.FormatProtobufMessage(request)
-        )
-        output = (
-            None
-            if response is None
-            else StorageServicer.FormatProtobufMessage(response)
-        )
+    def _log_rpc_passthrough(function, request, response):
+        input = None if request is None else StorageServicer._format(request)
+        output = None if response is None else StorageServicer._format(response)
         print("GRPC %s(%s) -> %s" % (function, input, output))
         return response
 
@@ -80,7 +74,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if not upload.complete:
             if not is_resumable:
                 return testbench.error.missing("finish_write in request", context)
-            return StorageServicer.LogRequest(
+            return StorageServicer._log_rpc_passthrough(
                 "WriteObject",
                 None,
                 storage_pb2.WriteObjectResponse(committed_size=len(upload.media)),
@@ -90,7 +84,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         upload.blob = blob
         self.db.insert_object(upload.request, upload.bucket.name, blob, context)
-        return StorageServicer.LogRequest(
+        return StorageServicer._log_rpc_passthrough(
             "WriteObject", None, storage_pb2.WriteObjectResponse(resource=blob.metadata)
         )
 
@@ -98,7 +92,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
         upload = gcs.holder.DataHolder.init_resumable_grpc(request, bucket, context)
         self.db.insert_upload(upload)
-        return StorageServicer.LogRequest(
+        return StorageServicer._log_rpc_passthrough(
             "StartResumableWrite",
             request,
             storage_pb2.StartResumableWriteResponse(upload_id=upload.upload_id),
@@ -107,12 +101,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def QueryWriteStatus(self, request, context):
         upload = self.db.get_upload(request.upload_id, context)
         if upload.complete:
-            return StorageServicer.LogRequest(
+            return StorageServicer._log_rpc_passthrough(
                 "QueryWriteStatus",
                 request,
                 storage_pb2.QueryWriteStatusResponse(resource=upload.blob.metadata),
             )
-        return StorageServicer.LogRequest(
+        return StorageServicer._log_rpc_passthrough(
             "QueryWriteStatus",
             request,
             storage_pb2.QueryWriteStatusResponse(committed_size=len(upload.media)),
