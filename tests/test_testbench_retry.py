@@ -99,12 +99,12 @@ class TestTestbenchRetry(unittest.TestCase):
             "object_acl": OBJECT_ACL_OPERATIONS,
             "project": PROJECT_OPERATIONS,
         }
-        all = set(rest_server.db.supported_methods)
+        all = set(rest_server.db.supported_methods())
         for name, operations in groups.items():
-            self.assertEqual(all, all | operations)
+            self.assertEqual(all, all | operations, msg=name)
 
     def test_retry_test_crud(self):
-        self.assertIn("storage.buckets.list", rest_server.db.supported_methods)
+        self.assertIn("storage.buckets.list", rest_server.db.supported_methods())
         response = self.client.post(
             "/retry_test",
             data=json.dumps({"instructions": {"storage.buckets.list": ["return-429"]}}),
