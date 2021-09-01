@@ -51,7 +51,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return self.db.get_bucket_without_generation(bucket_name, context).metadata
 
     def WriteObject(self, request_iterator, context):
-        self.db.insert_test_bucket(context)
+        self.db.insert_test_bucket()
         upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
             self.db, request_iterator, context
         )
