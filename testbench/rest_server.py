@@ -607,8 +607,8 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
     done, dst_object = total_bytes_rewritten == len(src_object.media), None
     response = {
         "kind": "storage#rewriteResponse",
-        "totalBytesRewritten": len(rewrite.media),
-        "objectSize": len(src_object.media),
+        "totalBytesRewritten": str(len(rewrite.media)),
+        "objectSize": str(len(src_object.media)),
         "done": done,
     }
     if done:
