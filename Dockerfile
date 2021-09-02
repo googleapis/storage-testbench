@@ -18,7 +18,7 @@ WORKDIR /opt/storage-testbench
 
 COPY . /opt/storage-testbench/
 
-RUN python3 -m pip install -r requirements.txt
+RUN python3 -m pip install -e .
 
 CMD ["gunicorn", \
       "--bind", "localhost:9000", \
