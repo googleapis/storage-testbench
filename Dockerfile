@@ -21,7 +21,7 @@ COPY . /opt/storage-testbench/
 RUN python3 -m pip install -r requirements.txt
 
 CMD ["gunicorn", \
-      "--bind", "localhost:9000", \
+      "--bind", "0.0.0.0:9000", \
       "--worker-class", "sync", \
       "--threads", "10", \
       "--access-logfile", "-", \
