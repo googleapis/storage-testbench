@@ -25,10 +25,10 @@ import time
 
 import crc32c
 import flask
-import testbench
+from google.protobuf import field_mask_pb2, json_format
 
 from google.storage.v2 import storage_pb2
-from google.protobuf import field_mask_pb2, json_format
+import testbench
 
 
 class Object:
