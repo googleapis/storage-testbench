@@ -20,15 +20,15 @@ import json
 
 import flask
 
-import testbench
+import testbench.error
 
-IAM_HANDLER_PATH = "/iamapi"
-iam = flask.Flask(__name__)
-iam.debug = False
-iam.register_error_handler(Exception, testbench.error.RestException.handler)
+_IAM_HANDLER_PATH = "/iamapi"
+_iam = flask.Flask(__name__)
+_iam.debug = False
+_iam.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
-@iam.route("/projects/-/serviceAccounts/<service_account>:signBlob", methods=["POST"])
+@_iam.route("/projects/-/serviceAccounts/<service_account>:signBlob", methods=["POST"])
 def sign_blob(service_account):
     """Implement the `projects.serviceAccounts.signBlob` API."""
     payload = json.loads(flask.request.data)
@@ -47,4 +47,4 @@ def sign_blob(service_account):
 
 
 def get_iam_app():
-    return IAM_HANDLER_PATH, iam
+    return _IAM_HANDLER_PATH, _iam

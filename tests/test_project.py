@@ -19,18 +19,18 @@
 import json
 import unittest
 
-import gcs.project
 import testbench
+from testbench.servers import projects_rest_server
 
 
 class TestProject(unittest.TestCase):
     def setUp(self):
         db = testbench.database.Database.init()
-        _, app = gcs.project.get_projects_app(db)
+        _, app = projects_rest_server.get_projects_app(db)
         self.client = app.test_client()
 
     def test_projects_get(self):
-        project = gcs.project.get_project("test-project-id")
+        project = projects_rest_server.get_project("test-project-id")
         project_number = project.project_number
         response = self.client.get("/test-project-id/serviceAccount")
         payload = json.loads(response.data)

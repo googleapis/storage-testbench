@@ -20,12 +20,12 @@ import base64
 import json
 import unittest
 
-import gcs.iam
+from testbench.servers import iam_rest_server
 
 
 class TestIam(unittest.TestCase):
     def setUp(self):
-        path, app = gcs.iam.get_iam_app()
+        _, app = iam_rest_server.get_iam_app()
         self.client = app.test_client()
 
     def test_sign_blob(self):
