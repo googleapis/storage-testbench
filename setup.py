@@ -37,7 +37,7 @@ setuptools.setup(
     packages=["google/storage/v2", "google/iam/v1", "testbench", "gcs"],
     python_requires=">=3.6",
     install_requires=[
-        "grpcio==1.38.1",
+        "grpcio==1.40.0",
         "grpcio-tools==1.38.1",
         "googleapis-common-protos==1.53.0",
         "protobuf==3.17.3",
