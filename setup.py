@@ -45,7 +45,7 @@ setuptools.setup(
         "httpbin==0.7.0",
         "requests-toolbelt==0.9.1",
         "scalpl==0.4.2",
-        "crc32c==2.2",
+        "crc32c==2.2.post0",
         "gunicorn==20.1.0",
         "schema==0.7.4",
     ],
