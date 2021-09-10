@@ -426,7 +426,9 @@ def bucket_test_iam_permissions(bucket_name):
 def bucket_lock_retention_policy(bucket_name):
     bucket = db.get_bucket(flask.request, bucket_name, None)
     bucket.metadata.retention_policy.is_locked = True
-    bucket.metadata.retention_policy.effective_time.FromDatetime(datetime.datetime.now())
+    bucket.metadata.retention_policy.effective_time.FromDatetime(
+        datetime.datetime.now()
+    )
     return bucket.rest()
 
 
