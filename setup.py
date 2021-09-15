@@ -40,7 +40,7 @@ setuptools.setup(
         "grpcio==1.40.0",
         "grpcio-tools==1.40.0",
         "googleapis-common-protos==1.53.0",
-        "protobuf==3.17.3",
+        "protobuf==3.18.0",
         "flask==2.0.1",
         "httpbin==0.7.0",
         "requests-toolbelt==0.9.1",
