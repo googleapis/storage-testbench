@@ -249,7 +249,9 @@ def filter_response_rest(response, projection, fields):
         if fields is not None:
             delete = True
             for field in fields:
-                if field != "" and (simplfied_key.startswith(field) or field.startswith(simplfied_key)):
+                if field != "" and (
+                    simplfied_key.startswith(field) or field.startswith(simplfied_key)
+                ):
                     print(simplfied_key)
                     delete = False
                     break
