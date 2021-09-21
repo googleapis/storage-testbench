@@ -271,10 +271,15 @@ class TestCommonUtils(unittest.TestCase):
             [
                 "name",
                 "acl[0].id",
+                "acl[0]",
                 "acl[1].id",
+                "acl[1]",
+                "acl",
                 "labels.first",
                 "labels.second[0]",
                 "labels.second[1]",
+                "labels.second",
+                "labels",
             ],
         )
 

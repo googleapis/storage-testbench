@@ -185,8 +185,7 @@ def nested_key(data):
                     keys.extend(["[%d].%s" % (i, item) for item in result])
                 elif isinstance(data[i], list):
                     keys.extend(["[%d]%s" % (i, item) for item in result])
-            elif result == "":
-                keys.append("[%d]" % i)
+            keys.append("[%d]" % i)
         return keys
     elif isinstance(data, dict):
         keys = []
@@ -197,11 +196,10 @@ def nested_key(data):
                     keys.extend(["%s.%s" % (key, item) for item in result])
                 elif isinstance(value, list):
                     keys.extend(["%s%s" % (key, item) for item in result])
-            elif result == "":
-                keys.append("%s" % key)
+            keys.append("%s" % key)
         return keys
     else:
-        return ""
+        return []
 
 
 def parse_fields(fields):
@@ -240,39 +238,28 @@ def parse_fields(fields):
 def filter_response_rest(response, projection, fields):
     if fields is not None:
         fields = parse_fields(fields)
-    deleted_keys = set()
+    keys_to_delete = set()
+    if projection == "noAcl":
+        keys_to_delete.add("owner")
+        keys_to_delete.add("acl")
+        keys_to_delete.add("defaultObjectAcl")
     for key in nested_key(response):
         simplfied_key = remove_index(key)
-        maybe_delete = True
-        if projection == "noAcl":
-            maybe_delete = False
-            if simplfied_key.startswith("owner"):
-                deleted_keys.add("owner")
-            elif simplfied_key.startswith("items.owner"):
-                deleted_keys.add(key[0 : key.find("owner") + len("owner")])
-            elif simplfied_key.startswith("acl"):
-                deleted_keys.add("acl")
-            elif simplfied_key.startswith("items.acl"):
-                deleted_keys.add(key[0 : key.find("acl") + len("acl")])
-            elif simplfied_key.startswith("defaultObjectAcl"):
-                deleted_keys.add("defaultObjectAcl")
-            elif simplfied_key.startswith("items.defaultObjectAcl"):
-                deleted_keys.add(
-                    key[0 : key.find("defaultObjectAcl") + len("defaultObjectAcl")]
-                )
-            else:
-                maybe_delete = True
         if fields is not None:
-            if maybe_delete:
-                for field in fields:
-                    if field != "" and simplfied_key.startswith(field):
-                        maybe_delete = False
-                        break
-                if maybe_delete:
-                    deleted_keys.add(key)
+            delete = True
+            for field in fields:
+                if field != "" and (
+                    simplfied_key.startswith(field) or field.startswith(simplfied_key)
+                ):
+                    delete = False
+                    break
+            if delete:
+                keys_to_delete.add(key)
+
     proxy = scalpl.Cut(response)
-    for key in deleted_keys:
-        del proxy[key]
+    for key in keys_to_delete:
+        if proxy.get(key) is not None:
+            del proxy[key]
     return proxy.data
 
 
