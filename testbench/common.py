@@ -238,20 +238,29 @@ def parse_fields(fields):
 def filter_response_rest(response, projection, fields):
     if fields is not None:
         fields = parse_fields(fields)
+    print(fields)
     keys_to_delete = set()
-    if projection == 'noAcl':
+    if projection == "noAcl":
         keys_to_delete.add("owner")
         keys_to_delete.add("acl")
         keys_to_delete.add("defaultObjectAcl")
     for key in nested_key(response):
+        simplfied_key = remove_index(key)
         if fields is not None:
+            delete = True
             for field in fields:
-                if field != "" and not (key.startswith(field) or field.startswith(key)):
-                    keys_to_delete.add(key)
+                if field != "" and (simplfied_key.startswith(field) or field.startswith(simplfied_key)):
+                    print(simplfied_key)
+                    delete = False
+                    break
+            if delete:
+                keys_to_delete.add(key)
 
     proxy = scalpl.Cut(response)
+    print(proxy)
+    print(keys_to_delete)
     for key in keys_to_delete:
-        if proxy.get(key)is not None:
+        if proxy.get(key) is not None:
             del proxy[key]
     return proxy.data
 
