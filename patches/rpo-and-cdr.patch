@@ -1,0 +1,27 @@
+diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
+index a5fca6984..27c6bde02 100644
+--- a/google/storage/v2/storage.proto
++++ b/google/storage/v2/storage.proto
+@@ -486,6 +486,11 @@ message Bucket {
+     int32 max_age_seconds = 4;
+   }
+ 
++  // Custom Dual Region (CDR) properties for a bucket.
++  message CustomPlacementConfig {
++    repeated string data_locations = 1;
++  }
++
+   // Encryption properties of a bucket.
+   message Encryption {
+     // A Cloud KMS key that will be used to encrypt objects inserted into this
+@@ -800,6 +805,10 @@ message Bucket {
+ 
+   // Reserved for future use.
+   bool satisfies_pzs = 25;
++
++  CustomPlacementConfig custom_placement_config = 26;
++
++  string rpo = 27;
+ }
+ 
+ // An access-control entry.

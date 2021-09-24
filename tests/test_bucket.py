@@ -153,6 +153,7 @@ class TestBucket(unittest.TestCase):
             "labels": {"label0": "value0"},
             "storageClass": "regional",
             "billing": {"requesterPays": True},
+            "rpo": "DEFAULT",
         }
         request = testbench.common.FakeRequest(args={}, data=json.dumps(metadata))
         bucket, projection = gcs.bucket.Bucket.init(request, None)
@@ -490,6 +491,40 @@ class TestBucket(unittest.TestCase):
         with self.assertRaises(testbench.error.RestException) as rest:
             bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(rest.exception.code, 400)
+
+    def test_rpo(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"name": "bucket"}),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(bucket.metadata.rpo, "DEFAULT")
+        request = testbench.common.FakeRequest(
+            args={"bucket": "bucket"},
+            data=json.dumps({"rpo": "ASYNC_TURBO"}),
+        )
+        bucket.patch(request, None)
+        self.assertEqual(bucket.metadata.rpo, "ASYNC_TURBO")
+
+    def test_cdr(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "location": "US",
+                    "storageClass": "STANDARD",
+                    "customPlacementConfig": {
+                        "dataLocations": ["US-EAST1", "US-WEST1"]
+                    },
+                }
+            ),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(
+            bucket.metadata.custom_placement_config.data_locations,
+            ["US-EAST1", "US-WEST1"],
+        )
 
 
 if __name__ == "__main__":

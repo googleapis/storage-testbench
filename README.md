@@ -105,7 +105,8 @@ run the grpc_tools generator:
 ```shell
 cd $HOME
 git clone https://github.com/googleapis/googleapis
-cd storage-testbench
+patch -p1 <$HOME/storage-testbench/patches/rpo-and-cdr.patch
+cd $HOME/storage-testbench
 python -m grpc_tools.protoc -I$HOME/googleapis \
     --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/iam/v1/iam_policy.proto

@@ -45,6 +45,7 @@ class Bucket:
         "retention_policy",
         "location_type",
         "iam_config",
+        "rpo",
     }
 
     def __init__(self, metadata, notifications, iam_policy):
@@ -424,6 +425,8 @@ class Bucket:
             cls.__insert_predefined_default_object_acl(
                 metadata, predefined_default_object_acl, context
             )
+        if metadata.rpo is None or metadata.rpo == "":
+            metadata.rpo = "DEFAULT"
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
         metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
         metadata.project = "project/" + testbench.acl.PROJECT_NUMBER
