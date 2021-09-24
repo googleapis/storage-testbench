@@ -34,7 +34,13 @@ setuptools.setup(
         "License :: OSI Approved :: Apache-2.0",
         "Operating System :: OS Independent",
     ],
-    packages=["google/storage/v2", "google/iam/v1", "testbench", "gcs"],
+    packages=[
+        "google/storage/v2",
+        "google/iam/v1",
+        "testbench",
+        "testbench/servers",
+        "gcs",
+    ],
     python_requires=">=3.6",
     install_requires=[
         "grpcio==1.40.0",
