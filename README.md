@@ -70,7 +70,7 @@ It is useful as well to test features that are not yet deployed to production: y
     * keep this virtual environment active whenever you run the testbench
 5. Install dependencies: 
     ```bash
-    pip install -r requirements.txt
+    pip install -e .
     ```
     
 ### Run the testbench
@@ -107,6 +107,7 @@ cd $HOME
 git clone https://github.com/googleapis/googleapis
 patch -p1 <$HOME/storage-testbench/patches/rpo-and-cdr.patch
 cd $HOME/storage-testbench
+pip install grpcio-tools
 python -m grpc_tools.protoc -I$HOME/googleapis \
     --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/iam/v1/iam_policy.proto
