@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM python:3.9@sha256:6abb8dd5517c43615841ec2d0b71cffec4eb5b5f7098ffb97f9fb2129912eafe
+FROM python:3.9@sha256:9064817e6e2c6fad09215cb42261c254c15ea56f7afa7752e072569a0497d3d2
 
 EXPOSE 9000
 WORKDIR /opt/storage-testbench
