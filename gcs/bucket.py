@@ -78,7 +78,7 @@ class Bucket:
     @classmethod
     def __preprocess_rest_pap(cls, pap):
         pap = pap.upper()
-        if pap == "UNSPECIFIED":
+        if pap == "UNSPECIFIED" or pap == "INHERITED":
             return "PUBLIC_ACCESS_PREVENTION_UNSPECIFIED"
         return pap
 
@@ -209,12 +209,12 @@ class Bucket:
     def __postprocess_rest_pap(cls, pap):
         pap = pap.lower()
         if pap == "public_access_prevention_unspecified":
-            return "unspecified"
+            return "inherited"
         return pap
 
     @classmethod
     def __postprocess_rest_iam_configuration(cls, config):
-        return testbench.common.rest_adjust(
+        adjusted = testbench.common.rest_adjust(
             config,
             {
                 "publicAccessPrevention": lambda x: (
@@ -227,6 +227,8 @@ class Bucket:
                 ),
             },
         )
+        adjusted.setdefault("publicAccessPrevention", "inherited")
+        return adjusted
 
     @classmethod
     def __postprocess_rest_encryption(cls, enc):

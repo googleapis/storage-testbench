@@ -222,22 +222,25 @@ class TestBucket(unittest.TestCase):
         )
 
     def test_init_rest_pap(self):
-        metadata = {
-            "name": "test-bucket-name",
-            "iamConfiguration": {
-                # This one is special and gets its own path
-                "publicAccessPrevention": "unspecified",
-            },
-        }
-        request = testbench.common.FakeRequest(args={}, data=json.dumps(metadata))
-        bucket, projection = gcs.bucket.Bucket.init(request, None)
-        self.assertEqual(projection, "noAcl")
-        bucket_rest = bucket.rest()
-        self.assertEqual("storage#bucket", bucket_rest.get("kind"))
-        self.assertEqual("test-bucket-name", bucket_rest.get("name"))
-        self.assertEqual(
-            {"uniformBucketLevelAccess": {}}, bucket_rest.get("iamConfiguration")
-        )
+        for pap in ["unspecified", "inherited"]:
+            metadata = {
+                "name": "test-bucket-name",
+                "iamConfiguration": {
+                    # The `unspecified` and `inherited` values have interesting behavior
+                    "publicAccessPrevention": pap,
+                },
+            }
+            request = testbench.common.FakeRequest(args={}, data=json.dumps(metadata))
+            bucket, projection = gcs.bucket.Bucket.init(request, None)
+            self.assertEqual(projection, "noAcl")
+            bucket_rest = bucket.rest()
+            self.assertEqual("storage#bucket", bucket_rest.get("kind"))
+            self.assertEqual("test-bucket-name", bucket_rest.get("name"))
+            # The `publicAccessPrevention` enum maps to "not set" in the underlying protos.
+            self.assertEqual(
+                {"uniformBucketLevelAccess": {}, "publicAccessPrevention": "inherited"},
+                bucket_rest.get("iamConfiguration"),
+            )
 
     def test_patch_rest(self):
         # Updating requires a full metadata so we don't test it here.
