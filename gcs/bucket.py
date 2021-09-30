@@ -207,10 +207,10 @@ class Bucket:
 
     @classmethod
     def __postprocess_rest_pap(cls, pap):
-        pap = pap.lower()
-        if pap == "public_access_prevention_unspecified":
-            return "inherited"
-        return pap
+        # '..._unspecified' is the default enum values, and default values
+        # are not present in proto3
+        assert pap != "public_access_prevention_unspecified"
+        return pap.lower()
 
     @classmethod
     def __postprocess_rest_iam_configuration(cls, config):
