@@ -18,8 +18,8 @@ import base64
 import datetime
 import hashlib
 import json
-import random
 import re
+import uuid
 
 from google.protobuf import field_mask_pb2, json_format
 
@@ -623,7 +623,7 @@ class Bucket:
     def insert_notification(self, request, context):
         notification = {
             "kind": "storage#notification",
-            "id": "notification-%d" % random.getrandbits(16),
+            "id": "notification-%s" % uuid.uuid4().hex,
         }
         data = json.loads(request.data)
         for required_key in {"topic", "payload_format"}:
