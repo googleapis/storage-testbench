@@ -183,6 +183,27 @@ class TestHolder(unittest.TestCase):
         )
         _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
 
+    def test_resumable_rest_with_none_hashes(self):
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        data = "{\"crc32c\":null,\"md5Hash\":null,\"name\":\"test-object-name\"}"
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            content_length=len(data),
+            data=data,
+            content_type="application/json",
+            method="POST",
+        )
+        upload = gcs.holder.DataHolder.init_resumable_rest(
+            Request(environ), bucket.metadata
+        )
+        self.assertIn(
+            "http://localhost:8080/upload/storage/v1/b/bucket-name/o", upload.location
+        )
+
     def test_resumable_rest(self):
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket-name"})

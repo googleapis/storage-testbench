@@ -564,11 +564,15 @@ def preprocess_object_metadata(metadata):
     )
     checksums = {}
     if "crc32c" in md:
-        checksums["crc32c"] = rest_crc32c_to_proto(md.pop("crc32c"))
+        crc32c = md.pop("crc32c")
+        if crc32c is not None:
+            checksums["crc32c"] = rest_crc32c_to_proto(crc32c)
     if "md5Hash" in metadata:
         # Do not need to base64-encode here because the `json_format`
         # conversions already does that for bytes
-        checksums["md5Hash"] = md.pop("md5Hash")
+        md5Hash = md.pop("md5Hash")
+        if md5Hash is not None:
+            checksums["md5Hash"] = md5Hash
     if len(checksums) > 0:
         md["checksums"] = checksums
     # Finally the ACLs, if present, have fewer fields in gRPC, remove
