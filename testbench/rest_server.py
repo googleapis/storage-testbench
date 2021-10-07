@@ -94,6 +94,14 @@ def root_put_object(bucket_name, object_name):
     return xml_put_object(bucket_name, object_name)
 
 
+@root.route("/<bucket_name>/<path:object_name>", methods=["POST"])
+@retry_test(method="storage.objects.insert")
+def root_create_resumable_object(bucket_name, object_name):
+    # TODO: add resumable XML API support. Only needed to cause failures
+    # using RetryTestAPI.
+    pass
+
+
 @root.route("/<bucket_name>/<path:object_name>", subdomain="", methods=["PUT"])
 @retry_test(method="storage.objects.insert")
 def root_put_object_with_bucket(bucket_name, object_name):
