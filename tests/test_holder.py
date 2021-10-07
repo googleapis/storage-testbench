@@ -189,7 +189,14 @@ class TestHolder(unittest.TestCase):
             args={}, data=json.dumps({"name": "bucket-name"})
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
-        data = "{\"crc32c\":null,\"md5Hash\":null,\"name\":\"test-object-name\"}"
+        data = json.dumps(
+            {
+                # Empty payload checksums
+                "crc32c": None,
+                "md5Hash": None,
+                "name": "test-object-name",
+            }
+        )
         environ = create_environ(
             base_url="http://localhost:8080",
             content_length=len(data),
