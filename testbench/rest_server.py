@@ -99,7 +99,7 @@ def root_put_object(bucket_name, object_name):
 def root_create_resumable_object(bucket_name, object_name):
     # TODO: add resumable XML API support. Only needed to cause failures
     # using RetryTestAPI.
-    pass
+    testbench.error.generic("Not implemented", 501, None, None)
 
 
 @root.route("/<bucket_name>/<path:object_name>", subdomain="", methods=["PUT"])

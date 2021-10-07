@@ -71,6 +71,9 @@ class TestTestbenchObjectXML(unittest.TestCase):
         self.assertEqual(response.status_code, 200, msg=response.data)
         self.assertEqual(response.data, b"The quick brown fox jumps over the lazy dog")
 
+    def test_object_xml_resumable_create(self):
+        response = self.client.post("/bucket-name/object-name")
+        self.assertEqual(response.status_code, 501)
 
 if __name__ == "__main__":
     unittest.main()
