@@ -75,5 +75,6 @@ class TestTestbenchObjectXML(unittest.TestCase):
         response = self.client.post("/bucket-name/object-name")
         self.assertEqual(response.status_code, 501)
 
+
 if __name__ == "__main__":
     unittest.main()
