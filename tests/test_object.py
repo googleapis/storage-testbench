@@ -16,7 +16,6 @@
 
 """Tests for the Object class (see gcs/object.py)."""
 
-import datetime
 import base64
 import hashlib
 import json
@@ -26,6 +25,7 @@ import unittest.mock
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
+import datetime
 import gcs
 from google.storage.v2 import storage_pb2
 import testbench
@@ -35,10 +35,7 @@ from tests.format_multipart_upload import format_multipart_upload
 class TestObject(unittest.TestCase):
     def setUp(self):
         request = testbench.common.FakeRequest(
-            args={},
-            data=json.dumps(
-                {"name": "bucket", "retentionPolicy": {"retentionPeriod": "600"}}
-            ),
+            args={}, data=json.dumps({"name": "bucket"})
         )
         self.bucket, _ = gcs.bucket.Bucket.init(request, None)
 
@@ -50,8 +47,19 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "object")
         self.assertEqual(blob.media, b"12345678")
+
+    def test_init_retention_period(self):
+        retention_period = 600
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "retention_bucket", "retentionPolicy": {"retentionPeriod": retention_period}})
+        )
+        self.retention_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = testbench.common.FakeRequest(
+            args={"name": "object"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.retention_bucket.metadata)
         expected_retention_expiration = (
-            blob.metadata.create_time.ToDatetime() + datetime.timedelta(0, 600)
+            blob.metadata.create_time.ToDatetime() + datetime.timedelta(0, retention_period)
         )
         self.assertEqual(
             blob.metadata.retention_expire_time.ToDatetime(),
@@ -285,6 +293,9 @@ class TestObject(unittest.TestCase):
                 ),
                 event_based_hold=True,
                 kms_key="test-value",
+                retention_expire_time=testbench.common.rest_rfc3339_to_proto(
+                    "2022-01-01T00:00:00Z"
+                ),
                 temporary_hold=True,
                 delete_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-06-01T00:00:00Z"
@@ -323,14 +334,6 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest_metadata["bucket"], "bucket")
         self.assertEqual(rest_metadata["name"], "test-object-name")
         self.assertIsNone(blob.metadata.metadata.get("method"))
-        retention_expiration_time = rest_metadata.pop("retentionExpirationTime")
-        expected_retention_expiration = (
-            blob.metadata.create_time.ToDatetime() + datetime.timedelta(0, 600)
-        )
-        self.assertEqual(
-            retention_expiration_time,
-            expected_retention_expiration.strftime("%Y-%m-%dT%H:%M:%S.%f%zZ"),
-        )
         # Verify the ObjectAccessControl entries have the desired fields
         acl = rest_metadata.pop("acl", None)
         self.assertIsNotNone(acl)
@@ -397,6 +400,7 @@ class TestObject(unittest.TestCase):
                     "x_testbench_no_md5": "true",
                 },
                 "metageneration": "1",
+                "retentionExpirationTime": "2022-01-01T00:00:00Z",
                 "size": "9",
                 "storageClass": "regional",
                 "temporaryHold": True,
@@ -425,6 +429,7 @@ class TestObject(unittest.TestCase):
             "eventBasedHold": True,
             "customerEncryption": {"encryptionAlgorithm": "AES", "keySha256": "123456"},
             "kmsKeyName": "test-value",
+            "retentionExpirationTime": "2022-01-01T00:00:00Z",
             "temporaryHold": True,
             # These are a bit artificial, but good to test the
             # testbench preserves valid fields.
@@ -477,14 +482,6 @@ class TestObject(unittest.TestCase):
         # Verify the ObjectAccessControl entries have the desired fields
         acl = rest_metadata.pop("acl", None)
         self.assertIsNotNone(acl)
-        retention_expiration_time = rest_metadata.pop("retentionExpirationTime")
-        expected_retention_expiration = (
-            blob.metadata.create_time.ToDatetime() + datetime.timedelta(0, 600)
-        )
-        self.assertEqual(
-            retention_expiration_time,
-            expected_retention_expiration.strftime("%Y-%m-%dT%H:%M:%S.%f%zZ"),
-        )
         for entry in acl:
             self.assertEqual(entry.pop("kind", None), "storage#objectAccessControl")
             self.assertEqual(entry.pop("bucket", None), "bucket")
@@ -543,6 +540,7 @@ class TestObject(unittest.TestCase):
                     "x_testbench_upload": "multipart",
                 },
                 "metageneration": "1",
+                "retentionExpirationTime": "2022-01-01T00:00:00Z",
                 "size": "9",
                 "storageClass": "regional",
                 "temporaryHold": True,
