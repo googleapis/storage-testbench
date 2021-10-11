@@ -51,7 +51,13 @@ class TestObject(unittest.TestCase):
     def test_init_retention_period(self):
         retention_period = 600
         request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "retention_bucket", "retentionPolicy": {"retentionPeriod": retention_period}})
+            args={},
+            data=json.dumps(
+                {
+                    "name": "retention_bucket",
+                    "retentionPolicy": {"retentionPeriod": retention_period},
+                }
+            ),
         )
         self.retention_bucket, _ = gcs.bucket.Bucket.init(request, None)
         request = testbench.common.FakeRequest(
@@ -59,7 +65,8 @@ class TestObject(unittest.TestCase):
         )
         blob, _ = gcs.object.Object.init_media(request, self.retention_bucket.metadata)
         expected_retention_expiration = (
-            blob.metadata.create_time.ToDatetime() + datetime.timedelta(0, retention_period)
+            blob.metadata.create_time.ToDatetime()
+            + datetime.timedelta(0, retention_period)
         )
         self.assertEqual(
             blob.metadata.retention_expire_time.ToDatetime(),
