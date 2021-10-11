@@ -25,6 +25,7 @@ import unittest.mock
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
+import datetime
 import gcs
 from google.storage.v2 import storage_pb2
 import testbench
@@ -46,6 +47,31 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "object")
         self.assertEqual(blob.media, b"12345678")
+
+    def test_init_retention_period(self):
+        retention_period = 600
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "retention_bucket",
+                    "retentionPolicy": {"retentionPeriod": retention_period},
+                }
+            ),
+        )
+        self.retention_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = testbench.common.FakeRequest(
+            args={"name": "object"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.retention_bucket.metadata)
+        expected_retention_expiration = (
+            blob.metadata.create_time.ToDatetime()
+            + datetime.timedelta(0, retention_period)
+        )
+        self.assertEqual(
+            blob.metadata.retention_expire_time.ToDatetime(),
+            expected_retention_expiration,
+        )
 
     def test_init_and_corrupt_media(self):
         """Sometimes we want the testbench to inject errors, to make sure the librar(ies) detects them."""
