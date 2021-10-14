@@ -542,6 +542,12 @@ def rest_adjust(data, adjustments):
     return modified
 
 
+def __preprocess_customer_encryption(rest):
+    # json_format.ParseDict() automatically decodes bytes from
+    # the base64 encoding, no need to manually doing so.
+    return rest_adjust(rest, {"keySha256": lambda x: ("keySha256Bytes", x)})
+
+
 def preprocess_object_metadata(metadata):
     """
     Convert from the JSON field names in an Object metadata to the storage/v2 field names.
@@ -560,6 +566,10 @@ def preprocess_object_metadata(metadata):
             "retentionExpirationTime": lambda x: ("retentionExpireTime", x),
             "timeDeleted": lambda x: ("deleteTime", x),
             "timeStorageClassUpdated": lambda x: ("updateStorageClassTime", x),
+            "customerEncryption": lambda x: (
+                "customerEncryption",
+                __preprocess_customer_encryption(x),
+            ),
         },
     )
     checksums = {}

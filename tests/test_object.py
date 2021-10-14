@@ -148,8 +148,10 @@ class TestObject(unittest.TestCase):
             {"name": "object"},
             media="",
         )
-        key_b64 = base64.b64encode(b"X" * 32)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(b"X" * 32).digest())
+        key = b"A" * 16 + b"B" * 16
+        key_sha256 = hashlib.sha256(key).digest()
+        key_b64 = base64.b64encode(key)
+        key_sha256_b64 = base64.b64encode(key_sha256)
         request = testbench.common.FakeRequest(
             args={},
             headers={
@@ -167,9 +169,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             blob.metadata.customer_encryption.encryption_algorithm, "AES256"
         )
-        self.assertEqual(
-            blob.metadata.customer_encryption.key_sha256, key_sha256_b64.decode("utf-8")
-        )
+        self.assertEqual(blob.metadata.customer_encryption.key_sha256_bytes, key_sha256)
 
     def test_init_multipart_missing_name(self):
         boundary, payload = format_multipart_upload(
@@ -293,7 +293,7 @@ class TestObject(unittest.TestCase):
                 content_type="octet-stream",
                 storage_class="regional",
                 customer_encryption=storage_pb2.Object.CustomerEncryption(
-                    encryption_algorithm="AES", key_sha256="123456"
+                    encryption_algorithm="AES", key_sha256_bytes=b"123456"
                 ),
                 custom_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-08-01T12:00:00Z"
@@ -392,7 +392,7 @@ class TestObject(unittest.TestCase):
                 "crc32c": "4waSgw==",
                 "customerEncryption": {
                     "encryptionAlgorithm": "AES",
-                    "keySha256": "123456",
+                    "keySha256": "MTIzNDU2",  # base64.b64encode("123456")
                 },
                 "kmsKeyName": "test-value",
                 "md5Hash": "JfnnlDI7RTiF9RgfG2JNCw==",
@@ -434,7 +434,10 @@ class TestObject(unittest.TestCase):
             "contentLanguage": "test-value",
             "contentType": "application/octet-stream",
             "eventBasedHold": True,
-            "customerEncryption": {"encryptionAlgorithm": "AES", "keySha256": "123456"},
+            "customerEncryption": {
+                "encryptionAlgorithm": "AES",
+                "keySha256": "MTIzNDU2",  # base64.b64encode("123456").decode("utf-8"),
+            },
             "kmsKeyName": "test-value",
             "retentionExpirationTime": "2022-01-01T00:00:00Z",
             "temporaryHold": True,
@@ -536,7 +539,7 @@ class TestObject(unittest.TestCase):
                 "crc32c": "4waSgw==",
                 "customerEncryption": {
                     "encryptionAlgorithm": "AES",
-                    "keySha256": "123456",
+                    "keySha256": "MTIzNDU2",
                 },
                 "kmsKeyName": "test-value",
                 "md5Hash": "JfnnlDI7RTiF9RgfG2JNCw==",

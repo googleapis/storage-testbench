@@ -52,26 +52,25 @@ def extract(request, is_source, context):
     return algorithm, key_b64, key_sha256_b64
 
 
-def check(algorithm, key_b64, key_sha256_b64, context):
+def check(algorithm, key_b64, expected_sha256, context):
     if algorithm != "AES256":
         return testbench.error.invalid("Algorithm %s for CSEK" % algorithm, context)
     key = base64.standard_b64decode(key_b64)
     if len(key) != 256 / 8:
         return testbench.error.csek(context)
-    expected_sha256 = base64.standard_b64decode(key_sha256_b64)
     actual_sha256 = hashlib.sha256(key).digest()
     if expected_sha256 != actual_sha256:
         return testbench.error.csek(context)
     return actual_sha256
 
 
-def validation(request, expected_sha256_b64, is_source, context):
+def validation(request, expected_sha256, is_source, context):
     algorithm, key_b64, key_sha256_b64 = extract(request, is_source, context)
-    if expected_sha256_b64 == "":
+    if expected_sha256 == b"":
         if key_sha256_b64 != "":
             testbench.error.csek(context)
         else:
             return
-    check(algorithm, key_b64, key_sha256_b64, context)
-    if expected_sha256_b64 != key_sha256_b64:
-        testbench.error.csek(context)
+    return check(
+        algorithm, key_b64, base64.b64decode(key_sha256_b64.encode("utf-8")), context
+    )
