@@ -63,52 +63,53 @@ class TestCSEK(unittest.TestCase):
 
     def test_check_success(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(key).digest()
         key_b64 = base64.b64encode(key)
         expected = hashlib.sha256(key).digest()
-        key_sha256_b64 = base64.b64encode(expected)
-        actual = csek.check("AES256", key_b64, key_sha256_b64, None)
+        actual = csek.check("AES256", key_b64, key_sha256, None)
         self.assertEqual(expected, actual)
 
     def test_check_invalid_algorithm(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(key).digest()
         key_b64 = base64.b64encode(key)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(key).digest())
         with self.assertRaises(error.RestException) as rest:
-            _ = csek.check("#### INVALID ####", key_b64, key_sha256_b64, None)
+            _ = csek.check("#### INVALID ####", key_b64, key_sha256, None)
         self.assertEqual(rest.exception.code, 400)
 
         context = Mock()
-        _ = csek.check("#### INVALID ####", key_b64, key_sha256_b64, context)
+        _ = csek.check("#### INVALID ####", key_b64, key_sha256, context)
         context.abort.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT, ANY)
 
     def test_check_invalid_key_length(self):
         key = b"## INVALID ##"
+        key_sha256 = hashlib.sha256(key).digest()
         key_b64 = base64.b64encode(key)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(key).digest())
         with self.assertRaises(error.RestException) as rest:
-            _ = csek.check("AES256", key_b64, key_sha256_b64, None)
+            _ = csek.check("AES256", key_b64, key_sha256, None)
         self.assertEqual(rest.exception.code, 400)
 
         context = Mock()
-        _ = csek.check("AES256", key_b64, key_sha256_b64, context)
+        _ = csek.check("AES256", key_b64, key_sha256, context)
         context.abort.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT, ANY)
 
     def test_check_invalid_hash(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(b"## INVALID ##").digest()
         key_b64 = base64.b64encode(key)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(b"## INVALID ##").digest())
         with self.assertRaises(error.RestException) as rest:
-            _ = csek.check("AES256", key_b64, key_sha256_b64, None)
+            _ = csek.check("AES256", key_b64, key_sha256, None)
         self.assertEqual(rest.exception.code, 400)
 
         context = Mock()
-        _ = csek.check("AES256", key_b64, key_sha256_b64, context)
+        _ = csek.check("AES256", key_b64, key_sha256, context)
         context.abort.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT, ANY)
 
     def test_validation_success(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(key).digest()
         key_b64 = base64.b64encode(key)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(key).digest()).decode("utf-8")
+        key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
         environ = create_environ(
             base_url="http://localhost:8080",
             content_type="application/json",
@@ -119,12 +120,13 @@ class TestCSEK(unittest.TestCase):
                 "x-goog-encryption-key-sha256": key_sha256_b64,
             },
         )
-        csek.validation(Request(environ), key_sha256_b64, False, None)
+        csek.validation(Request(environ), key_sha256, False, None)
 
     def test_validation_failure(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(key).digest()
         key_b64 = base64.b64encode(key)
-        key_sha256_b64 = base64.b64encode(hashlib.sha256(key).digest()).decode("utf-8")
+        key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
         environ = create_environ(
             base_url="http://localhost:8080",
             content_type="application/json",
@@ -136,7 +138,7 @@ class TestCSEK(unittest.TestCase):
             },
         )
         with self.assertRaises(error.RestException) as rest:
-            csek.validation(Request(environ), key_sha256_b64, False, None)
+            csek.validation(Request(environ), key_sha256, False, None)
         self.assertEqual(rest.exception.code, 400)
 
 

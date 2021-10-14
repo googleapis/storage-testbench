@@ -503,7 +503,7 @@ def object_get(bucket_name, object_name):
     if media != "media":
         testbench.error.invalid("Alt %s")
     testbench.csek.validation(
-        flask.request, blob.metadata.customer_encryption.key_sha256, False, None
+        flask.request, blob.metadata.customer_encryption.key_sha256_bytes, False, None
     )
     return blob.rest_media(flask.request)
 
@@ -564,7 +564,10 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
         flask.request, src_bucket_name, src_object_name, True, None
     )
     testbench.csek.validation(
-        flask.request, src_object.metadata.customer_encryption.key_sha256, False, None
+        flask.request,
+        src_object.metadata.customer_encryption.key_sha256_bytes,
+        False,
+        None,
     )
     dst_metadata = storage_pb2.Object()
     dst_metadata.CopyFrom(src_object.metadata)
@@ -610,7 +613,10 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
         rewrite.request, src_bucket_name, src_object_name, True, None
     )
     testbench.csek.validation(
-        rewrite.request, src_object.metadata.customer_encryption.key_sha256, True, None
+        rewrite.request,
+        src_object.metadata.customer_encryption.key_sha256_bytes,
+        True,
+        None,
     )
     total_bytes_rewritten = len(rewrite.media)
     total_bytes_rewritten += min(

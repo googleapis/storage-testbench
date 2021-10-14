@@ -86,7 +86,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             return StorageServicer._log_rpc_passthrough(
                 "WriteObject",
                 None,
-                storage_pb2.WriteObjectResponse(committed_size=len(upload.media)),
+                storage_pb2.WriteObjectResponse(persisted_size=len(upload.media)),
             )
         blob, _ = gcs.object.Object.init(
             upload.request, upload.metadata, upload.media, upload.bucket, False, context
@@ -118,7 +118,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return StorageServicer._log_rpc_passthrough(
             "QueryWriteStatus",
             request,
-            storage_pb2.QueryWriteStatusResponse(committed_size=len(upload.media)),
+            storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media)),
         )
 
 

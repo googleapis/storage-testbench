@@ -73,6 +73,14 @@ class Object:
         metadata.acl.extend(acls)
 
     @classmethod
+    def __postprocess_customer_encryption(cls, metadata):
+        # There is no need to base64 encode the data, because json_format.MessageToDict() already does.
+        return testbench.common.rest_adjust(
+            metadata,
+            {"keySha256Bytes": lambda x: ("keySha256", x)},
+        )
+
+    @classmethod
     def __postprocess_object_metadata(cls, metadata):
         """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
         # For some fields the storage/v2 name just needs to change slightly.
@@ -89,6 +97,10 @@ class Object:
                 "retentionExpireTime": lambda x: ("retentionExpirationTime", x),
                 "deleteTime": lambda x: ("timeDeleted", x),
                 "updateStorageClassTime": lambda x: ("timeStorageClassUpdated", x),
+                "customerEncryption": lambda x: (
+                    "customerEncryption",
+                    cls.__postprocess_customer_encryption(x),
+                ),
             },
         )
         metadata["kind"] = "storage#object"
@@ -150,9 +162,10 @@ class Object:
             request, False, context
         )
         if algorithm != "":
-            testbench.csek.check(algorithm, key_b64, key_sha256_b64, context)
+            key_sha256 = base64.b64decode(key_sha256_b64)
+            testbench.csek.check(algorithm, key_b64, key_sha256, context)
             metadata.customer_encryption.encryption_algorithm = algorithm
-            metadata.customer_encryption.key_sha256 = key_sha256_b64
+            metadata.customer_encryption.key_sha256_bytes = key_sha256
         default_projection = "noAcl"
         is_uniform = bucket.iam_config.uniform_bucket_level_access.enabled
         # TODO(#27) - this is probably a bug, cleanup once we move all the code

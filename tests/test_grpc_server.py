@@ -228,13 +228,13 @@ class TestGrpc(unittest.TestCase):
         )
         write = self.grpc.WriteObject([r1], "fake-context")
         self.assertIsNotNone(write)
-        self.assertEqual(write.committed_size, QUANTUM)
+        self.assertEqual(write.persisted_size, QUANTUM)
 
         status = self.grpc.QueryWriteStatus(
             storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
             "fake-context",
         )
-        self.assertEqual(status.committed_size, QUANTUM)
+        self.assertEqual(status.persisted_size, QUANTUM)
 
         offset = QUANTUM
         content = media[QUANTUM : 2 * QUANTUM]

@@ -64,7 +64,7 @@ class StorageServicer(object):
         each following call to `Create`. If there is an error or the connection is
         broken during the resumable `Create()`, the client should check the status
         of the `Create()` by calling `QueryWriteStatus()` and continue writing from
-        the returned `committed_size`. This may be less than the amount of data the
+        the returned `persisted_size`. This may be less than the amount of data the
         client previously sent.
 
         The service will not view the object as complete until the client has
@@ -88,7 +88,7 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def QueryWriteStatus(self, request, context):
-        """Determines the `committed_size` for an object that is being written, which
+        """Determines the `persisted_size` for an object that is being written, which
         can then be used as the `write_offset` for the next `Write()` call.
 
         If the object does not exist (i.e., the object has been deleted, or the
@@ -99,7 +99,7 @@ class StorageServicer(object):
         much data has been processed for this object. This is useful if the
         client is buffering data and needs to know which data can be safely
         evicted. For any sequence of `QueryWriteStatus()` calls for a given
-        object name, the sequence of returned `committed_size` values will be
+        object name, the sequence of returned `persisted_size` values will be
         non-decreasing.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
