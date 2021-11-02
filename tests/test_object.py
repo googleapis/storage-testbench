@@ -373,7 +373,7 @@ class TestObject(unittest.TestCase):
         generation = rest_metadata.pop("generation", None)
         self.assertIsNotNone(generation)
         self.assertEqual(
-            "bucket/o/test-object-name#" + generation, rest_metadata.pop("id")
+            "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
         self.maxDiff = None
         self.assertDictEqual(
@@ -521,7 +521,7 @@ class TestObject(unittest.TestCase):
         generation = rest_metadata.pop("generation", None)
         self.assertIsNotNone(generation)
         self.assertEqual(
-            "bucket/o/test-object-name#" + generation, rest_metadata.pop("id")
+            "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
         self.maxDiff = None
         self.assertDictEqual(

@@ -104,7 +104,7 @@ class Object:
             },
         )
         metadata["kind"] = "storage#object"
-        metadata["id"] = "%s/o/%s#%s" % (
+        metadata["id"] = "%s/o/%s/%s" % (
             metadata["bucket"],
             metadata["name"],
             metadata["generation"],
