@@ -1,5 +1,13 @@
 {
   "extends": [
     "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["python"],
+      "matchCurrentVersion": "3.9",
+      "schedule": ["before 12pm on Monday"]
+    }
   ]
 }
