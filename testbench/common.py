@@ -398,7 +398,9 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
         if upload.complete:
             database.dequeue_next_instruction(test_id, method)
             data = _extract_data(data)
-            return flask.Response(data[0:limit], status=200, content_type="application/json")
+            return flask.Response(
+                data[0:limit], status=200, content_type="application/json"
+            )
         else:
             return data
 
@@ -467,13 +469,17 @@ def handle_retry_test_instruction(database, request, method):
                     grpc_code=StatusCode.INTERNAL,  # not really used
                     context=None,
                 )
-    retry_return_short_response = testbench.common.retry_return_short_response.match(next_instruction)
+    retry_return_short_response = testbench.common.retry_return_short_response.match(
+        next_instruction
+    )
     if retry_return_short_response and method == "storage.objects.insert":
         upload_id = request.args.get("upload_id", None)
         if upload_id:
             items = list(retry_return_short_response.groups())
             with_bytes = int(items[0])
-            return __get_limit_response_fn(database, upload_id, test_id, method, with_bytes)
+            return __get_limit_response_fn(
+                database, upload_id, test_id, method, with_bytes
+            )
     return __get_default_response_fn
 
 

@@ -102,6 +102,7 @@ class TestTestbenchRetry(unittest.TestCase):
         all = set(rest_server.db.supported_methods())
         for name, operations in groups.items():
             self.assertEqual(all, all | operations, msg=name)
+
     @staticmethod
     def _create_valid_chunk():
         line = "How vexingly quick daft zebras jump!"
@@ -226,7 +227,13 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/retry_test",
             data=json.dumps(
-                {"instructions": {"storage.objects.insert": ["return-200-with-%dB" % bytes_returned]}}
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-200-with-%dB" % bytes_returned
+                        ]
+                    }
+                }
             ),
         )
         self.assertEqual(response.status_code, 200)
@@ -267,7 +274,13 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/retry_test",
             data=json.dumps(
-                {"instructions": {"storage.objects.insert": ["return-200-with-%dB" % bytes_returned]}}
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-200-with-%dB" % bytes_returned
+                        ]
+                    }
+                }
             ),
         )
         print(response.data)
@@ -282,7 +295,10 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"uploadType": "resumable", "name": "256kobject"},
-            headers={"x-upload-content-length": "%d" % 2 * len(chunk), "x-retry-test-id": id},
+            headers={
+                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-retry-test-id": id,
+            },
         )
         self.assertEqual(response.status_code, 200)
         location = response.headers.get("location")
