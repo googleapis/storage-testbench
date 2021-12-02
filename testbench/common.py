@@ -37,7 +37,7 @@ re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")
 retry_return_error_code = re.compile(r"return-([0-9]+)$")
 retry_return_error_connection = re.compile(r"return-([a-z\-]+)$")
 retry_return_error_after_bytes = re.compile(r"return-([0-9]+)-after-([0-9]+)K$")
-retry_return_short_response = re.compile(r"return-200-with-([0-9]+)B$")
+retry_return_short_response = re.compile(r"return-broken-stream-final-chunk-after-([0-9]+)B$")
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
 # === STR === #

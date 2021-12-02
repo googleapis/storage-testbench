@@ -230,7 +230,7 @@ class TestTestbenchRetry(unittest.TestCase):
                 {
                     "instructions": {
                         "storage.objects.insert": [
-                            "return-200-with-%dB" % bytes_returned
+                            "return-broken-stream-final-chunk-after-%dB" % bytes_returned
                         ]
                     }
                 }
@@ -277,7 +277,7 @@ class TestTestbenchRetry(unittest.TestCase):
                 {
                     "instructions": {
                         "storage.objects.insert": [
-                            "return-200-with-%dB" % bytes_returned
+                            "return-broken-stream-final-chunk-after-%dB" % bytes_returned
                         ]
                     }
                 }
