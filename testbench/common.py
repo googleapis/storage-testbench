@@ -37,6 +37,9 @@ re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")
 retry_return_error_code = re.compile(r"return-([0-9]+)$")
 retry_return_error_connection = re.compile(r"return-([a-z\-]+)$")
 retry_return_error_after_bytes = re.compile(r"return-([0-9]+)-after-([0-9]+)K$")
+retry_return_short_response = re.compile(
+    r"return-broken-stream-final-chunk-after-([0-9]+)B$"
+)
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
 # === STR === #
@@ -391,7 +394,23 @@ def __get_default_response_fn(data):
     return data
 
 
+def __get_limit_response_fn(database, upload_id, test_id, method, limit):
+    def limited_response_fn(data):
+        upload = database.get_upload(upload_id, None)
+        if upload.complete:
+            database.dequeue_next_instruction(test_id, method)
+            data = _extract_data(data)
+            return flask.Response(
+                data[0:limit], status=200, content_type="application/json"
+            )
+        else:
+            return data
+
+    return limited_response_fn
+
+
 def handle_retry_test_instruction(database, request, method):
+    upload_id = request.args.get("upload_id", None)
     test_id = request.headers.get("x-retry-test-id", None)
     if not test_id or not database.has_instructions_retry_test(test_id, method):
         return __get_default_response_fn
@@ -452,6 +471,17 @@ def handle_retry_test_instruction(database, request, method):
                     grpc_code=StatusCode.INTERNAL,  # not really used
                     context=None,
                 )
+    retry_return_short_response = testbench.common.retry_return_short_response.match(
+        next_instruction
+    )
+    if retry_return_short_response and method == "storage.objects.insert":
+        upload_id = request.args.get("upload_id", None)
+        if upload_id:
+            items = list(retry_return_short_response.groups())
+            with_bytes = int(items[0])
+            return __get_limit_response_fn(
+                database, upload_id, test_id, method, with_bytes
+            )
     return __get_default_response_fn
 
 

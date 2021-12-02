@@ -356,6 +356,7 @@ class Database:
             testbench.common.retry_return_error_code,
             testbench.common.retry_return_error_connection,
             testbench.common.retry_return_error_after_bytes,
+            testbench.common.retry_return_short_response,
         ]:
             if expr.match(failure) is not None:
                 return

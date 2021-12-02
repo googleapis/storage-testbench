@@ -103,6 +103,13 @@ class TestTestbenchRetry(unittest.TestCase):
         for name, operations in groups.items():
             self.assertEqual(all, all | operations, msg=name)
 
+    @staticmethod
+    def _create_valid_chunk():
+        line = "How vexingly quick daft zebras jump!"
+        pad = (255 - len(line)) * " "
+        line = line + pad + "\n"
+        return 1024 * line
+
     def test_retry_test_crud(self):
         self.assertIn("storage.buckets.list", rest_server.db.supported_methods())
         response = self.client.post(
@@ -208,6 +215,122 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         error = json.loads(response.data)
         self.assertIn("connection reset by peer", error.get("message"))
+
+    def test_retry_test_return_no_metadata_on_resumable_complete(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a error for resumable upload to respond with a 200 without object metadata returned
+        bytes_returned = 0
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-broken-stream-final-chunk-after-%dB"
+                            % bytes_returned
+                        ]
+                    }
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "256kobject"},
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(response.status_code, 200)
+        location = response.headers.get("location")
+
+        response = self.client.put(
+            location,
+            data="test",
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        self.assertEqual(len(response.data), bytes_returned)
+
+    def test_retry_test_return_no_metadata_on_resumable_multi_chunk_complete(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a error for resumable upload to respond with a 200 without object metadata returned
+        bytes_returned = 10
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-broken-stream-final-chunk-after-%dB"
+                            % bytes_returned
+                        ]
+                    }
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+        chunk = self._create_valid_chunk()
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "256kobject"},
+            headers={
+                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-retry-test-id": id,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        location = response.headers.get("location")
+
+        # Upload in chunks, but there is not need to specify the ending byte because
+        #  it was set via the x-upload-content-length header.
+        response = self.client.put(
+            location,
+            headers={
+                "content-range": "bytes 0-{last:d}/*".format(last=len(chunk) - 1),
+                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-retry-test-id": id,
+            },
+            data=chunk,
+        )
+        self.assertEqual(response.status_code, 308, msg=response.data)
+
+        chunk = self._create_valid_chunk()
+        response = self.client.put(
+            location,
+            headers={
+                "content-range": "bytes {last:d}-*/*".format(last=len(chunk) - 1),
+                "x-retry-test-id": id,
+            },
+            data=chunk,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        self.assertEqual(len(response.data), bytes_returned)
 
     def test_retry_test_return_broken_stream(self):
         response = self.client.post(
