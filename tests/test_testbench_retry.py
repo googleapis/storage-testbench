@@ -222,7 +222,7 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        # Setup a error for resumalbe upload to respond with a 200 without object metadata returned
+        # Setup a error for resumable upload to respond with a 200 without object metadata returned
         bytes_returned = 0
         response = self.client.post(
             "/retry_test",
@@ -230,7 +230,8 @@ class TestTestbenchRetry(unittest.TestCase):
                 {
                     "instructions": {
                         "storage.objects.insert": [
-                            "return-broken-stream-final-chunk-after-%dB" % bytes_returned
+                            "return-broken-stream-final-chunk-after-%dB"
+                            % bytes_returned
                         ]
                     }
                 }
@@ -269,7 +270,7 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        # Setup a error for resumalbe upload to respond with a 200 without object metadata returned
+        # Setup a error for resumable upload to respond with a 200 without object metadata returned
         bytes_returned = 10
         response = self.client.post(
             "/retry_test",
@@ -277,13 +278,13 @@ class TestTestbenchRetry(unittest.TestCase):
                 {
                     "instructions": {
                         "storage.objects.insert": [
-                            "return-broken-stream-final-chunk-after-%dB" % bytes_returned
+                            "return-broken-stream-final-chunk-after-%dB"
+                            % bytes_returned
                         ]
                     }
                 }
             ),
         )
-        print(response.data)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
             response.headers.get("content-type").startswith("application/json")
