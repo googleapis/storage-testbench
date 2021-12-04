@@ -417,7 +417,7 @@ class Object:
                 response_payload = response_payload[-last:]
 
         streamer, length, headers = None, len(response_payload), {}
-        content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
+        content_range = "bytes %d-%d/%d" % (begin, end - 1, len(self.media))
 
         instructions = testbench.common.extract_instruction(request, None)
         if instructions == "return-broken-stream":
@@ -520,4 +520,6 @@ class Object:
         headers["Content-Range"] = content_range
         headers["x-goog-hash"] = self.x_goog_hash_header()
         headers["x-goog-generation"] = self.metadata.generation
+        headers["x-goog-metageneration"] = self.metadata.metageneration
+        headers["x-goog-storage-class"] = self.metadata.storage_class
         return flask.Response(streamer(), status=200, headers=headers)

@@ -658,6 +658,10 @@ class TestObject(unittest.TestCase):
         response = blob.rest_media(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"How vexingly quick daft zebras jump!")
+        self.assertIn("x-goog-hash", response.headers)
+        self.assertIn("x-goog-generation", response.headers)
+        self.assertIn("x-goog-metageneration", response.headers)
+        self.assertIn("x-goog-storage-class", response.headers)
 
         cases = {
             "bytes=4-9": b"vexing",
@@ -675,6 +679,12 @@ class TestObject(unittest.TestCase):
             response = blob.rest_media(request)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data, expected)
+            self.assertIn("content-range", response.headers)
+            content_range = response.headers["content-range"]
+            self.assertTrue(
+                content_range.endswith("/%d" % len(blob.media)),
+                msg="unexpected content-range header: " + content_range,
+            )
 
     def test_rest_media_instructions(self):
         boundary, payload = format_multipart_upload(
