@@ -52,6 +52,8 @@ class TestTestbenchObjectXML(unittest.TestCase):
             "/fox.txt", base_url="https://bucket-name.storage.googleapis.com"
         )
         self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertIn("x-goog-stored-content-length", response.headers)
+        self.assertIn("x-goog-stored-content-encoding", response.headers)
         self.assertEqual(response.data, b"The quick brown fox jumps over the lazy dog")
 
     def test_object_xml_put_get_with_bucket(self):

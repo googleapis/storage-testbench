@@ -73,7 +73,10 @@ def xml_put_object(bucket_name, object_name):
 def xml_get_object(bucket_name, object_name):
     fake_request = testbench.common.FakeRequest.init_xml(flask.request)
     blob = db.get_object(fake_request, bucket_name, object_name, False, None)
-    return blob.rest_media(fake_request)
+    response = blob.rest_media(fake_request)
+    response.headers["x-goog-stored-content-length"] = len(blob.media)
+    response.headers["x-goog-stored-content-encoding"] = "identity"
+    return response
 
 
 @root.route("/<path:object_name>", subdomain="<bucket_name>")
