@@ -470,9 +470,7 @@ class Bucket:
         metadata.owner.entity_id = hashlib.md5(
             metadata.owner.entity.encode("utf-8")
         ).hexdigest()
-        return (
-            cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl"
-        )
+        return (cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl")
 
     # === IAM === #
 
