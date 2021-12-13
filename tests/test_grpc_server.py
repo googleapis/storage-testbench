@@ -39,6 +39,17 @@ class TestGrpc(unittest.TestCase):
         self.db.insert_bucket(request, self.bucket, None)
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
+    def test_create_bucket(self):
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateBucket(request, context)
+        self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
+        self.assertEqual(response.bucket_id, "test-bucket-name")
+
     @staticmethod
     def _create_block(desired_bytes):
         line = "A" * 127 + "\n"
