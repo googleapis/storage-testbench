@@ -458,9 +458,6 @@ class Bucket:
         )
         cls.__validate_grpc_project_name(request.parent, context)
         metadata = request.bucket
-        default_projection = "noAcl"
-        if len(metadata.acl) != 0 or len(metadata.default_object_acl) != 0:
-            default_projection = "full"
         if metadata.rpo is None or metadata.rpo == "":
             metadata.rpo = "DEFAULT"
         metadata.bucket_id = request.bucket_id
@@ -474,8 +471,7 @@ class Bucket:
             metadata.owner.entity.encode("utf-8")
         ).hexdigest()
         return (
-            cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
-            testbench.common.extract_projection(request, default_projection, context),
+            cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl"
         )
 
     # === IAM === #

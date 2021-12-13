@@ -71,8 +71,24 @@ class TestBucketGrpc(unittest.TestCase):
             )
             context = unittest.mock.Mock()
             context.abort.side_effect = TestBucketGrpc._raise_grpc_error
-            with self.assertRaises(Exception, msg=id) as rest:
-                bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
+            with self.assertRaises(Exception, msg=id) as _:
+                _, _ = gcs.bucket.Bucket.init_grpc(request, context)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+    def test_init_validates_project(self):
+        invalid_projects = ["projects/", "pr/test-project", "projects/foo/bar/baz"]
+        for project in invalid_projects:
+            request = storage_pb2.CreateBucketRequest(
+                parent=project,
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
+            )
+            context = unittest.mock.Mock()
+            context.abort.side_effect = TestBucketGrpc._raise_grpc_error
+            with self.assertRaises(Exception, msg="project <%s>" % project) as _:
+                _, _ = gcs.bucket.Bucket.init_grpc(request, context)
             context.abort.assert_called_once_with(
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
