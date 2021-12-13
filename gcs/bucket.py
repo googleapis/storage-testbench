@@ -70,6 +70,12 @@ class Bucket:
             testbench.error.invalid("Bucket name %s" % bucket_name, context)
 
     @classmethod
+    def __validate_grpc_project_name(cls, project_name, context):
+        valid = re.match("^projects/[^/]+$", project_name) is not None
+        if not valid:
+            testbench.error.invalid("Project name %s" % project_name, context)
+
+    @classmethod
     def __preprocess_rest_ubla(cls, ubla):
         return testbench.common.rest_adjust(
             ubla, {"lockedTime": lambda x: ("lockTime", x)}
@@ -432,6 +438,34 @@ class Bucket:
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
         metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
         metadata.project = "project/" + testbench.acl.PROJECT_NUMBER
+        metadata.metageneration = 1
+        metadata.create_time.FromDatetime(time_created)
+        metadata.update_time.FromDatetime(time_created)
+        metadata.owner.entity = testbench.acl.get_project_entity("owners", context)
+        metadata.owner.entity_id = hashlib.md5(
+            metadata.owner.entity.encode("utf-8")
+        ).hexdigest()
+        return (
+            cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
+            testbench.common.extract_projection(request, default_projection, context),
+        )
+
+    @classmethod
+    def init_grpc(cls, request, context):
+        time_created = datetime.datetime.now()
+        cls.__validate_json_bucket_name(
+            testbench.common.bucket_name_from_proto(request.bucket_id), context
+        )
+        cls.__validate_grpc_project_name(request.parent, context)
+        metadata = request.bucket
+        default_projection = "noAcl"
+        if len(metadata.acl) != 0 or len(metadata.default_object_acl) != 0:
+            default_projection = "full"
+        if metadata.rpo is None or metadata.rpo == "":
+            metadata.rpo = "DEFAULT"
+        metadata.bucket_id = request.bucket_id
+        metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
+        metadata.name = "projects/_/buckets/" + request.bucket_id
         metadata.metageneration = 1
         metadata.create_time.FromDatetime(time_created)
         metadata.update_time.FromDatetime(time_created)
