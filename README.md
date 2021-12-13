@@ -103,10 +103,13 @@ gRPC. To do so, clone the [protos](https://github.com/googleapis/googleapis) and
 run the grpc_tools generator:
 
 ```shell
-cd $HOME
-git clone https://github.com/googleapis/googleapis
-patch -p1 <$HOME/storage-testbench/patches/rpo-and-cdr.patch
 cd $HOME/storage-testbench
+
+git -C $HOME clone https://github.com/googleapis/googleapis
+# if it already exists, use
+#    git -C $HOME pull 
+git -C $HOME/googleapis checkout origin/preview -- google/storage/v2
+
 pip install grpcio-tools
 python -m grpc_tools.protoc -I$HOME/googleapis \
     --python_out=. --grpc_python_out=. \
@@ -120,6 +123,12 @@ python -m grpc_tools.protoc -I$HOME/googleapis \
 python -m grpc_tools.protoc -I$HOME/googleapis \
     --python_out=. --grpc_python_out=. \
     $HOME/googleapis/google/storage/v2/storage.proto
+```
+
+Then commit the files generated in `google/**`:
+
+```shell
+git commit -m"chore: update protos" google
 ```
 
 ## Force Failures
