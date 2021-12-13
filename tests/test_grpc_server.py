@@ -50,6 +50,25 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
 
+    def test_get_object(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object(request, "bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual(response.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.name, "object-name")
+        self.assertNotEqual(0, response.generation)
+        self.assertEqual(response.size, len(media))
+
     @staticmethod
     def _create_block(desired_bytes):
         line = "A" * 127 + "\n"

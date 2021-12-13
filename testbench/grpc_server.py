@@ -23,7 +23,11 @@ import gcs
 import testbench
 
 
+# Keep the methods in this class in the same order as the RPCs in storage.proto.
+# That makes it easier to find them later.
 class StorageServicer(storage_pb2_grpc.StorageServicer):
+    """Implements the google.storage.v2.Storage gRPC service."""
+
     def __init__(self, db):
         self.db = db
 
@@ -33,7 +37,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.insert_bucket(request, bucket, context)
         return bucket.metadata
 
-    # === OBJECT === #
+    def GetObject(self, request, context):
+        blob = self.db.get_object(
+            request, request.bucket, request.object, False, context
+        )
+        return blob.metadata
 
     def ReadObject(self, request, context):
         blob = self.db.get_object(
