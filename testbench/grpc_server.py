@@ -116,6 +116,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             "WriteObject", None, storage_pb2.WriteObjectResponse(resource=blob.metadata)
         )
 
+    def ListObjects(self, request, context):
+        self.db.insert_test_bucket()
+        items, prefixes = self.db.list_object(request, request.parent, context)
+        return storage_pb2.ListObjectsResponse(objects=items, prefixes=prefixes)
+
     def StartResumableWrite(self, request, context):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
         upload = gcs.holder.DataHolder.init_resumable_grpc(request, bucket, context)

@@ -357,6 +357,28 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(blob.size, len(media))
 
+    def test_list_objects(self):
+        names = ["a/test-0", "a/test-1", "a/b/test-0", "a/b/test-1", "c/test-0"]
+        media = b"The quick brown fox jumps over the lazy dog"
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object(request, "bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListObjects(
+            storage_pb2.ListObjectsRequest(
+                parent="projects/_/buckets/bucket-name",
+                prefix="a/",
+                delimiter="/",
+            ),
+            context,
+        )
+        self.assertEqual(response.prefixes, ["a/b/"])
+        response_names = [o.name for o in response.objects]
+        self.assertEqual(response_names, ["a/test-0", "a/test-1"])
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)

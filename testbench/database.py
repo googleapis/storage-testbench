@@ -149,11 +149,23 @@ class Database:
         return bucket
 
     @classmethod
+    def __extract_list_object_request_grpc(cls, request):
+        return (
+            request.delimiter,
+            request.prefix,
+            request.versions,
+            request.lexicographic_start,
+            request.lexicographic_end,
+            request.include_trailing_delimiter,
+        )
+
+    @classmethod
     def __extract_list_object_request(cls, request, context):
+        if context is not None:
+            return cls.__extract_list_object_request_grpc(request)
         delimiter, prefix, versions = "", "", False
         start_offset, end_offset = "", None
         include_trailing_delimiter = False
-        # TODO(#27) - restore gRPC support for listing objects?
         delimiter = request.args.get("delimiter", "")
         prefix = request.args.get("prefix", "")
         versions = request.args.get("versions", False, type=bool)
