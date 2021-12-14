@@ -17,6 +17,7 @@ from concurrent import futures
 import crc32c
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 from google.protobuf import text_format
+import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 
 import gcs
@@ -41,6 +42,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
         self.db.insert_bucket(request, bucket, context)
         return bucket.metadata
+
+    def DeleteObject(self, request, context):
+        self.db.insert_test_bucket()
+        self.db.delete_object(request, request.bucket, request.object, context)
+        return empty_pb2.Empty()
 
     def GetObject(self, request, context):
         blob = self.db.get_object(
