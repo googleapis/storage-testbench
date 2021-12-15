@@ -39,6 +39,15 @@ class TestGrpc(unittest.TestCase):
         self.db.insert_bucket(request, self.bucket, None)
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
+    def test_get_bucket(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        self.assertEqual(response.name, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.bucket_id, "bucket-name")
+        self.assertEqual(response, self.bucket.metadata)
+
     def test_create_bucket(self):
         request = storage_pb2.CreateBucketRequest(
             parent="projects/test-project",

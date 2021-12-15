@@ -31,6 +31,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def __init__(self, db):
         self.db = db
 
+    def GetBucket(self, request, context):
+        self.db.insert_test_bucket()
+        bucket = self.db.get_bucket(request, request.name, context)
+        return bucket.metadata
+
     def CreateBucket(self, request, context):
         self.db.insert_test_bucket()
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
