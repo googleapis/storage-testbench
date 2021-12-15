@@ -357,6 +357,106 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(blob.size, len(media))
 
+    def test_list_objects(self):
+        names = ["a/test-0", "a/test-1", "a/b/test-0", "a/b/test-1", "c/test-0"]
+        media = b"The quick brown fox jumps over the lazy dog"
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object(request, "bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListObjects(
+            storage_pb2.ListObjectsRequest(
+                parent="projects/_/buckets/bucket-name",
+                prefix="a/",
+                delimiter="/",
+            ),
+            context,
+        )
+        self.assertEqual(response.prefixes, ["a/b/"])
+        response_names = [o.name for o in response.objects]
+        self.assertEqual(response_names, ["a/test-0", "a/test-1"])
+
+    def test_list_objects_offsets(self):
+        names = [
+            "a/a/test-0",
+            "a/b/test-1",
+            "a/b/x/test-5",
+            "a/b/x/test-6",
+            "a/c/test-2",
+            "a/d/test-3",
+            "a/e/test-4",
+        ]
+        media = b"The quick brown fox jumps over the lazy dog"
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object(request, "bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListObjects(
+            storage_pb2.ListObjectsRequest(
+                parent="projects/_/buckets/bucket-name",
+                prefix="a/",
+                lexicographic_start="a/b/",
+                lexicographic_end="a/e/",
+            ),
+            context,
+        )
+        self.assertEqual(response.prefixes, [])
+        response_names = [o.name for o in response.objects]
+        self.assertEqual(
+            response_names,
+            [
+                "a/b/test-1",
+                "a/b/x/test-5",
+                "a/b/x/test-6",
+                "a/c/test-2",
+                "a/d/test-3",
+            ],
+        )
+
+    def test_list_objects_trailing_delimiters(self):
+        names = [
+            "a/a/",
+            "a/a/test-0",
+            "a/b/",
+            "a/b/test-1",
+            "a/c/test-2",
+            "a/test-3",
+        ]
+        media = b"The quick brown fox jumps over the lazy dog"
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object(request, "bucket-name", blob, None)
+        cases = [
+            {"include_trailing_delimiter": False, "expected": ["a/test-3"]},
+            {
+                "include_trailing_delimiter": True,
+                "expected": ["a/a/", "a/b/", "a/test-3"],
+            },
+        ]
+        for case in cases:
+            context = unittest.mock.Mock()
+            response = self.grpc.ListObjects(
+                storage_pb2.ListObjectsRequest(
+                    parent="projects/_/buckets/bucket-name",
+                    prefix="a/",
+                    delimiter="/",
+                    include_trailing_delimiter=case["include_trailing_delimiter"],
+                ),
+                context,
+            )
+            self.assertEqual(response.prefixes, ["a/a/", "a/b/", "a/c/"])
+            response_names = [o.name for o in response.objects]
+            self.assertEqual(response_names, case["expected"], msg=case)
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)
