@@ -228,7 +228,8 @@ class Database:
                     ):
                         continue
                 items.append(obj.metadata)
-            return items, list(prefixes)
+            items.sort(key=lambda item: item.name)
+            return items, sorted(list(prefixes))
 
     def _check_object_generation(
         self, request, bucket_name, object_name, is_source, context
