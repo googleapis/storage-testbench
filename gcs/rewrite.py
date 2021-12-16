@@ -89,7 +89,7 @@ class Rewrite(types.SimpleNamespace):
             return testbench.error.invalid(
                 "invalid or missing source object name in rewrite request", context
             )
-        if request.destination is None:
+        if not request.HasField("destination"):
             return testbench.error.invalid(
                 "missing destination object in rewrite request", context
             )
