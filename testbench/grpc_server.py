@@ -100,7 +100,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def WriteObject(self, request_iterator, context):
         self.db.insert_test_bucket()
-        upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             self.db, request_iterator, context
         )
         if upload is None:
@@ -129,7 +129,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def StartResumableWrite(self, request, context):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
-        upload = gcs.holder.DataHolder.init_resumable_grpc(request, bucket, context)
+        upload = gcs.upload.Upload.init_resumable_grpc(request, bucket, context)
         self.db.insert_upload(upload)
         return StorageServicer._log_rpc_passthrough(
             "StartResumableWrite",

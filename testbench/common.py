@@ -582,7 +582,7 @@ def preprocess_object_metadata(metadata):
     """
     Convert from the JSON field names in an Object metadata to the storage/v2 field names.
 
-    This function is used by both holder.py and object.py.
+    This function is used by both upload.py and object.py.
     """
     # For some fields the storage/v2 name just needs to change slightly.
     md = rest_adjust(

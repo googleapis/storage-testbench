@@ -55,7 +55,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            upload = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            upload = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn("No object name is invalid.", cm.exception.msg)
 
         with self.assertRaises(testbench.error.RestException) as cm:
@@ -67,7 +67,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            upload = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            upload = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn("No object name is invalid.", cm.exception.msg)
 
         with self.assertRaises(testbench.error.RestException) as cm:
@@ -80,7 +80,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn("No object name is invalid.", cm.exception.msg)
 
         with self.assertRaises(testbench.error.RestException) as cm:
@@ -93,7 +93,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn(
             "Value 'a' in content does not agree with value 'b'. is invalid.",
             cm.exception.msg,
@@ -109,7 +109,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn(
             "Value '' in content does not agree with value 'b'. is invalid.",
             cm.exception.msg,
@@ -125,7 +125,7 @@ class TestHolder(unittest.TestCase):
                 content_type="application/json",
                 method="POST",
             )
-            upload = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+            upload = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
         self.assertIn(
             "Value 'a' in content does not agree with value ''. is invalid.",
             cm.exception.msg,
@@ -152,7 +152,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+        _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
 
         data = json.dumps({"name": "a"})
         environ = create_environ(
@@ -162,7 +162,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+        _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
 
         environ = create_environ(
             base_url="http://localhost:8080",
@@ -170,7 +170,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+        _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
 
         data = json.dumps({"name": None})
         environ = create_environ(
@@ -181,7 +181,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        _ = gcs.holder.DataHolder.init_resumable_rest(Request(environ), bucket)
+        _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
 
     def test_resumable_rest_with_none_hashes(self):
 
@@ -204,7 +204,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        upload = gcs.holder.DataHolder.init_resumable_rest(
+        upload = gcs.upload.Upload.init_resumable_rest(
             Request(environ), bucket.metadata
         )
         self.assertIn(
@@ -231,7 +231,7 @@ class TestHolder(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        upload = gcs.holder.DataHolder.init_resumable_rest(
+        upload = gcs.upload.Upload.init_resumable_rest(
             Request(environ), bucket.metadata
         )
         self.assertIn(
@@ -296,7 +296,7 @@ class TestHolder(unittest.TestCase):
         context = unittest.mock.Mock()
         db = unittest.mock.Mock()
         db.get_bucket_without_generation = unittest.mock.MagicMock(return_value=bucket)
-        upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             db, [r1, r2, r3], context
         )
         self.assertIsNotNone(upload)
@@ -366,7 +366,7 @@ class TestHolder(unittest.TestCase):
             db.get_bucket_without_generation = unittest.mock.MagicMock(
                 return_value=bucket
             )
-            upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
+            upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
                 db, [request], context
             )
             # Verify the annotations inserted by the testbench.
@@ -392,7 +392,7 @@ class TestHolder(unittest.TestCase):
             if_metageneration_not_match=3,
         )
         request = storage_pb2.StartResumableWriteRequest(write_object_spec=spec)
-        upload = gcs.holder.DataHolder.init_resumable_grpc(request, bucket.metadata, "")
+        upload = gcs.upload.Upload.init_resumable_grpc(request, bucket.metadata, "")
         # Verify the annotations inserted by the testbench.
         annotations = upload.metadata.metadata
         self.assertGreaterEqual(
@@ -431,7 +431,7 @@ class TestHolder(unittest.TestCase):
             )
         )
         context = unittest.mock.Mock()
-        upload = gcs.holder.DataHolder.init_resumable_grpc(
+        upload = gcs.upload.Upload.init_resumable_grpc(
             request, bucket.metadata, context
         )
 
@@ -462,7 +462,7 @@ class TestHolder(unittest.TestCase):
         db = unittest.mock.Mock()
         db.get_bucket_without_generation = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
-        upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             db, [r1, r2, r3], context
         )
         self.assertIsNotNone(upload)
@@ -480,7 +480,7 @@ class TestHolder(unittest.TestCase):
             ),
             finish_write=True,
         )
-        upload, is_resumable = gcs.holder.DataHolder.init_write_object_grpc(
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             db, [r4], context
         )
         self.assertIsNotNone(upload)
@@ -501,7 +501,7 @@ class TestHolder(unittest.TestCase):
             )
         )
         context = unittest.mock.Mock()
-        upload = gcs.holder.DataHolder.init_resumable_grpc(
+        upload = gcs.upload.Upload.init_resumable_grpc(
             request, bucket.metadata, context
         )
 
@@ -519,13 +519,13 @@ class TestHolder(unittest.TestCase):
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
 
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [r1], context)
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNotNone(upload)
         self.assertTrue(upload.complete)
 
         context = unittest.mock.Mock()
         context.abort = unittest.mock.MagicMock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [r1], context)
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
@@ -542,7 +542,7 @@ class TestHolder(unittest.TestCase):
         )
         db = unittest.mock.Mock()
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [r1], context)
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
@@ -579,9 +579,7 @@ class TestHolder(unittest.TestCase):
         )
         db = unittest.mock.Mock()
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(
-            db, [r1, r2, r3], context
-        )
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1, r2, r3], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
@@ -621,9 +619,7 @@ class TestHolder(unittest.TestCase):
         )
         db = unittest.mock.Mock()
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(
-            db, [r1, r2, r3], context
-        )
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1, r2, r3], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
@@ -646,7 +642,7 @@ class TestHolder(unittest.TestCase):
         )
         db = unittest.mock.Mock()
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [r1], context)
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
@@ -655,7 +651,7 @@ class TestHolder(unittest.TestCase):
     def test_init_object_write_grpc_empty(self):
         db = unittest.mock.Mock()
         context = unittest.mock.Mock()
-        upload, _ = gcs.holder.DataHolder.init_write_object_grpc(db, [], context)
+        upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
