@@ -59,6 +59,30 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
 
+    def test_delete_object(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object(request, "bucket-name", blob, None)
+        full_bucket_name = blob.metadata.bucket
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteObject(
+            storage_pb2.DeleteObjectRequest(
+                bucket=full_bucket_name, object="object-name"
+            ),
+            context,
+        )
+        context = unittest.mock.Mock()
+        items, _ = self.db.list_object(
+            storage_pb2.ListObjectsRequest(parent=full_bucket_name),
+            full_bucket_name,
+            context,
+        )
+        names = {o.name for o in items}
+        self.assertNotIn("object-name", names)
+
     def test_get_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(
