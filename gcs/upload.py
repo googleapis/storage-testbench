@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Implement a holder for resumable upload's data and rewrite's data"""
+"""Helper class to hold data during an upload."""
 
 import hashlib
 import json
@@ -27,14 +27,21 @@ from google.storage.v2 import storage_pb2
 import testbench
 
 
-class DataHolder(types.SimpleNamespace):
+class Upload(types.SimpleNamespace):
+    """Holds data during an upload.
+
+    An upload may require multiple RPCs, or at least a long streaming RPC. We
+    need an object to hold the data during the upload. Note that in the case
+    of resumable uploads the metadata for the object, and any pre-conditions,
+    are provided at the start of the upload, but are used when the upload
+    completes.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    # === UPLOAD === #
-
     @classmethod
-    def init_upload(cls, request, metadata, bucket, location, upload_id):
+    def init(cls, request, metadata, bucket, location, upload_id):
         return cls(
             request=request,
             metadata=metadata,
@@ -110,7 +117,7 @@ class DataHolder(types.SimpleNamespace):
         request = testbench.common.FakeRequest(
             args=request.args.to_dict(), headers=headers, data=b""
         )
-        return cls.init_upload(request, metadata, bucket, location, upload_id)
+        return cls.init(request, metadata, bucket, location, upload_id)
 
     @classmethod
     def init_resumable_grpc(
@@ -126,7 +133,7 @@ class DataHolder(types.SimpleNamespace):
             request.write_object_spec, context
         )
         fake_request.update_protobuf(request.write_object_spec, context)
-        return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
+        return cls.init(fake_request, metadata, bucket, "", upload_id)
 
     @classmethod
     def __init_first_write_grpc(
@@ -140,7 +147,7 @@ class DataHolder(types.SimpleNamespace):
         upload_id = cls.__create_upload_id(bucket.name, metadata.name)
         fake_request = testbench.common.FakeRequest.init_protobuf(request, context)
         fake_request.update_protobuf(request.write_object_spec, context)
-        return cls.init_upload(fake_request, metadata, bucket, "", upload_id)
+        return cls.init(fake_request, metadata, bucket, "", upload_id)
 
     @classmethod
     def init_write_object_grpc(cls, db, request_iterator, context):

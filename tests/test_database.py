@@ -260,7 +260,7 @@ class TestDatabaseTemporaryResources(unittest.TestCase):
             content_type="application/json",
             method="POST",
         )
-        upload = gcs.holder.DataHolder.init_resumable_rest(
+        upload = gcs.upload.Upload.init_resumable_rest(
             Request(environ), self.bucket.metadata
         )
         self.database.insert_upload(upload)

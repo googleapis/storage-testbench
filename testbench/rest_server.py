@@ -758,7 +758,7 @@ def object_insert(bucket_name):
     elif upload_type not in {"multipart", "media", "resumable"}:
         testbench.error.invalid("uploadType %s" % upload_type, None)
     if upload_type == "resumable":
-        upload = gcs_type.holder.DataHolder.init_resumable_rest(flask.request, bucket)
+        upload = gcs_type.upload.Upload.init_resumable_rest(flask.request, bucket)
         db.insert_upload(upload)
         response = flask.make_response("")
         response.headers["Location"] = upload.location
