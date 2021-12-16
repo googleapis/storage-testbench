@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gcs import bucket, holder, object, project
+from gcs import bucket, holder, object, project, rewrite

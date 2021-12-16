@@ -278,7 +278,7 @@ class TestDatabaseTemporaryResources(unittest.TestCase):
             base_url="http://localhost:8080",
             query_string={},
         )
-        rewrite = gcs.holder.DataHolder.init_rewrite_rest(
+        rewrite = gcs.rewrite.Rewrite.init_rest(
             Request(environ),
             "bucket-name",
             "source-object",

@@ -661,26 +661,6 @@ class TestHolder(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
-    def test_rewrite_rest(self):
-        request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket"})
-        )
-        bucket, _ = gcs.bucket.Bucket.init(request, None)
-        bucket = bucket.metadata
-        data = json.dumps({"name": "a"})
-        environ = create_environ(
-            base_url="http://localhost:8080",
-            query_string={"maxBytesRewrittenPerCall": 512 * 1024},
-        )
-        upload = gcs.holder.DataHolder.init_rewrite_rest(
-            Request(environ),
-            "source-bucket",
-            "source-object",
-            "destination-bucket",
-            "destination-object",
-        )
-        self.assertEqual(512 * 1024, upload.max_bytes_rewritten_per_call)
-
 
 if __name__ == "__main__":
     unittest.main()
