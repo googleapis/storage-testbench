@@ -16,37 +16,197 @@
 
 """Tests for the Rewrite helper (see gcs/rewrite.py)."""
 
-import json
 import unittest
 import unittest.mock
 
+import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
 import gcs
-import testbench
+from google.storage.v2 import storage_pb2
 
 
 class TestRewrite(unittest.TestCase):
+
+    MIN_REWRITE_BYTES = 1024 * 1024
+
     def test_rewrite_rest(self):
-        request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket"})
-        )
-        bucket, _ = gcs.bucket.Bucket.init(request, None)
-        bucket = bucket.metadata
-        data = json.dumps({"name": "a"})
         environ = create_environ(
             base_url="http://localhost:8080",
-            query_string={"maxBytesRewrittenPerCall": 512 * 1024},
+            query_string={},
         )
-        upload = gcs.rewrite.Rewrite.init_rest(
+        rewrite = gcs.rewrite.Rewrite.init_rest(
             Request(environ),
             "source-bucket",
             "source-object",
             "destination-bucket",
             "destination-object",
         )
-        self.assertEqual(512 * 1024, upload.max_bytes_rewritten_per_call)
+        self.assertEqual("source-bucket", rewrite.src_bucket_name)
+        self.assertEqual("source-object", rewrite.src_object_name)
+        self.assertEqual("destination-bucket", rewrite.dst_bucket_name)
+        self.assertEqual("destination-object", rewrite.dst_object_name)
+        self.assertEqual(
+            TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_rest_with_low_bytes(self):
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            query_string={
+                "maxBytesRewrittenPerCall": int(TestRewrite.MIN_REWRITE_BYTES / 2)
+            },
+        )
+        rewrite = gcs.rewrite.Rewrite.init_rest(
+            Request(environ),
+            "source-bucket",
+            "source-object",
+            "destination-bucket",
+            "destination-object",
+        )
+        self.assertEqual(
+            TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_rest_with_high_bytes(self):
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            query_string={
+                "maxBytesRewrittenPerCall": TestRewrite.MIN_REWRITE_BYTES * 2
+            },
+        )
+        rewrite = gcs.rewrite.Rewrite.init_rest(
+            Request(environ),
+            "source-bucket",
+            "source-object",
+            "destination-bucket",
+            "destination-object",
+        )
+        self.assertEqual(
+            2 * TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_grpc(self):
+        request = storage_pb2.RewriteObjectRequest(
+            destination=storage_pb2.Object(
+                bucket="projects/_/buckets/destination-bucket",
+                name="destination-object",
+                metadata={"key": "value"},
+            ),
+            source_bucket="projects/_/buckets/source-bucket",
+            source_object="source-object",
+        )
+        context = unittest.mock.Mock()
+        rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+        self.assertEqual("source-bucket", rewrite.src_bucket_name)
+        self.assertEqual("source-object", rewrite.src_object_name)
+        self.assertEqual("destination-bucket", rewrite.dst_bucket_name)
+        self.assertEqual("destination-object", rewrite.dst_object_name)
+        self.assertEqual(
+            TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_grpc_low_bytes(self):
+        request = storage_pb2.RewriteObjectRequest(
+            destination=storage_pb2.Object(
+                bucket="projects/_/buckets/destination-bucket",
+                name="destination-object",
+                metadata={"key": "value"},
+            ),
+            source_bucket="projects/_/buckets/source-bucket",
+            source_object="source-object",
+            max_bytes_rewritten_per_call=int(TestRewrite.MIN_REWRITE_BYTES / 2),
+        )
+        context = unittest.mock.Mock()
+        rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+        self.assertEqual(
+            TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_grpc_high_bytes(self):
+        request = storage_pb2.RewriteObjectRequest(
+            destination=storage_pb2.Object(
+                bucket="projects/_/buckets/destination-bucket",
+                name="destination-object",
+                metadata={"key": "value"},
+            ),
+            source_bucket="projects/_/buckets/source-bucket",
+            source_object="source-object",
+            max_bytes_rewritten_per_call=int(2 * TestRewrite.MIN_REWRITE_BYTES),
+        )
+        context = unittest.mock.Mock()
+        rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+        self.assertEqual(
+            2 * TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
+    def test_rewrite_bad_requests(self):
+        cases = {
+            "missing destination": storage_pb2.RewriteObjectRequest(
+                source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
+            ),
+            "bad destination.bucket [1]": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="destination-bucket",
+                    name="destination-object",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
+            ),
+            "bad destination.bucket [2]": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/",
+                    name="destination-object",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
+            ),
+            "missing destination.name": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/destination-bucket",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
+            ),
+            "bad source bucket [1]": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/destination-bucket",
+                    name="destination-object",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="source-bucket",
+                source_object="source-object",
+            ),
+            "bad source_bucket [2]": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/destination-bucket",
+                    name="destination-object",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="projects/_/buckets/",
+                source_object="source-object",
+            ),
+            "missing source_object": storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/destination-bucket",
+                    name="destination-object",
+                    metadata={"key": "value"},
+                ),
+                source_bucket="projects/_/buckets/source-bucket",
+            ),
+        }
+        for case, request in cases.items():
+            context = unittest.mock.Mock(name=case)
+            rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+            self.assertIsNone(rewrite, msg=case)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
 
 
 if __name__ == "__main__":
