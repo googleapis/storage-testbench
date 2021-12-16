@@ -602,7 +602,7 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
     token, rewrite = flask.request.args.get("rewriteToken"), None
     src_object = None
     if token is None:
-        rewrite = gcs_type.holder.DataHolder.init_rewrite_rest(
+        rewrite = gcs_type.rewrite.Rewrite.init_rest(
             flask.request,
             src_bucket_name,
             src_object_name,
