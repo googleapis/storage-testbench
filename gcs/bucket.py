@@ -391,10 +391,27 @@ class Bucket:
     # === INITIALIZATION === #
 
     @classmethod
-    def init(cls, request, context):
+    def _init_defaults(cls, metadata, context):
         time_created = datetime.datetime.now()
+        if metadata.rpo is None or metadata.rpo == "":
+            metadata.rpo = "DEFAULT"
+        if metadata.storage_class is None or metadata.storage_class == "":
+            metadata.storage_class = "STANDARD"
+        metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
+        metadata.metageneration = 1
+        metadata.create_time.FromDatetime(time_created)
+        metadata.update_time.FromDatetime(time_created)
+        metadata.metageneration = 1
+        metadata.owner.entity = testbench.acl.get_project_entity("owners", context)
+        metadata.owner.entity_id = hashlib.md5(
+            metadata.owner.entity.encode("utf-8")
+        ).hexdigest()
+
+    @classmethod
+    def init(cls, request, context):
         metadata = cls.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(metadata, storage_pb2.Bucket())
+        cls._init_defaults(metadata, context)
         cls.__validate_json_bucket_name(
             testbench.common.bucket_name_from_proto(metadata.name), context
         )
@@ -433,18 +450,9 @@ class Bucket:
             cls.__insert_predefined_default_object_acl(
                 metadata, predefined_default_object_acl, context
             )
-        if metadata.rpo is None or metadata.rpo == "":
-            metadata.rpo = "DEFAULT"
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
         metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
         metadata.project = "project/" + testbench.acl.PROJECT_NUMBER
-        metadata.metageneration = 1
-        metadata.create_time.FromDatetime(time_created)
-        metadata.update_time.FromDatetime(time_created)
-        metadata.owner.entity = testbench.acl.get_project_entity("owners", context)
-        metadata.owner.entity_id = hashlib.md5(
-            metadata.owner.entity.encode("utf-8")
-        ).hexdigest()
         return (
             cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
             testbench.common.extract_projection(request, default_projection, context),
@@ -452,24 +460,14 @@ class Bucket:
 
     @classmethod
     def init_grpc(cls, request, context):
-        time_created = datetime.datetime.now()
         cls.__validate_json_bucket_name(
             testbench.common.bucket_name_from_proto(request.bucket_id), context
         )
         cls.__validate_grpc_project_name(request.parent, context)
         metadata = request.bucket
-        if metadata.rpo is None or metadata.rpo == "":
-            metadata.rpo = "DEFAULT"
+        cls._init_defaults(metadata, context)
         metadata.bucket_id = request.bucket_id
-        metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
         metadata.name = "projects/_/buckets/" + request.bucket_id
-        metadata.metageneration = 1
-        metadata.create_time.FromDatetime(time_created)
-        metadata.update_time.FromDatetime(time_created)
-        metadata.owner.entity = testbench.acl.get_project_entity("owners", context)
-        metadata.owner.entity_id = hashlib.md5(
-            metadata.owner.entity.encode("utf-8")
-        ).hexdigest()
         return (cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl")
 
     # === IAM === #
