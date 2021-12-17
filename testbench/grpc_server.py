@@ -61,7 +61,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         intersection.Intersect(intersection, request.update_mask)
         if len(intersection.paths) != 0:
             return testbench.error.invalid(
-                "Attempt to modify immutable Bucket fields [%s]" % intersection.paths,
+                "UpdateObject() cannot modify immutable Object fields [%s]"
+                % ",".join(intersection.paths),
                 context,
             )
         bucket = self.db.get_bucket(request, request.bucket.name, context)
