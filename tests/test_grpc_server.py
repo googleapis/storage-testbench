@@ -22,6 +22,7 @@ import unittest.mock
 
 import crc32c
 import grpc
+from google.protobuf import field_mask_pb2
 
 import gcs
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
@@ -136,6 +137,45 @@ class TestGrpc(unittest.TestCase):
             crc32c.crc32c(media),
             crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
         )
+
+    def test_update_object(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object(request, "bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateObject(
+            storage_pb2.UpdateObjectRequest(
+                object=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name",
+                    name="object-name",
+                    metadata={"key": "value"},
+                    content_type="text/plain",
+                    cache_control="fancy cache",
+                ),
+                update_mask=field_mask_pb2.FieldMask(
+                    paths=["content_type", "metadata"]
+                ),
+            ),
+            context,
+        )
+        self.assertEqual("text/plain", response.content_type)
+        self.assertEqual({"key": "value"}, response.metadata)
+        self.assertEqual("", response.cache_control)
+
+        # Verify the update is "persisted" as opposed to just changing the response
+        context = unittest.mock.Mock()
+        get = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual("text/plain", get.content_type)
+        self.assertEqual({"key": "value"}, get.metadata)
+        self.assertEqual("", get.cache_control)
 
     def test_object_write(self):
         QUANTUM = 256 * 1024

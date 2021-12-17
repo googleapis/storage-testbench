@@ -73,6 +73,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 metadata=meta,
             )
 
+    def UpdateObject(self, request, context):
+        blob = self.db.get_object(
+            request, request.object.bucket, request.object.name, False, context
+        )
+        request.update_mask.MergeMessage(
+            request.object, blob.metadata, replace_repeated_field=True
+        )
+        return blob.metadata
+
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket_without_generation(bucket_name, context).metadata
 
