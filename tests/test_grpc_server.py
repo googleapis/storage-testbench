@@ -177,6 +177,45 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual({"key": "value"}, get.metadata)
         self.assertEqual("", get.cache_control)
 
+    def test_update_object_invalid(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object(request, "bucket-name", blob, None)
+        for invalid in [
+            "name",
+            "bucket",
+            "generation",
+            "metageneration",
+            "storage_class",
+            "size",
+            "delete_time",
+            "create_time",
+            "component_count",
+            "checksums",
+            "update_time",
+            "kms_key",
+            "update_storage_class_time",
+            "owner",
+            "customer_encryption",
+        ]:
+            context = unittest.mock.Mock(name="testing with path=" + invalid)
+            _ = self.grpc.UpdateObject(
+                storage_pb2.UpdateObjectRequest(
+                    object=storage_pb2.Object(
+                        bucket="projects/_/buckets/bucket-name",
+                        name="object-name",
+                    ),
+                    update_mask=field_mask_pb2.FieldMask(paths=[invalid]),
+                ),
+                context,
+            )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
     def test_object_write(self):
         QUANTUM = 256 * 1024
         media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")

@@ -16,7 +16,7 @@ from concurrent import futures
 
 import crc32c
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
-from google.protobuf import text_format
+from google.protobuf import field_mask_pb2, text_format
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 
@@ -74,6 +74,33 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
 
     def UpdateObject(self, request, context):
+        self.db.insert_test_bucket()
+        intersection = field_mask_pb2.FieldMask(
+            paths=[
+                "name",
+                "bucket",
+                "generation",
+                "metageneration",
+                "storage_class",
+                "size",
+                "delete_time",
+                "create_time",
+                "component_count",
+                "checksums",
+                "update_time",
+                "kms_key",
+                "update_storage_class_time",
+                "owner",
+                "customer_encryption",
+            ]
+        )
+        intersection.Intersect(intersection, request.update_mask)
+        if len(intersection.paths) != 0:
+            return testbench.error.invalid(
+                "UpdateObject() cannot modify immutable Object fields [%s]"
+                % ",".join(intersection.paths),
+                context,
+            )
         blob = self.db.get_object(
             request, request.object.bucket, request.object.name, False, context
         )
