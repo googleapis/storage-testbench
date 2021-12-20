@@ -60,6 +60,71 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
 
+    def test_update_bucket(self):
+        # First check the default bucket state.
+        context = unittest.mock.Mock()
+        get = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        self.assertEqual("projects/_/buckets/bucket-name", get.name)
+        self.assertEqual(dict(), get.labels)
+        self.assertEqual("STANDARD", get.storage_class)
+        self.assertEqual("DEFAULT", get.rpo)
+
+        # Then change some properties, note that we set some attributes but not the
+        # corresponding field mask, those should not change.
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateBucket(
+            storage_pb2.UpdateBucketRequest(
+                bucket=storage_pb2.Bucket(
+                    name="projects/_/buckets/bucket-name",
+                    labels={"key": "value"},
+                    storage_class="NEARLINE",
+                    rpo="ASYNC_TURBO",
+                ),
+                update_mask=field_mask_pb2.FieldMask(paths=["labels", "rpo"]),
+            ),
+            context,
+        )
+        self.assertEqual("projects/_/buckets/bucket-name", response.name)
+        self.assertEqual({"key": "value"}, response.labels)
+        self.assertEqual("STANDARD", response.storage_class)
+        self.assertEqual("ASYNC_TURBO", response.rpo)
+
+        # Finally verify the changes are persisted
+        context = unittest.mock.Mock()
+        get = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        self.assertEqual("projects/_/buckets/bucket-name", get.name)
+        self.assertEqual({"key": "value"}, get.labels)
+        self.assertEqual("STANDARD", get.storage_class)
+        self.assertEqual("ASYNC_TURBO", get.rpo)
+
+    def test_update_bucket_invalid_masks(self):
+        for invalid in [
+            "name",
+            "bucket_id",
+            "project",
+            "metageneration",
+            "location",
+            "location_type",
+            "create_time",
+            "update_time",
+            "owner",
+        ]:
+            context = unittest.mock.Mock()
+            _ = self.grpc.UpdateBucket(
+                storage_pb2.UpdateBucketRequest(
+                    bucket=storage_pb2.Bucket(name="projects/_/buckets/bucket-name"),
+                    update_mask=field_mask_pb2.FieldMask(paths=[invalid]),
+                ),
+                context,
+            )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
     def test_delete_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(

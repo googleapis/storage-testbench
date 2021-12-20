@@ -43,6 +43,34 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.insert_bucket(request, bucket, context)
         return bucket.metadata
 
+    def UpdateBucket(self, request, context):
+        self.db.insert_test_bucket()
+        intersection = field_mask_pb2.FieldMask(
+            paths=[
+                "name",
+                "bucket_id",
+                "project",
+                "metageneration",
+                "location",
+                "location_type",
+                "create_time",
+                "update_time",
+                "owner",
+            ]
+        )
+        intersection.Intersect(intersection, request.update_mask)
+        if len(intersection.paths) != 0:
+            return testbench.error.invalid(
+                "UpdateBucket() cannot modify immutable Bucket fields [%s]"
+                % ",".join(intersection.paths),
+                context,
+            )
+        bucket = self.db.get_bucket(request, request.bucket.name, context)
+        request.update_mask.MergeMessage(
+            request.bucket, bucket.metadata, replace_repeated_field=True
+        )
+        return bucket.metadata
+
     def DeleteObject(self, request, context):
         self.db.insert_test_bucket()
         self.db.delete_object(request, request.bucket, request.object, context)
