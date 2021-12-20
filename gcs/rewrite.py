@@ -14,16 +14,9 @@
 
 """Helper class for rewrite operations."""
 
-import hashlib
-import json
 import types
 import uuid
 
-import crc32c
-import flask
-from google.protobuf import json_format
-
-from google.storage.v2 import storage_pb2
 import testbench
 
 
@@ -44,6 +37,17 @@ class Rewrite(types.SimpleNamespace):
     MIN_REWRITE_BYTES = 1024 * 1024
 
     @classmethod
+    def _normalize_max_bytes(cls, max_bytes):
+        return max(
+            int(cls.MIN_REWRITE_BYTES if max_bytes is None else max_bytes),
+            cls.MIN_REWRITE_BYTES,
+        )
+
+    @classmethod
+    def _token(cls):
+        return uuid.uuid4().hex
+
+    @classmethod
     def init_rest(
         cls, request, src_bucket_name, src_object_name, dst_bucket_name, dst_object_name
     ):
@@ -56,25 +60,64 @@ class Rewrite(types.SimpleNamespace):
             },
             data=request.data,
         )
-        max_bytes_rewritten_per_call = min(
-            int(
-                fake_request.args.get("maxBytesRewrittenPerCall", cls.MIN_REWRITE_BYTES)
-            ),
-            cls.MIN_REWRITE_BYTES,
-        )
-        token = hashlib.sha256(
-            (
-                "%s/o/%s/rewriteTo/b/%s/o/%s"
-                % (src_bucket_name, src_object_name, dst_bucket_name, dst_object_name)
-            ).encode("utf-8")
-        ).hexdigest()
         return cls(
-            request=fake_request,
+            request=request,
             src_bucket_name=src_bucket_name,
             src_object_name=src_object_name,
             dst_bucket_name=dst_bucket_name,
             dst_object_name=dst_object_name,
-            token=token,
+            token=cls._token(),
             media=b"",
-            max_bytes_rewritten_per_call=max_bytes_rewritten_per_call,
+            max_bytes_rewritten_per_call=cls._normalize_max_bytes(
+                fake_request.args.get("maxBytesRewrittenPerCall")
+            ),
+        )
+
+    @classmethod
+    def init_grpc(cls, request, context):
+        if not request.source_bucket.startswith("projects/_/buckets/"):
+            return testbench.error.invalid(
+                "invalid or missing source bucket name in rewrite request", context
+            )
+        src_bucket_name = testbench.common.bucket_name_from_proto(request.source_bucket)
+        if src_bucket_name is None or len(src_bucket_name) == 0:
+            return testbench.error.invalid(
+                "invalid or missing source bucket name in rewrite request", context
+            )
+        src_object_name = request.source_object
+        if src_object_name is None or len(src_object_name) == 0:
+            return testbench.error.invalid(
+                "invalid or missing source object name in rewrite request", context
+            )
+        if not request.HasField("destination"):
+            return testbench.error.invalid(
+                "missing destination object in rewrite request", context
+            )
+        if not request.destination.bucket.startswith("projects/_/buckets/"):
+            return testbench.error.invalid(
+                "invalid or missing source bucket name in rewrite request", context
+            )
+        dst_bucket_name = testbench.common.bucket_name_from_proto(
+            request.destination.bucket
+        )
+        if dst_bucket_name is None or len(dst_bucket_name) == 0:
+            return testbench.error.invalid(
+                "invalid or missing destination bucket name in rewrite request", context
+            )
+        dst_object_name = request.destination.name
+        if dst_object_name is None or len(dst_object_name) == 0:
+            return testbench.error.invalid(
+                "invalid or missing destination object name in rewrite request", context
+            )
+        return cls(
+            request=request,
+            src_bucket_name=src_bucket_name,
+            src_object_name=src_object_name,
+            dst_bucket_name=dst_bucket_name,
+            dst_object_name=dst_object_name,
+            token=cls._token(),
+            media=b"",
+            max_bytes_rewritten_per_call=cls._normalize_max_bytes(
+                request.max_bytes_rewritten_per_call
+            ),
         )

@@ -205,7 +205,9 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        payload = "The quick brown fox jumps over the lazy dog"
+        # We need a large enough payload to make sure the first rewrite does
+        # not complete.  The minimum is 1 MiB
+        payload = "The quick brown fox jumps over the lazy dog\n" * 1024 * 1024
         response = self.client.put(
             "/bucket-name/fox",
             content_type="text/plain",
@@ -216,7 +218,6 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
         metadata = {"key0": "label0"}
         response = self.client.post(
             "/storage/v1/b/bucket-name/o/fox/rewriteTo/b/bucket-name/o/fox2",
-            query_string={"maxBytesRewrittenPerCall": 10},
             data=json.dumps({"metadata": metadata}),
         )
         self.assertEqual(response.status_code, 200)
@@ -267,9 +268,7 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
 
         response = self.client.get("/bucket-name/fox2")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.data.decode("utf-8"), "The quick brown fox jumps over the lazy dog"
-        )
+        self.assertEqual(len(response.data.decode("utf-8")), len(payload))
 
 
 if __name__ == "__main__":
