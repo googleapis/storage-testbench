@@ -126,6 +126,51 @@ class TestGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
+    def test_compose_object(self):
+        payloads = {
+            "fox": b"The quick brown fox jumps over the lazy dog\n",
+            "zebra": b"How vexingly quick daft zebras jump!\n",
+        }
+        source_objects = []
+        for name, media in payloads.items():
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
+            source_objects.append(
+                storage_pb2.ComposeObjectRequest.SourceObject(
+                    name=name,
+                    generation=blob.metadata.generation,
+                )
+            )
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        response = self.grpc.ComposeObject(
+            storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=source_objects,
+            ),
+            context,
+        )
+        expected_media = b"".join([p for _, p in payloads.items()])
+        self.assertEqual(response.size, len(expected_media))
+
+        # Verify the newly created object has the right contents
+        context = unittest.mock.Mock()
+        response = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="composed-object-name"
+            ),
+            context,
+        )
+        self.assertEqual(response.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.name, "composed-object-name")
+        self.assertNotEqual(0, response.generation)
+        self.assertEqual(response.size, len(expected_media))
+
     def test_delete_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(
