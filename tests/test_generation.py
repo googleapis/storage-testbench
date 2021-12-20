@@ -56,26 +56,6 @@ class TestGeneration(unittest.TestCase):
         self.assertEqual(match, 6)
         self.assertEqual(not_match, 7)
 
-    def test_extract_generation(self):
-        request = storage_pb2.ReadObjectRequest()
-        generation = testbench.generation.extract_generation(request, False, "")
-        self.assertEqual(generation, 0)
-
-        request.generation = 1
-        generation = testbench.generation.extract_generation(request, False, "")
-        self.assertEqual(generation, 1)
-
-        request = testbench.common.FakeRequest(args={})
-        generation = testbench.generation.extract_generation(request, False, None)
-        self.assertEqual(generation, 0)
-
-        request.args["generation"] = 1
-        request.args["sourceGeneration"] = 2
-        generation = testbench.generation.extract_generation(request, False, None)
-        self.assertEqual(generation, 1)
-        generation = testbench.generation.extract_generation(request, True, None)
-        self.assertEqual(generation, 2)
-
     def test_check_precondition_generation_matches_trivial(self):
         testbench.generation.check_precondition(
             1234, match=None, not_match=None, is_meta=None, context=None

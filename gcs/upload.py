@@ -133,7 +133,9 @@ class Upload(types.SimpleNamespace):
             request.write_object_spec, context
         )
         fake_request.update_protobuf(request.write_object_spec, context)
-        return cls.init(fake_request, metadata, bucket, "", upload_id)
+        upload = cls.init(fake_request, metadata, bucket, "", upload_id)
+        upload.preconditions = testbench.common.make_grpc_preconditions(request)
+        return upload
 
     @classmethod
     def __init_first_write_grpc(
@@ -147,7 +149,9 @@ class Upload(types.SimpleNamespace):
         upload_id = cls.__create_upload_id(bucket.name, metadata.name)
         fake_request = testbench.common.FakeRequest.init_protobuf(request, context)
         fake_request.update_protobuf(request.write_object_spec, context)
-        return cls.init(fake_request, metadata, bucket, "", upload_id)
+        upload = cls.init(fake_request, metadata, bucket, "", upload_id)
+        upload.preconditions = testbench.common.make_grpc_preconditions(request)
+        return upload
 
     @classmethod
     def init_write_object_grpc(cls, db, request_iterator, context):

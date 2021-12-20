@@ -64,7 +64,12 @@ def xml_put_object(bucket_name, object_name):
     blob, fake_request = gcs_type.object.Object.init_xml(
         flask.request, bucket, object_name
     )
-    db.insert_object(fake_request, bucket_name, blob, None)
+    db.insert_object(
+        bucket_name,
+        blob,
+        context=None,
+        preconditions=testbench.common.make_xml_preconditions(flask.request),
+    )
     response = flask.make_response("")
     response.headers["x-goog-hash"] = fake_request.headers.get("x-goog-hash")
     return response
@@ -72,7 +77,13 @@ def xml_put_object(bucket_name, object_name):
 
 def xml_get_object(bucket_name, object_name):
     fake_request = testbench.common.FakeRequest.init_xml(flask.request)
-    blob = db.get_object(fake_request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation"),
+        preconditions=testbench.common.make_xml_preconditions(flask.request),
+        context=None,
+    )
     response = blob.rest_media(fake_request)
     response.headers["x-goog-stored-content-length"] = len(blob.media)
     response.headers["x-goog-stored-content-encoding"] = "identity"
@@ -463,7 +474,13 @@ def object_list(bucket_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["PUT"])
 @retry_test(method="storage.objects.update")
 def object_update(bucket_name, object_name):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     blob.update(flask.request, None)
     projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
@@ -476,7 +493,13 @@ def object_update(bucket_name, object_name):
 @retry_test(method="storage.objects.patch")
 def object_patch(bucket_name, object_name):
     testbench.common.enforce_patch_override(flask.request)
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     blob.patch(flask.request, None)
     projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
@@ -488,14 +511,26 @@ def object_patch(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["DELETE"])
 @retry_test(method="storage.objects.delete")
 def object_delete(bucket_name, object_name):
-    db.delete_object(flask.request, bucket_name, object_name, None)
+    db.delete_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     return ""
 
 
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
 def object_get(bucket_name, object_name):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     media = flask.request.args.get("alt", None)
     if media is None or media == "json":
         projection = testbench.common.extract_projection(flask.request, "noAcl", None)
@@ -537,13 +572,23 @@ def objects_compose(bucket_name, object_name):
         preconditions = source_object.get("objectPreconditions", None)
         if preconditions is not None:
             if_generation_match = preconditions.get("ifGenerationMatch", None)
-        fake_request = testbench.common.FakeRequest(args=dict(), headers={})
-        if generation is not None:
-            fake_request.args["generation"] = generation
-        if if_generation_match is not None:
-            fake_request.args["ifGenerationMatch"] = if_generation_match
+
+        def precondition(_, live_version, ctx):
+            if if_generation_match is None or int(if_generation_match) == live_version:
+                return True
+            return testbench.error.mismatch(
+                "compose.ifGenerationMatch",
+                expect=if_generation_match,
+                actual=live_version,
+                context=ctx,
+            )
+
         source_object = db.get_object(
-            fake_request, bucket_name, source_object_name, False, None
+            bucket_name,
+            source_object_name,
+            generation=generation,
+            preconditions=[precondition],
+            context=None,
         )
         composed_media += source_object.media
     metadata = {"name": object_name, "bucket": bucket_name}
@@ -551,7 +596,12 @@ def objects_compose(bucket_name, object_name):
     composed_object, _ = gcs_type.object.Object.init_dict(
         flask.request, metadata, composed_media, bucket, True
     )
-    db.insert_object(flask.request, bucket_name, composed_object, None)
+    db.insert_object(
+        bucket_name,
+        composed_object,
+        context=None,
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+    )
     return composed_object.rest_metadata()
 
 
@@ -564,7 +614,13 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
     db.insert_test_bucket()
     dst_bucket = db.get_bucket_without_generation(dst_bucket_name, None).metadata
     src_object = db.get_object(
-        flask.request, src_bucket_name, src_object_name, True, None
+        src_bucket_name,
+        src_object_name,
+        generation=flask.request.args.get("sourceGeneration", None),
+        preconditions=testbench.common.make_json_preconditions(
+            flask.request, prefix="ifSource"
+        ),
+        context=None,
     )
     testbench.csek.validation(
         flask.request,
@@ -582,7 +638,12 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
     dst_object, _ = gcs_type.object.Object.init(
         flask.request, dst_metadata, dst_media, dst_bucket, True, None
     )
-    db.insert_object(flask.request, dst_bucket_name, dst_object, None)
+    db.insert_object(
+        dst_bucket_name,
+        dst_object,
+        context=None,
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+    )
     if flask.request.data:
         dst_object.patch(flask.request, None)
     dst_object.metadata.metageneration = 1
@@ -613,7 +674,13 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
     else:
         rewrite = db.get_rewrite(token, None)
     src_object = db.get_object(
-        rewrite.request, src_bucket_name, src_object_name, True, None
+        src_bucket_name,
+        src_object_name,
+        generation=rewrite.request.args.get("sourceGeneration", None),
+        preconditions=testbench.common.make_json_preconditions(
+            rewrite.request, prefix="ifSource"
+        ),
+        context=None,
     )
     testbench.csek.validation(
         rewrite.request,
@@ -643,7 +710,12 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
         dst_object, _ = gcs_type.object.Object.init(
             flask.request, dst_metadata, dst_media, dst_bucket, True, None
         )
-        db.insert_object(flask.request, dst_bucket_name, dst_object, None)
+        db.insert_object(
+            dst_bucket_name,
+            dst_object,
+            context=None,
+            preconditions=testbench.common.make_json_preconditions(rewrite.request),
+        )
         if flask.request.data:
             dst_object.patch(rewrite.request, None)
         dst_object.metadata.metageneration = 1
@@ -663,7 +735,13 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl")
 @retry_test(method="storage.object_acl.list")
 def object_acl_list(bucket_name, object_name):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     response = {"kind": "storage#objectAccessControls", "items": []}
     for acl in blob.metadata.acl:
         acl_rest = json_format.MessageToDict(acl)
@@ -676,7 +754,13 @@ def object_acl_list(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl", methods=["POST"])
 @retry_test(method="storage.object_acl.insert")
 def object_acl_insert(bucket_name, object_name):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     acl = blob.insert_acl(flask.request, None)
     response = json_format.MessageToDict(acl)
     response["kind"] = "storage#objectAccessControl"
@@ -687,7 +771,13 @@ def object_acl_insert(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>")
 @retry_test(method="storage.object_acl.get")
 def object_acl_get(bucket_name, object_name, entity):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     acl = blob.get_acl(entity, None)
     response = json_format.MessageToDict(acl)
     response["kind"] = "storage#objectAccessControl"
@@ -698,7 +788,13 @@ def object_acl_get(bucket_name, object_name, entity):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["PUT"])
 @retry_test(method="storage.object_acl.update")
 def object_acl_update(bucket_name, object_name, entity):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     acl = blob.update_acl(flask.request, entity, None)
     response = json_format.MessageToDict(acl)
     response["kind"] = "storage#objectAccessControl"
@@ -712,7 +808,13 @@ def object_acl_update(bucket_name, object_name, entity):
 @retry_test(method="storage.object_acl.patch")
 def object_acl_patch(bucket_name, object_name, entity):
     testbench.common.enforce_patch_override(flask.request)
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     acl = blob.patch_acl(flask.request, entity, None)
     response = json_format.MessageToDict(acl)
     response["kind"] = "storage#objectAccessControl"
@@ -723,7 +825,13 @@ def object_acl_patch(bucket_name, object_name, entity):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["DELETE"])
 @retry_test(method="storage.object_acl.delete")
 def object_acl_delete(bucket_name, object_name, entity):
-    blob = db.get_object(flask.request, bucket_name, object_name, False, None)
+    blob = db.get_object(
+        bucket_name,
+        object_name,
+        generation=flask.request.args.get("generation", None),
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+        context=None,
+    )
     blob.delete_acl(entity, None)
     return ""
 
@@ -768,7 +876,12 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
-    db.insert_object(flask.request, bucket_name, blob, None)
+    db.insert_object(
+        bucket_name,
+        blob,
+        context=None,
+        preconditions=testbench.common.make_json_preconditions(flask.request),
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(
         blob.rest_metadata(), projection, fields
@@ -820,7 +933,14 @@ def resumable_upload_chunk(bucket_name):
                 blob.metadata.metadata["x_emulator_transfer_encoding"] = ":".join(
                     upload.transfer
                 )
-                db.insert_object(upload.request, bucket_name, blob, None)
+                db.insert_object(
+                    bucket_name,
+                    blob,
+                    context=None,
+                    preconditions=testbench.common.make_json_preconditions(
+                        upload.request
+                    ),
+                )
                 projection = testbench.common.extract_projection(
                     upload.request, "noAcl", None
                 )
@@ -868,7 +988,12 @@ def resumable_upload_chunk(bucket_name):
         )
         blob.metadata.metadata["x_emulator_upload"] = "resumable"
         blob.metadata.metadata["x_emulator_custom_header"] = str(custom_header_value)
-        db.insert_object(upload.request, bucket_name, blob, None)
+        db.insert_object(
+            bucket_name,
+            blob,
+            context=None,
+            preconditions=testbench.common.make_json_preconditions(upload.request),
+        )
         projection = testbench.common.extract_projection(upload.request, "noAcl", None)
         fields = upload.request.args.get("fields", None)
         return testbench.common.filter_response_rest(

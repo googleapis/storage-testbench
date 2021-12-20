@@ -73,18 +73,34 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def DeleteObject(self, request, context):
         self.db.insert_test_bucket()
-        self.db.delete_object(request, request.bucket, request.object, context)
+        self.db.delete_object(
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=testbench.common.make_grpc_preconditions(request),
+        )
         return empty_pb2.Empty()
 
     def GetObject(self, request, context):
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.bucket, request.object, False, context
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=testbench.common.make_grpc_preconditions(request),
         )
         return blob.metadata
 
     def ReadObject(self, request, context):
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.bucket, request.object, False, context
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=testbench.common.make_grpc_preconditions(request),
         )
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
         is_first = True
@@ -129,8 +145,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.object.bucket, request.object.name, False, context
+            request.object.bucket,
+            request.object.name,
+            context=context,
+            generation=request.object.generation,
+            preconditions=testbench.common.make_grpc_preconditions(request),
         )
         request.update_mask.MergeMessage(
             request.object, blob.metadata, replace_repeated_field=True
@@ -181,7 +202,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             upload.request, upload.metadata, upload.media, upload.bucket, False, context
         )
         upload.blob = blob
-        self.db.insert_object(upload.request, upload.bucket.name, blob, context)
+        self.db.insert_object(
+            upload.bucket.name,
+            blob,
+            context=context,
+            preconditions=upload.preconditions,
+        )
         return StorageServicer._log_rpc_passthrough(
             "WriteObject", None, storage_pb2.WriteObjectResponse(resource=blob.metadata)
         )
