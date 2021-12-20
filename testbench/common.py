@@ -311,6 +311,105 @@ def extract_media(request):
     return request.data
 
 
+def make_json_preconditions(request, prefix="if"):
+    """Create the pre-conditions for most JSON requests.
+
+    The prefix parameter can be `if` or `ifSource` to handle the special names
+    used for source pre-conditions in `Objects: copy` and `Objects: rewrite`.
+    """
+
+    def if_metageneration_match(blob, _, ctx):
+        match = request.args.get(prefix + "MetagenerationMatch", None)
+        if match is not None and int(match) == blob.metadata.metageneration:
+            return True
+        return testbench.error.mismatch(
+            prefix + "MetagenerationMatch",
+            expect=match,
+            actual=blob.metadata.metageneration,
+            context=ctx,
+        )
+
+    def if_metageneration_not_match(blob, _, ctx):
+        match = request.args.get(prefix + "MetagenerationNotMatch", None)
+        if match is not None and int(match) != blob.metadata.metageneration:
+            return True
+        return testbench.error.notchanged(
+            prefix
+            + "MetagenerationNotMatch expected %s == actual %s"
+            % (match, blob.metadata.metageneration),
+            context=ctx,
+        )
+
+    def if_generation_match(_, live_generation, ctx):
+        match = request.args.get(prefix + "GenerationMatch", None)
+        if match is not None and int(match) == live_generation:
+            return True
+        return testbench.error.mismatch(
+            prefix + "GenerationMatch",
+            expect=match,
+            actual=live_generation,
+            context=ctx,
+        )
+
+    def if_generation_not_match(_, live_generation, ctx):
+        match = request.args.get(prefix + "GenerationNotMatch", None)
+        if match is not None and int(match) != live_generation:
+            return True
+        return testbench.error.notchanged(
+            prefix
+            + "GenerationNotMatch expected %s == actual %s" % (match, live_generation),
+            context=ctx,
+        )
+
+    args = {
+        prefix + "MetagenerationMatch": if_metageneration_match,
+        prefix + "MetagenerationNotMatch": if_metageneration_not_match,
+        prefix + "GenerationMatch": if_generation_match,
+        prefix + "GenerationNotMatch": if_generation_not_match,
+    }
+    preconditions = []
+    for arg, predicate in args.items():
+        if arg in request.args:
+            preconditions.append(predicate)
+    return preconditions
+
+
+def make_xml_preconditions(request):
+    """Create the pre-conditions for most XML requests."""
+
+    def if_metageneration_match(blob, _, ctx):
+        match = request.headers.get("x-goog-if-metageneration-match", None)
+        if match is not None and int(match) == blob.metadata.metageneration:
+            return True
+        return testbench.error.mismatch(
+            "x-goog-if-metageneration-match",
+            expect=match,
+            actual=blob.metadata.metageneration,
+            context=ctx,
+        )
+
+    def if_generation_match(_, live_generation, ctx):
+        match = request.headers.get("x-goog-if-generation-match", None)
+        if match is not None and int(match) == live_generation:
+            return True
+        return testbench.error.mismatch(
+            "x-goog-if-generation-match",
+            expect=match,
+            actual=live_generation,
+            context=ctx,
+        )
+
+    HEADERS = {
+        "x-goog-if-metageneration-match": if_metageneration_match,
+        "x-goog-if-generation-match": if_generation_match,
+    }
+    preconditions = []
+    for arg, predicate in HEADERS.items():
+        if arg in request.headers:
+            preconditions.append(predicate)
+    return preconditions
+
+
 # === RESPONSE === #
 
 

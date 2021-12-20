@@ -17,6 +17,7 @@
 """Unit test for testbench.grpc."""
 
 import json
+import types
 import unittest
 import unittest.mock
 
@@ -124,6 +125,166 @@ class TestGrpc(unittest.TestCase):
             context.abort.assert_called_once_with(
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
+
+    def test_make_preconditions_empty(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+        )
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_preconditions_request_types(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.DeleteObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.UpdateObjectRequest(
+                object=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name", name="object-name"
+                ),
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+    def test_make_preconditions_if_generation_match(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 1)
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, 5, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, 6, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_generation_not_match(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 1)
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, 6, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, 5, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_metageneration_match(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_metageneration_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(
+            preconditions[0](
+                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5)),
+                3,
+                context,
+            )
+        )
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(
+            preconditions[0](
+                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6)),
+                3,
+                context,
+            )
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_metageneration_not_match(self):
+        preconditions = self.grpc._make_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(
+            preconditions[0](
+                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6)),
+                3,
+                context,
+            )
+        )
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(
+            preconditions[0](
+                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5)),
+                3,
+                context,
+            )
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
 
     def test_delete_object(self):
         media = b"The quick brown fox jumps over the lazy dog"

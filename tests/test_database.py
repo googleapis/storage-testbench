@@ -19,6 +19,7 @@
 import json
 import os
 import unittest
+import unittest.mock
 
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
@@ -121,10 +122,8 @@ class TestDatabaseObject(unittest.TestCase):
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.database.insert_object(request, "bucket-name", blob, None)
         get_result = self.database.get_object(
-            testbench.common.FakeRequest(args={}),
             "bucket-name",
             "object-name",
-            is_source=True,
             context=None,
         )
         self.assertEqual(get_result.metadata, blob.metadata)
@@ -174,7 +173,11 @@ class TestDatabaseObject(unittest.TestCase):
 
         # Delete the latest version, listing without versions should not include the just deleted object.
         self.database.delete_object(
-            testbench.common.FakeRequest(args={}), "bucket-name", "object-name", None
+            "bucket-name",
+            "object-name",
+            context=None,
+            generation=None,
+            preconditions=[],
         )
         items, _ = self.database.list_object(
             Request(create_environ(query_string={})), "bucket-name", None
@@ -190,10 +193,7 @@ class TestDatabaseObject(unittest.TestCase):
         )
         for o in items:
             self.database.delete_object(
-                testbench.common.FakeRequest(args={"generation": o.generation}),
-                "bucket-name",
-                o.name,
-                None,
+                "bucket-name", o.name, generation=o.generation, context=None
             )
         items, _ = self.database.list_object(
             Request(create_environ(query_string={"versions": "true"})),
@@ -204,13 +204,7 @@ class TestDatabaseObject(unittest.TestCase):
 
     def test_get_object_not_found(self):
         with self.assertRaises(testbench.error.RestException) as rest:
-            _ = self.database.get_object(
-                testbench.common.FakeRequest(args={}),
-                "bucket-name",
-                "object-name",
-                is_source=False,
-                context=None,
-            )
+            _ = self.database.get_object("bucket-name", "object-name", context=None)
         self.assertEqual(rest.exception.code, 404)
 
         request = testbench.common.FakeRequest(
@@ -218,17 +212,57 @@ class TestDatabaseObject(unittest.TestCase):
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.database.insert_object(request, "bucket-name", blob, None)
+
+        # Verify that mismatched bucket, object, or generation returns 404
         with self.assertRaises(testbench.error.RestException) as rest:
             _ = self.database.get_object(
-                testbench.common.FakeRequest(
-                    args={"generation": blob.metadata.generation + 1}
-                ),
-                "bucket-name",
+                "bad-bucket-name",
                 "object-name",
-                is_source=False,
                 context=None,
             )
         self.assertEqual(rest.exception.code, 404)
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.database.get_object(
+                "bucket-name",
+                "bad-object-name",
+                context=None,
+            )
+        self.assertEqual(rest.exception.code, 404)
+
+        bad_generation = blob.metadata.generation + 1
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.database.get_object(
+                "bucket-name",
+                "object-name",
+                generation=bad_generation,
+                context=None,
+            )
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_get_object_stops_on_first_failed_preconditions(self):
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.database.get_object("bucket-name", "object-name", context=None)
+        self.assertEqual(rest.exception.code, 404)
+
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        generation = blob.metadata.generation
+        self.database.insert_object(request, "bucket-name", blob, None)
+
+        works1 = unittest.mock.MagicMock(return_value=True)
+        fails = unittest.mock.MagicMock(return_value=False)
+        works2 = unittest.mock.MagicMock(return_value=True)
+        preconditions = [works1, fails, works2]
+        get = self.database.get_object(
+            "bucket-name", "object-name", context=None, preconditions=preconditions
+        )
+        self.assertIsNone(get)
+        works1.assert_called_once()
+        fails.assert_called_once_with(blob, generation, None)
+        works2.assert_not_called()
 
     def test_list_object_bucket_not_found(self):
         with self.assertRaises(testbench.error.RestException) as rest:

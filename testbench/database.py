@@ -258,22 +258,46 @@ class Database:
         )
         return blob, generation, bucket
 
-    def get_object(self, request, bucket_name, object_name, is_source, context):
+    def _get_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+    ):
         with self._resources_lock:
-            blob, generation, _ = self._check_object_generation(
-                request, bucket_name, object_name, is_source, context
-            )
-            if blob is None:
-                if generation == 0:
-                    testbench.error.notfound(
-                        "Live version of object %s" % object_name, context
-                    )
-                else:
-                    testbench.error.notfound(
-                        "Object %s with generation %d" % (object_name, generation),
+            bucket_key = self.__bucket_key(bucket_name, context)
+            if bucket_key not in self._live_generations:
+                return testbench.error.notfound("Bucket %s" % bucket_name, context)
+
+            live_generation = self._live_generations[bucket_key].get(object_name, None)
+
+            if generation is None or generation == 0:
+                # We are looking for the latest "live" version, but there is none.
+                if live_generation is None:
+                    return testbench.error.notfound(
+                        "Live version of object %s/%s" % (bucket_name, object_name),
                         context,
                     )
-            return blob
+                lookup_generation = int(live_generation)
+            else:
+                lookup_generation = int(generation)
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            blob = bucket.get("%s#%d" % (object_name, lookup_generation), None)
+            if blob is None:
+                return testbench.error.notfound(
+                    "Could not find object %s/%s#%d"
+                    % (bucket_name, object_name, generation),
+                    context,
+                )
+            for precondition in preconditions:
+                if not precondition(blob, live_generation, context):
+                    return None, None
+            return blob, live_generation
+
+    def get_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+    ):
+        blob, _ = self._get_object(
+            bucket_name, object_name, context, generation, preconditions
+        )
+        return blob
 
     def insert_object(self, request, bucket_name, blob, context):
         with self._resources_lock:
@@ -285,21 +309,19 @@ class Database:
             bucket["%s#%d" % (name, generation)] = blob
             self.__set_live_generation(bucket_name, name, generation, context)
 
-    def delete_object(self, request, bucket_name, object_name, context):
+    def delete_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+    ):
         with self._resources_lock:
-            _ = self.get_object(request, bucket_name, object_name, False, context)
-            generation = testbench.generation.extract_generation(
-                request, False, context
+            blob, live_generation = self._get_object(
+                bucket_name, object_name, context, generation, preconditions
             )
-            live_generation = self.__get_live_generation(
-                bucket_name, object_name, context
-            )
-            if generation == 0 or live_generation == generation:
+            # _get_object() raises if the object is not found or the generation mismatches.
+            # There are only two cases:
+            if (generation is None or generation == 0) or live_generation == generation:
                 self.__del_live_generation(bucket_name, object_name, context)
-            if generation != 0:
-                self._objects[self.__bucket_key(bucket_name, context)].pop(
-                    "%s#%d" % (object_name, generation), None
-                )
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
     # === UPLOAD === #
 

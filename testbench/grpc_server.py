@@ -71,20 +71,99 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
+    @staticmethod
+    def _make_preconditions(request):
+        def if_metageneration_match(blob, _, ctx):
+            if request.if_metageneration_match == blob.metadata.metageneration:
+                return True
+            testbench.error.mismatch(
+                "if_metageneration_match",
+                expect=request.if_metageneration_match,
+                actual=blob.metadata.metageneration,
+                context=ctx,
+            )
+            return False
+
+        def if_metageneration_not_match(blob, _, ctx):
+            if request.if_metageneration_not_match != blob.metadata.metageneration:
+                return True
+            testbench.error.notchanged(
+                "if_metageneration_not_match expected %s == actual %s"
+                % (request.if_metageneration_not_match, blob.metadata.metageneration),
+                context=ctx,
+            )
+            return False
+
+        def if_generation_match(_, live_generation, ctx):
+            if request.if_generation_match == live_generation:
+                return True
+            testbench.error.mismatch(
+                "if_generation_match",
+                expect=request.if_generation_match,
+                actual=live_generation,
+                context=ctx,
+            )
+            return False
+
+        def if_generation_not_match(_, live_generation, ctx):
+            if request.if_generation_not_match != live_generation:
+                return True
+            testbench.error.notchanged(
+                "if_generation_not_match expected %s == actual %s"
+                % (request.if_generation_not_match, live_generation),
+                context=ctx,
+            )
+            return False
+
+        preconditions = []
+        if hasattr(request, "if_metageneration_match") and request.HasField(
+            "if_metageneration_match"
+        ):
+            preconditions.append(if_metageneration_match)
+        if hasattr(request, "if_metageneration_not_match") and request.HasField(
+            "if_metageneration_not_match"
+        ):
+            preconditions.append(if_metageneration_not_match)
+        if hasattr(request, "if_generation_match") and request.HasField(
+            "if_generation_match"
+        ):
+            preconditions.append(if_generation_match)
+        if hasattr(request, "if_generation_not_match") and request.HasField(
+            "if_generation_not_match"
+        ):
+            preconditions.append(if_generation_not_match)
+        return preconditions
+
     def DeleteObject(self, request, context):
         self.db.insert_test_bucket()
-        self.db.delete_object(request, request.bucket, request.object, context)
+        self.db.delete_object(
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=self._make_preconditions(request),
+        )
         return empty_pb2.Empty()
 
     def GetObject(self, request, context):
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.bucket, request.object, False, context
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=self._make_preconditions(request),
         )
         return blob.metadata
 
     def ReadObject(self, request, context):
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.bucket, request.object, False, context
+            request.bucket,
+            request.object,
+            context=context,
+            generation=request.generation,
+            preconditions=self._make_preconditions(request),
         )
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
         is_first = True
@@ -129,8 +208,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
+        self.db.insert_test_bucket()
         blob = self.db.get_object(
-            request, request.object.bucket, request.object.name, False, context
+            request.object.bucket,
+            request.object.name,
+            context=context,
+            generation=request.object.generation,
+            preconditions=self._make_preconditions(request),
         )
         request.update_mask.MergeMessage(
             request.object, blob.metadata, replace_repeated_field=True
