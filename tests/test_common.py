@@ -321,6 +321,28 @@ class TestCommonUtils(unittest.TestCase):
         )
         self.assertEqual(len(preconditions), 4)
 
+    def test_make_json_preconditions_source(self):
+        preconditions = testbench.common.make_json_preconditions(
+            prefix="ifSource",
+            request=Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    content_length=0,
+                    data="",
+                    content_type="application/octet-stream",
+                    method="POST",
+                    headers={},
+                    query_string={
+                        "ifSourceGenerationMatch": "5",
+                        "ifSourceGenerationNotMatch": "5",
+                        "ifSourceMetagenerationMatch": "5",
+                        "ifSourceMetagenerationNotMatch": "5",
+                    },
+                )
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
     def test_make_json_preconditions_if_generation_match(self):
         preconditions = testbench.common.make_json_preconditions(
             Request(
@@ -534,155 +556,6 @@ class TestCommonUtils(unittest.TestCase):
             ),
         )
         self.assertEqual(len(preconditions), 0)
-
-    def test_make_json_preconditions_many(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={
-                        "ifGenerationMatch": "5",
-                        "ifGenerationNotMatch": "5",
-                        "ifMetagenerationMatch": "5",
-                        "ifMetagenerationNotMatch": "5",
-                    },
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 4)
-
-    def test_make_json_preconditions_source(self):
-        preconditions = testbench.common.make_json_preconditions(
-            prefix="ifSource",
-            request=Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={
-                        "ifSourceGenerationMatch": "5",
-                        "ifSourceGenerationNotMatch": "5",
-                        "ifSourceMetagenerationMatch": "5",
-                        "ifSourceMetagenerationNotMatch": "5",
-                    },
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 4)
-
-    def test_make_json_preconditions_if_generation_match(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={"ifGenerationMatch": "5"},
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 1)
-        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
-        self.assertTrue(preconditions[0](blob, 5, None))
-
-        with self.assertRaises(testbench.error.RestException) as rest:
-            preconditions[0](blob, 6, None)
-        self.assertEqual(rest.exception.code, 412)
-
-    def test_make_json_preconditions_if_generation_not_match(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={"ifGenerationNotMatch": "5"},
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 1)
-        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
-        self.assertTrue(preconditions[0](blob, 6, None))
-
-        with self.assertRaises(testbench.error.RestException) as rest:
-            preconditions[0](blob, 5, None)
-        self.assertEqual(rest.exception.code, 304)
-
-    def test_make_json_preconditions_if_metageneration_match(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={"ifMetagenerationMatch": "5"},
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 1)
-        self.assertTrue(
-            preconditions[0](
-                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5)),
-                3,
-                None,
-            )
-        )
-
-        with self.assertRaises(testbench.error.RestException) as rest:
-            preconditions[0](
-                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6)),
-                3,
-                None,
-            )
-        self.assertEqual(rest.exception.code, 412)
-
-    def test_make_json_preconditions_if_metageneration_not_match(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={"ifMetagenerationNotMatch": "5"},
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 1)
-        self.assertTrue(
-            preconditions[0](
-                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6)),
-                3,
-                None,
-            )
-        )
-
-        with self.assertRaises(testbench.error.RestException) as rest:
-            preconditions[0](
-                types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5)),
-                3,
-                None,
-            )
-        self.assertEqual(rest.exception.code, 304)
 
     def test_extract_projection(self):
         request = testbench.common.FakeRequest(args={})
