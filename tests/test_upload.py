@@ -230,6 +230,7 @@ class TestHolder(unittest.TestCase):
             data=data,
             content_type="application/json",
             method="POST",
+            query_string={"ifGenerationMatch": 42, "ifMetagenerationMatch": 43},
         )
         upload = gcs.upload.Upload.init_resumable_rest(
             Request(environ), bucket.metadata
@@ -245,11 +246,8 @@ class TestHolder(unittest.TestCase):
             upload.metadata.checksums.md5_hash,
             base64.b64decode("1B2M2Y8AsgTpgAmY7PhCfg=="),
         )
-        match, not_match = testbench.generation.extract_precondition(
-            upload.request, False, False, None
-        )
-        self.assertIsNone(match)
-        self.assertIsNone(not_match)
+        self.assertTrue(hasattr(upload, "preconditions"))
+        self.assertEqual(len(upload.preconditions), 2)
 
         app = flask.Flask(__name__)
         with app.test_request_context():
@@ -295,7 +293,7 @@ class TestHolder(unittest.TestCase):
         )
         context = unittest.mock.Mock()
         db = unittest.mock.Mock()
-        db.get_bucket_without_generation = unittest.mock.MagicMock(return_value=bucket)
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             db, [r1, r2, r3], context
         )
@@ -304,9 +302,7 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(upload.media, b"".join(3 * [line]))
         self.assertEqual(upload.metadata.name, "object")
         self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
-        db.get_bucket_without_generation.assert_called_once_with(
-            "projects/_/buckets/bucket-name", context
-        )
+        db.get_bucket.assert_called_once_with("projects/_/buckets/bucket-name", context)
 
     def test_init_object_write_grpc_checksums(self):
         media = b"The quick brown fox jumps over the lazy dog"
@@ -363,9 +359,7 @@ class TestHolder(unittest.TestCase):
 
             context = unittest.mock.Mock()
             db = unittest.mock.Mock()
-            db.get_bucket_without_generation = unittest.mock.MagicMock(
-                return_value=bucket
-            )
+            db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
             upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
                 db, [request], context
             )
@@ -409,16 +403,8 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(
             predefined_acl, storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
         )
-        match, not_match = testbench.generation.extract_precondition(
-            upload.request, False, False, ""
-        )
-        self.assertIsNone(match)
-        self.assertEqual(not_match, 1)
-        match, not_match = testbench.generation.extract_precondition(
-            upload.request, True, False, ""
-        )
-        self.assertEqual(match, 2)
-        self.assertEqual(not_match, 3)
+        self.assertTrue(hasattr(upload, "preconditions"))
+        self.assertEqual(len(upload.preconditions), 3)
 
     def test_init_object_write_grpc_resumable(self):
         request = testbench.common.FakeRequest(
@@ -460,7 +446,7 @@ class TestHolder(unittest.TestCase):
         )
         context = unittest.mock.Mock()
         db = unittest.mock.Mock()
-        db.get_bucket_without_generation = unittest.mock.MagicMock(return_value=bucket)
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             db, [r1, r2, r3], context
@@ -515,7 +501,7 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
-        db.get_bucket_without_generation = unittest.mock.MagicMock(return_value=bucket)
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
 
         context = unittest.mock.Mock()

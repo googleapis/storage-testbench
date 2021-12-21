@@ -71,48 +71,38 @@ class Database:
 
     # === BUCKET === #
 
-    def __check_bucket_metageneration(self, request, bucket, context):
-        metageneration = bucket.metadata.metageneration
-        match, not_match = testbench.generation.extract_precondition(
-            request, True, False, context
-        )
-        testbench.generation.check_precondition(
-            metageneration, match, not_match, True, context
-        )
-
     def __bucket_key(self, bucket_name, context):
         if context is not None:
             return bucket_name
         return testbench.common.bucket_name_to_proto(bucket_name)
 
-    def get_bucket_without_generation(self, bucket_name, context):
+    def get_bucket(self, bucket_name, context, preconditions=[]):
         with self._resources_lock:
             bucket = self._buckets.get(self.__bucket_key(bucket_name, context))
             if bucket is None:
-                testbench.error.notfound("Bucket %s" % bucket_name, context)
+                return testbench.error.notfound("Bucket %s" % bucket_name, context)
+            for precondition in preconditions:
+                if not precondition(bucket, context):
+                    return None
             return bucket
 
-    def insert_bucket(self, request, bucket, context):
+    def insert_bucket(self, bucket, context):
         with self._resources_lock:
+            if bucket.metadata.name in self._buckets:
+                return testbench.error.already_exists(context)
             self._buckets[bucket.metadata.name] = bucket
             self._objects[bucket.metadata.name] = {}
             self._live_generations[bucket.metadata.name] = {}
 
-    def get_bucket(self, request, bucket_name, context):
-        with self._resources_lock:
-            bucket = self.get_bucket_without_generation(bucket_name, context)
-            self.__check_bucket_metageneration(request, bucket, context)
-            return bucket
-
-    def list_bucket(self, request, project_id, context):
+    def list_bucket(self, project_id, context):
         with self._resources_lock:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
             return self._buckets.values()
 
-    def delete_bucket(self, request, bucket_name, context):
+    def delete_bucket(self, bucket_name, context, preconditions=[]):
         with self._resources_lock:
-            bucket = self.get_bucket(request, bucket_name, context)
+            bucket = self.get_bucket(bucket_name, context, preconditions)
             if len(self._live_generations[bucket.metadata.name]) > 0:
                 testbench.error.invalid("Deleting non-empty bucket", context)
             del self._buckets[bucket.metadata.name]
@@ -136,7 +126,7 @@ class Database:
                     args={}, data=json.dumps({"name": bucket_name})
                 )
                 bucket_test, _ = gcs.bucket.Bucket.init(request, None)
-                self.insert_bucket(request, bucket_test, None)
+                self.insert_bucket(bucket_test, None)
                 bucket_test.metadata.metageneration = 4
                 bucket_test.metadata.versioning.enabled = True
 

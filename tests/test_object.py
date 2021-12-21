@@ -319,9 +319,7 @@ class TestObject(unittest.TestCase):
         )
         context = unittest.mock.Mock()
         db = unittest.mock.Mock()
-        db.get_bucket_without_generation = unittest.mock.MagicMock(
-            return_value=self.bucket
-        )
+        db.get_bucket = unittest.mock.MagicMock(return_value=self.bucket)
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [request], context)
         blob, _ = gcs.object.Object.init(
             upload.request,

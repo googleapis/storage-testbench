@@ -117,7 +117,9 @@ class Upload(types.SimpleNamespace):
         request = testbench.common.FakeRequest(
             args=request.args.to_dict(), headers=headers, data=b""
         )
-        return cls.init(request, metadata, bucket, location, upload_id)
+        upload = cls.init(request, metadata, bucket, location, upload_id)
+        upload.preconditions = testbench.common.make_json_preconditions(request)
+        return upload
 
     @classmethod
     def init_resumable_grpc(
@@ -134,7 +136,9 @@ class Upload(types.SimpleNamespace):
         )
         fake_request.update_protobuf(request.write_object_spec, context)
         upload = cls.init(fake_request, metadata, bucket, "", upload_id)
-        upload.preconditions = testbench.common.make_grpc_preconditions(request)
+        upload.preconditions = testbench.common.make_grpc_preconditions(
+            request.write_object_spec
+        )
         return upload
 
     @classmethod
@@ -168,7 +172,7 @@ class Upload(types.SimpleNamespace):
                     return None, False
                 is_resumable = True
             elif first_message == "write_object_spec":
-                bucket = db.get_bucket_without_generation(
+                bucket = db.get_bucket(
                     request.write_object_spec.resource.bucket, context
                 ).metadata
                 upload = cls.__init_first_write_grpc(request, bucket, context)
