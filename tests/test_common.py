@@ -541,22 +541,6 @@ class TestCommonUtils(unittest.TestCase):
             )
         self.assertEqual(rest.exception.code, 412)
 
-    def test_make_json_preconditions_empty(self):
-        preconditions = testbench.common.make_json_preconditions(
-            Request(
-                create_environ(
-                    base_url="http://localhost:8080",
-                    content_length=0,
-                    data="",
-                    content_type="application/octet-stream",
-                    method="POST",
-                    headers={},
-                    query_string={},
-                )
-            ),
-        )
-        self.assertEqual(len(preconditions), 0)
-
     def test_extract_projection(self):
         request = testbench.common.FakeRequest(args={})
         projection = testbench.common.extract_projection(request, "noAcl", None)
