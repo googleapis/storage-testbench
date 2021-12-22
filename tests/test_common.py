@@ -509,11 +509,11 @@ class TestCommonUtils(unittest.TestCase):
             )
         )
 
-    def test_make_preconditions_empty(self):
+    def test_make_grpc_preconditions_empty(self):
         preconditions = self.make_grpc_preconditions()
         self.assertEqual(len(preconditions), 0)
 
-    def test_make_preconditions_request_types(self):
+    def test_make_grpc_preconditions_request_types(self):
         preconditions = self.make_grpc_preconditions(
             if_generation_match=5,
             if_generation_not_match=5,
@@ -559,7 +559,7 @@ class TestCommonUtils(unittest.TestCase):
         )
         self.assertEqual(len(preconditions), 4)
 
-    def test_make_preconditions_if_generation_match(self):
+    def test_make_grpc_preconditions_if_generation_match(self):
         blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
 
         preconditions = self.make_grpc_preconditions(if_generation_match=5)
@@ -586,7 +586,7 @@ class TestCommonUtils(unittest.TestCase):
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
-    def test_make_preconditions_if_generation_not_match(self):
+    def test_make_grpc_preconditions_if_generation_not_match(self):
         blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
 
         preconditions = self.make_grpc_preconditions(if_generation_not_match=5)
@@ -613,7 +613,7 @@ class TestCommonUtils(unittest.TestCase):
             grpc.StatusCode.ABORTED, unittest.mock.ANY
         )
 
-    def test_make_preconditions_if_metageneration_match(self):
+    def test_make_grpc_preconditions_if_metageneration_match(self):
         b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
         b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
 
@@ -641,7 +641,7 @@ class TestCommonUtils(unittest.TestCase):
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
-    def test_make_preconditions_if_metageneration_not_match(self):
+    def test_make_grpc_preconditions_if_metageneration_not_match(self):
         b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
         b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
 
@@ -665,6 +665,190 @@ class TestCommonUtils(unittest.TestCase):
 
         context = unittest.mock.Mock()
         self.assertFalse(preconditions[0](None, 3, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+    def make_test_json_bucket_preconditions(self, query_string):
+        """Helper function to test JSON bucket preconditions."""
+        return testbench.common.make_json_bucket_preconditions(
+            Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    content_length=2,
+                    data="{}",
+                    content_type="application/json",
+                    method="POST",
+                    headers={},
+                    query_string=query_string,
+                )
+            ),
+        )
+
+    def test_make_json_bucket_preconditions_empty(self):
+        preconditions = self.make_test_json_bucket_preconditions({})
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_json_bucket_preconditions_many(self):
+        preconditions = self.make_test_json_bucket_preconditions(
+            {
+                "ifMetagenerationMatch": "5",
+                "ifMetagenerationNotMatch": "5",
+            }
+        )
+        self.assertEqual(len(preconditions), 2)
+
+    def test_make_json_bucket_preconditions_if_metageneration_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=6))
+
+        preconditions = self.make_test_json_bucket_preconditions(
+            {"ifMetagenerationMatch": "5"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b0, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, None)
+        self.assertEqual(rest.exception.code, 412)
+
+        preconditions = self.make_test_json_bucket_preconditions(
+            {"ifMetagenerationMatch": "0"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, None)
+        self.assertEqual(rest.exception.code, 412)
+
+    def test_make_json_bucket_preconditions_if_metageneration_not_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=6))
+
+        preconditions = self.make_test_json_bucket_preconditions(
+            {"ifMetagenerationNotMatch": "5"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b1, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b0, None)
+        self.assertEqual(rest.exception.code, 304)
+
+        preconditions = self.make_test_json_bucket_preconditions(
+            {"ifMetagenerationNotMatch": "0"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b0, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](None, None)
+        self.assertEqual(rest.exception.code, 304)
+
+    def make_grpc_bucket_preconditions(self, **kwargs):
+        """Helper function to test gRPC preconditions."""
+        return testbench.common.make_grpc_bucket_preconditions(
+            storage_pb2.GetBucketRequest(
+                name="projects/_/buckets/bucket-name",
+                **kwargs,
+            )
+        )
+
+    def test_make_grpc_bucket_preconditions_empty(self):
+        preconditions = self.make_grpc_bucket_preconditions()
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_grpc_bucket_preconditions_request_types(self):
+        preconditions = self.make_grpc_bucket_preconditions(
+            if_metageneration_match=5,
+            if_metageneration_not_match=5,
+        )
+        self.assertEqual(len(preconditions), 2)
+
+        preconditions = testbench.common.make_grpc_bucket_preconditions(
+            storage_pb2.GetBucketRequest(
+                name="projects/_/buckets/bucket-name",
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 2)
+
+        preconditions = testbench.common.make_grpc_bucket_preconditions(
+            storage_pb2.DeleteBucketRequest(
+                name="projects/_/buckets/bucket-name",
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 2)
+
+        preconditions = testbench.common.make_grpc_bucket_preconditions(
+            storage_pb2.UpdateBucketRequest(
+                bucket=storage_pb2.Bucket(name="projects/_/buckets/bucket-name"),
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 2)
+
+    def test_make_grpc_bucket_preconditions_if_metageneration_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=6))
+
+        preconditions = self.make_grpc_bucket_preconditions(if_metageneration_match=5)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b0, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b1, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_bucket_preconditions(if_metageneration_match=0)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](None, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b0, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_make_grpc_bucket_preconditions_if_metageneration_not_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Bucket(metageneration=6))
+
+        preconditions = self.make_grpc_bucket_preconditions(
+            if_metageneration_not_match=5
+        )
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b1, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b0, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_bucket_preconditions(
+            if_metageneration_not_match=0
+        )
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b0, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](None, context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.ABORTED, unittest.mock.ANY
         )

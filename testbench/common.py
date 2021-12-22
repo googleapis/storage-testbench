@@ -510,6 +510,95 @@ def make_grpc_preconditions(request):
     return preconditions
 
 
+def make_json_bucket_preconditions(request):
+    """Create the pre-conditions for most JSON Bucket-related requests."""
+
+    def if_metageneration_match(bucket, ctx):
+        match = request.args.get("ifMetagenerationMatch", None)
+        assert match is not None
+        actual = bucket.metadata.metageneration if bucket is not None else 0
+        if int(match) == 0 and bucket is None:
+            return True
+        if int(match) != 0 and int(match) == actual:
+            return True
+        return testbench.error.mismatch(
+            "ifMetagenerationMatch",
+            expect=match,
+            actual=actual,
+            context=ctx,
+        )
+
+    def if_metageneration_not_match(bucket, ctx):
+        match = request.args.get("ifMetagenerationNotMatch", None)
+        assert match is not None
+        actual = bucket.metadata.metageneration if bucket is not None else 0
+        if int(match) == 0 and bucket is not None:
+            return True
+        if int(match) != 0 and int(match) != actual:
+            return True
+        return testbench.error.notchanged(
+            "ifMetagenerationNotMatch expected %s == actual %s" % (match, actual),
+            context=ctx,
+        )
+
+    args = {
+        "ifMetagenerationMatch": if_metageneration_match,
+        "ifMetagenerationNotMatch": if_metageneration_not_match,
+    }
+    preconditions = []
+    for arg, predicate in args.items():
+        if arg in request.args:
+            preconditions.append(predicate)
+    return preconditions
+
+
+def make_grpc_bucket_preconditions(request):
+    """Create the pre-conditions for most gRPC requests."""
+
+    def if_metageneration_match(bucket, ctx):
+        assert request.HasField("if_metageneration_match")
+        if request.if_metageneration_match == 0 and bucket is None:
+            return True
+        actual = bucket.metadata.metageneration if bucket is not None else 0
+        if (
+            request.if_metageneration_match != 0
+            and request.if_metageneration_match == actual
+        ):
+            return True
+        return testbench.error.mismatch(
+            "if_metageneration_match",
+            expect=request.if_metageneration_match,
+            actual=actual,
+            context=ctx,
+        )
+
+    def if_metageneration_not_match(bucket, ctx):
+        assert request.HasField("if_metageneration_not_match")
+        if request.if_metageneration_not_match == 0 and bucket is not None:
+            return True
+        actual = bucket.metadata.metageneration if bucket is not None else 0
+        if (
+            request.if_metageneration_not_match != 0
+            and request.if_metageneration_not_match != actual
+        ):
+            return True
+        return testbench.error.notchanged(
+            "if_metageneration_not_match expected %s == actual %s"
+            % (request.if_metageneration_not_match, actual),
+            context=ctx,
+        )
+
+    preconditions = []
+    fields = {
+        "if_metageneration_match": if_metageneration_match,
+        "if_metageneration_not_match": if_metageneration_not_match,
+    }
+    for field, predicate in fields.items():
+        if hasattr(request, field) and request.HasField(field):
+            preconditions.append(predicate)
+    return preconditions
+
+
 # === RESPONSE === #
 
 
