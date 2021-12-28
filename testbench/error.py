@@ -128,3 +128,13 @@ def notfound(name, context, rest_code=404, grpc_code=grpc.StatusCode.NOT_FOUND):
 def notallowed(context=None, rest_code=405, grpc_code=None):
     """Error returned when a method is not allowed."""
     generic(_simple_json_error("method is not allowed"), rest_code, grpc_code, context)
+
+
+def already_exists(context=None):
+    """Error returned when a resource already exists."""
+    generic(
+        _simple_json_error("resource already exists"),
+        rest_code=409,
+        grpc_code=grpc.StatusCode.ALREADY_EXISTS,
+        context=context,
+    )

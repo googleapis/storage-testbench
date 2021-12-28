@@ -36,14 +36,20 @@ class TestDatabaseBucket(unittest.TestCase):
             data=json.dumps({"name": "bucket-name"}),
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
-        database.insert_bucket(request, bucket, None)
-        get_result = database.get_bucket(request, "bucket-name", None)
+        database.insert_bucket(bucket, None)
+
+        # A duplicate insert fails
+        with self.assertRaises(testbench.error.RestException) as rest:
+            database.insert_bucket(bucket, None)
+        self.assertEqual(rest.exception.code, 409)
+
+        get_result = database.get_bucket("bucket-name", None)
         self.assertEqual(bucket.metadata, get_result.metadata)
-        list_result = database.list_bucket(request, "test-project-id", None)
+        list_result = database.list_bucket("test-project-id", None)
         names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
-        database.delete_bucket(request, "bucket-name", None)
-        list_result = database.list_bucket(request, "test-project-id", None)
+        database.delete_bucket("bucket-name", None)
+        list_result = database.list_bucket("test-project-id", None)
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
@@ -54,8 +60,29 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({"name": "bucket-name"}),
             )
-            database.get_bucket(request, "bucket-name", None)
+            database.get_bucket("bucket-name", None)
         self.assertEqual(rest.exception.code, 404)
+
+    def test_get_bucket_stops_on_first_failed_preconditions(self):
+        database = testbench.database.Database.init()
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"name": "bucket-name"}),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket, None)
+
+        works1 = unittest.mock.MagicMock(return_value=True)
+        fails = unittest.mock.MagicMock(return_value=False)
+        works2 = unittest.mock.MagicMock(return_value=True)
+        preconditions = [works1, fails, works2]
+        get = database.get_bucket(
+            "bucket-name", context=None, preconditions=preconditions
+        )
+        self.assertIsNone(get)
+        works1.assert_called_once()
+        fails.assert_called_once_with(bucket, None)
+        works2.assert_not_called()
 
     def test_list_bucket_invalid(self):
         database = testbench.database.Database.init()
@@ -64,7 +91,7 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({}),
             )
-            database.list_bucket(request, "invalid-project-id-", None)
+            database.list_bucket("invalid-project-id-", None)
         self.assertEqual(rest.exception.code, 400)
 
     def test_delete_not_empty(self):
@@ -74,7 +101,7 @@ class TestDatabaseBucket(unittest.TestCase):
             data=json.dumps({"name": "bucket-name"}),
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
-        database.insert_bucket(request, bucket, None)
+        database.insert_bucket(bucket, None)
         request = testbench.common.FakeRequest(
             args={"name": "object"}, data=b"12345678", headers={}, environ={}
         )
@@ -85,7 +112,7 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({}),
             )
-            database.delete_bucket(request, "bucket-name", None)
+            database.delete_bucket("bucket-name", None)
         self.assertEqual(rest.exception.code, 400)
 
     def test_insert_test_bucket(self):
@@ -96,12 +123,12 @@ class TestDatabaseBucket(unittest.TestCase):
         )
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database.insert_test_bucket()
-        names = {b.metadata.name for b in database.list_bucket(request, "", None)}
+        names = {b.metadata.name for b in database.list_bucket("", None)}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database.insert_test_bucket()
-        get_result = database.get_bucket(request, "test-bucket-1", None)
+        get_result = database.get_bucket("test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
 
 
@@ -113,7 +140,7 @@ class TestDatabaseObject(unittest.TestCase):
             data=json.dumps({"name": "bucket-name"}),
         )
         self.bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.database.insert_bucket(request, self.bucket, None)
+        self.database.insert_bucket(self.bucket, None)
 
     def test_object_crud(self):
         request = testbench.common.FakeRequest(
@@ -309,7 +336,7 @@ class TestDatabaseTemporaryResources(unittest.TestCase):
             data=json.dumps({"name": "bucket-name"}),
         )
         self.bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.database.insert_bucket(request, self.bucket, None)
+        self.database.insert_bucket(self.bucket, None)
 
     def test_upload_crud(self):
         environ = create_environ(

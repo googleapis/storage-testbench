@@ -38,7 +38,7 @@ class TestGrpc(unittest.TestCase):
             data=json.dumps({"name": "bucket-name"}),
         )
         self.bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.db.insert_bucket(request, self.bucket, None)
+        self.db.insert_bucket(self.bucket, None)
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
     def test_get_bucket(self):

@@ -34,13 +34,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def GetBucket(self, request, context):
         self.db.insert_test_bucket()
-        bucket = self.db.get_bucket(request, request.name, context)
+        bucket = self.db.get_bucket(
+            request.name,
+            context,
+            preconditions=testbench.common.make_grpc_bucket_preconditions(request),
+        )
         return bucket.metadata
 
     def CreateBucket(self, request, context):
         self.db.insert_test_bucket()
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
-        self.db.insert_bucket(request, bucket, context)
+        self.db.insert_bucket(bucket, context)
         return bucket.metadata
 
     def UpdateBucket(self, request, context):
@@ -65,7 +69,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
-        bucket = self.db.get_bucket(request, request.bucket.name, context)
+        bucket = self.db.get_bucket(
+            request.bucket.name,
+            context,
+            preconditions=testbench.common.make_grpc_bucket_preconditions(request),
+        )
         request.update_mask.MergeMessage(
             request.bucket, bucket.metadata, replace_repeated_field=True
         )
@@ -159,7 +167,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return blob.metadata
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
-        return self.db.get_bucket_without_generation(bucket_name, context).metadata
+        return self.db.get_bucket(bucket_name, context).metadata
 
     @staticmethod
     def _format(message):
