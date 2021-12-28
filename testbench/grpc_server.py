@@ -101,7 +101,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
         composed_media = b""
         for source in request.source_objects:
-            if len(source.name) is None:
+            if len(source.name) == 0:
                 return testbench.error.missing("Name of source compose object", context)
 
             if_generation_match = None
@@ -127,6 +127,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 context=context,
                 preconditions=[precondition],
             )
+            if source_blob is None:
+                return None
             composed_media += source_blob.media
 
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata

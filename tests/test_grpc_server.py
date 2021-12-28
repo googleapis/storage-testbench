@@ -171,6 +171,81 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(0, response.generation)
         self.assertEqual(response.size, len(expected_media))
 
+    def test_compose_object_bad_inputs(self):
+        SourceObject = storage_pb2.ComposeObjectRequest.SourceObject
+        test_cases = {
+            "missing sources": storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+            ),
+            "missing destination.name": storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=[SourceObject(name="zebra")],
+            ),
+            "missing destination.bucket": storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(name="composed-object-name", bucket=""),
+                source_objects=[SourceObject(name="zebra")],
+            ),
+            "missing source name": storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=[SourceObject(name="")],
+            ),
+            "too many source objects": storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=[SourceObject(name="zebra")] * 64,
+            ),
+        }
+        for name, request in test_cases.items():
+            context = unittest.mock.Mock(name=name)
+            context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+            _ = self.grpc.ComposeObject(request, context)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+    def test_compose_object_failed_source_precondition(self):
+        payloads = {
+            "fox": b"The quick brown fox jumps over the lazy dog\n",
+            "zebra": b"How vexingly quick daft zebras jump!\n",
+        }
+        source_objects = []
+        for name, media in payloads.items():
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
+            source_objects.append(
+                storage_pb2.ComposeObjectRequest.SourceObject(
+                    name=name,
+                    # Use an invalid source object precondition
+                    object_preconditions=storage_pb2.ComposeObjectRequest.SourceObject.ObjectPreconditions(
+                        if_generation_match=blob.metadata.generation + 10
+                    ),
+                )
+            )
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        _ = self.grpc.ComposeObject(
+            storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=source_objects,
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
     def test_delete_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(
