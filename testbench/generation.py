@@ -59,19 +59,6 @@ def extract_precondition(request, is_meta, is_source, context):
     return match, not_match
 
 
-def extract_generation(request, is_source, context):
-    if context is not None:
-        if hasattr(request, "generation"):
-            return request.generation
-        if hasattr(request, "object"):
-            return request.object.generation
-        return testbench.error.invalid(
-            "Cannot extract generation from request %s" % request
-        )
-    extract_field = "generation" if not is_source else "sourceGeneration"
-    return int(request.args.get(extract_field, 0))
-
-
 def check_precondition(generation, match, not_match, is_meta, context):
     msg = "generation" if not is_meta else "metageneration"
     if generation is not None and not_match is not None and not_match == generation:

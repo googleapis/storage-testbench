@@ -17,6 +17,7 @@
 """Unit test for testbench.grpc."""
 
 import json
+import types
 import unittest
 import unittest.mock
 
@@ -131,7 +132,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object(request, "bucket-name", blob, None)
+        self.db.insert_object("bucket-name", blob, context=None)
         full_bucket_name = blob.metadata.bucket
         context = unittest.mock.Mock()
         _ = self.grpc.DeleteObject(
@@ -155,7 +156,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object(request, "bucket-name", blob, None)
+        self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
         response = self.grpc.GetObject(
             storage_pb2.GetObjectRequest(
@@ -179,7 +180,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object(request, "bucket-name", blob, None)
+        self.db.insert_object("bucket-name", blob, None)
         response = self.grpc.ReadObject(
             storage_pb2.ReadObjectRequest(
                 bucket="projects/_/buckets/bucket-name", object="object-name"
@@ -209,7 +210,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object(request, "bucket-name", blob, None)
+        self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
         response = self.grpc.UpdateObject(
             storage_pb2.UpdateObjectRequest(
@@ -248,7 +249,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object(request, "bucket-name", blob, None)
+        self.db.insert_object("bucket-name", blob, None)
         for invalid in [
             "name",
             "bucket",
@@ -533,7 +534,7 @@ class TestGrpc(unittest.TestCase):
                 args={"name": name}, data=media, headers={}, environ={}
             )
             blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-            self.db.insert_object(request, "bucket-name", blob, None)
+            self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
         response = self.grpc.ListObjects(
             storage_pb2.ListObjectsRequest(
@@ -563,7 +564,7 @@ class TestGrpc(unittest.TestCase):
                 args={"name": name}, data=media, headers={}, environ={}
             )
             blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-            self.db.insert_object(request, "bucket-name", blob, None)
+            self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
         response = self.grpc.ListObjects(
             storage_pb2.ListObjectsRequest(
@@ -602,7 +603,7 @@ class TestGrpc(unittest.TestCase):
                 args={"name": name}, data=media, headers={}, environ={}
             )
             blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-            self.db.insert_object(request, "bucket-name", blob, None)
+            self.db.insert_object("bucket-name", blob, None)
         cases = [
             {"include_trailing_delimiter": False, "expected": ["a/test-3"]},
             {

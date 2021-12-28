@@ -231,75 +231,84 @@ class Database:
             items.sort(key=lambda item: item.name)
             return items, sorted(list(prefixes))
 
-    def _check_object_generation(
-        self, request, bucket_name, object_name, is_source, context
+    def _get_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
     ):
-        bucket = self.__get_bucket_for_object(bucket_name, context)
-        generation = testbench.generation.extract_generation(
-            request, is_source, context
-        )
-        if generation == 0:
-            generation = self.__get_live_generation(bucket_name, object_name, context)
-            if generation is None:
-                generation = 0
-        match, not_match = testbench.generation.extract_precondition(
-            request, False, is_source, context
-        )
-        testbench.generation.check_precondition(
-            generation, match, not_match, False, context
-        )
-        blob = bucket.get("%s#%d" % (object_name, generation))
-        metageneration = blob.metadata.metageneration if blob is not None else None
-        match, not_match = testbench.generation.extract_precondition(
-            request, True, is_source, context
-        )
-        testbench.generation.check_precondition(
-            metageneration, match, not_match, True, context
-        )
-        return blob, generation, bucket
-
-    def get_object(self, request, bucket_name, object_name, is_source, context):
         with self._resources_lock:
-            blob, generation, _ = self._check_object_generation(
-                request, bucket_name, object_name, is_source, context
-            )
-            if blob is None:
-                if generation == 0:
-                    testbench.error.notfound(
-                        "Live version of object %s" % object_name, context
-                    )
-                else:
-                    testbench.error.notfound(
-                        "Object %s with generation %d" % (object_name, generation),
+            bucket_key = self.__bucket_key(bucket_name, context)
+            if bucket_key not in self._live_generations:
+                return testbench.error.notfound("Bucket %s" % bucket_name, context)
+
+            live_generation = self._live_generations[bucket_key].get(object_name, None)
+
+            if generation is None or generation == 0:
+                # We are looking for the latest "live" version, but there is none.
+                if live_generation is None:
+                    return testbench.error.notfound(
+                        "Live version of object %s/%s" % (bucket_name, object_name),
                         context,
                     )
-            return blob
+                lookup_generation = int(live_generation)
+            else:
+                lookup_generation = int(generation)
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            blob = bucket.get("%s#%d" % (object_name, lookup_generation), None)
+            if blob is None:
+                return testbench.error.notfound(
+                    "Could not find object %s/%s#%d"
+                    % (bucket_name, object_name, generation),
+                    context,
+                )
+            for precondition in preconditions:
+                if not precondition(blob, live_generation, context):
+                    return None, None
+            return blob, live_generation
 
-    def insert_object(self, request, bucket_name, blob, context):
-        with self._resources_lock:
-            name = blob.metadata.name
-            _, _, bucket = self._check_object_generation(
-                request, bucket_name, name, False, context
-            )
-            generation = blob.metadata.generation
-            bucket["%s#%d" % (name, generation)] = blob
-            self.__set_live_generation(bucket_name, name, generation, context)
+    def get_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+    ):
+        blob, _ = self._get_object(
+            bucket_name, object_name, context, generation, preconditions
+        )
+        return blob
 
-    def delete_object(self, request, bucket_name, object_name, context):
+    def insert_object(self, bucket_name, blob, context=None, preconditions=[]):
         with self._resources_lock:
-            _ = self.get_object(request, bucket_name, object_name, False, context)
-            generation = testbench.generation.extract_generation(
-                request, False, context
-            )
+            object_name = blob.metadata.name
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            assert bucket is not None  # raises otherwise
+
             live_generation = self.__get_live_generation(
                 bucket_name, object_name, context
             )
-            if generation == 0 or live_generation == generation:
+            if live_generation is not None:
+                current = bucket.get("%s#%d" % (object_name, live_generation))
+            else:
+                current = None
+            # Validate the preconditions against the existing object, if any
+            for precondition in preconditions:
+                if not precondition(current, live_generation, context):
+                    return
+
+            # generations are initialized based on time in gcs.object.Object, so this is
+            # assumed to be higher than existing generations.
+            generation = blob.metadata.generation
+            bucket["%s#%d" % (object_name, generation)] = blob
+            self.__set_live_generation(bucket_name, object_name, generation, context)
+
+    def delete_object(
+        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+    ):
+        with self._resources_lock:
+            blob, live_generation = self._get_object(
+                bucket_name, object_name, context, generation, preconditions
+            )
+            # _get_object() raises if the object is not found or the generation mismatches.
+            # There are only two cases:
+            if (generation is None or generation == 0) or live_generation == generation:
                 self.__del_live_generation(bucket_name, object_name, context)
-            if generation != 0:
-                self._objects[self.__bucket_key(bucket_name, context)].pop(
-                    "%s#%d" % (object_name, generation), None
-                )
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
     # === UPLOAD === #
 
