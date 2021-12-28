@@ -311,6 +311,205 @@ def extract_media(request):
     return request.data
 
 
+def make_json_preconditions(request, prefix="if"):
+    """Create the pre-conditions for most JSON requests.
+
+    The prefix parameter can be `if` or `ifSource` to handle the special names
+    used for source pre-conditions in `Objects: copy` and `Objects: rewrite`.
+    """
+
+    def if_metageneration_match(blob, _, ctx):
+        match = request.args.get(prefix + "MetagenerationMatch", None)
+        assert match is not None
+        actual = blob.metadata.metageneration if blob is not None else 0
+        if int(match) == 0 and blob is None:
+            return True
+        if int(match) != 0 and int(match) == actual:
+            return True
+        return testbench.error.mismatch(
+            prefix + "MetagenerationMatch",
+            expect=match,
+            actual=blob.metadata.metageneration,
+            context=ctx,
+        )
+
+    def if_metageneration_not_match(blob, _, ctx):
+        match = request.args.get(prefix + "MetagenerationNotMatch", None)
+        assert match is not None
+        actual = blob.metadata.metageneration if blob is not None else 0
+        if int(match) == 0 and blob is not None:
+            return True
+        if int(match) != 0 and int(match) != actual:
+            return True
+        return testbench.error.notchanged(
+            prefix
+            + "MetagenerationNotMatch expected %s == actual %s" % (match, actual),
+            context=ctx,
+        )
+
+    def if_generation_match(_, live_generation, ctx):
+        match = request.args.get(prefix + "GenerationMatch", None)
+        assert match is not None
+        if int(match) == 0 and (live_generation is None or live_generation == 0):
+            return True
+        if int(match) != 0 and int(match) == live_generation:
+            return True
+        return testbench.error.mismatch(
+            prefix + "GenerationMatch",
+            expect=match,
+            actual=live_generation,
+            context=ctx,
+        )
+
+    def if_generation_not_match(_, live_generation, ctx):
+        match = request.args.get(prefix + "GenerationNotMatch", None)
+        assert match is not None
+        if int(match) == 0 and (live_generation is not None and live_generation != 0):
+            return True
+        if int(match) != 0 and int(match) != live_generation:
+            return True
+        return testbench.error.notchanged(
+            prefix
+            + "GenerationNotMatch expected %s == actual %s" % (match, live_generation),
+            context=ctx,
+        )
+
+    args = {
+        prefix + "MetagenerationMatch": if_metageneration_match,
+        prefix + "MetagenerationNotMatch": if_metageneration_not_match,
+        prefix + "GenerationMatch": if_generation_match,
+        prefix + "GenerationNotMatch": if_generation_not_match,
+    }
+    preconditions = []
+    for arg, predicate in args.items():
+        if arg in request.args:
+            preconditions.append(predicate)
+    return preconditions
+
+
+def make_xml_preconditions(request):
+    """Create the pre-conditions for most XML requests."""
+
+    def if_metageneration_match(blob, _, ctx):
+        match = request.headers.get("x-goog-if-metageneration-match")
+        assert match is not None
+        actual = blob.metadata.metageneration if blob is not None else 0
+        if int(match) == 0 and blob is None:
+            return True
+        if int(match) != 0 and int(match) == actual:
+            return True
+        return testbench.error.mismatch(
+            "x-goog-if-metageneration-match",
+            expect=match,
+            actual=actual,
+            context=ctx,
+        )
+
+    def if_generation_match(_, live_generation, ctx):
+        match = request.headers.get("x-goog-if-generation-match")
+        assert match is not None
+        if int(match) == 0 and live_generation is None:
+            return True
+        if int(match) != 0 and int(match) == live_generation:
+            return True
+        return testbench.error.mismatch(
+            "x-goog-if-generation-match",
+            expect=match,
+            actual=live_generation,
+            context=ctx,
+        )
+
+    HEADERS = {
+        "x-goog-if-metageneration-match": if_metageneration_match,
+        "x-goog-if-generation-match": if_generation_match,
+    }
+    preconditions = []
+    for arg, predicate in HEADERS.items():
+        if arg in request.headers:
+            preconditions.append(predicate)
+    return preconditions
+
+
+def make_grpc_preconditions(request):
+    """Create the pre-conditions for most gRPC requests."""
+
+    def if_metageneration_match(blob, _, ctx):
+        assert request.HasField("if_metageneration_match")
+        if request.if_metageneration_match == 0 and blob is None:
+            return True
+        actual = blob.metadata.metageneration if blob is not None else 0
+        if (
+            request.if_metageneration_match != 0
+            and request.if_metageneration_match == actual
+        ):
+            return True
+        return testbench.error.mismatch(
+            "if_metageneration_match",
+            expect=request.if_metageneration_match,
+            actual=actual,
+            context=ctx,
+        )
+
+    def if_metageneration_not_match(blob, _, ctx):
+        assert request.HasField("if_metageneration_not_match")
+        if request.if_metageneration_not_match == 0 and blob is not None:
+            return True
+        actual = blob.metadata.metageneration if blob is not None else 0
+        if (
+            request.if_metageneration_not_match != 0
+            and request.if_metageneration_not_match != actual
+        ):
+            return True
+        return testbench.error.notchanged(
+            "if_metageneration_not_match expected %s == actual %s"
+            % (request.if_metageneration_not_match, actual),
+            context=ctx,
+        )
+
+    def if_generation_match(_, live_generation, ctx):
+        assert request.HasField("if_generation_match")
+        if request.if_generation_match == 0 and live_generation is None:
+            return True
+        if (
+            request.if_generation_match != 0
+            and request.if_generation_match == live_generation
+        ):
+            return True
+        return testbench.error.mismatch(
+            "if_generation_match",
+            expect=request.if_generation_match,
+            actual=live_generation,
+            context=ctx,
+        )
+
+    def if_generation_not_match(_, live_generation, ctx):
+        assert request.HasField("if_generation_not_match")
+        if request.if_generation_not_match == 0 and live_generation is not None:
+            return True
+        if (
+            request.if_generation_not_match != 0
+            and request.if_generation_not_match != live_generation
+        ):
+            return True
+        return testbench.error.notchanged(
+            "if_generation_not_match expected %s == actual %s"
+            % (request.if_generation_not_match, live_generation),
+            context=ctx,
+        )
+
+    preconditions = []
+    fields = {
+        "if_metageneration_match": if_metageneration_match,
+        "if_metageneration_not_match": if_metageneration_not_match,
+        "if_generation_match": if_generation_match,
+        "if_generation_not_match": if_generation_not_match,
+    }
+    for field, predicate in fields.items():
+        if hasattr(request, field) and request.HasField(field):
+            preconditions.append(predicate)
+    return preconditions
+
+
 # === RESPONSE === #
 
 

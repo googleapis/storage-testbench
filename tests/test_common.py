@@ -19,9 +19,12 @@
 import base64
 import hashlib
 import json
+import types
 import unittest
+import unittest.mock
 
 import flask
+import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 from google.storage.v2 import storage_pb2
@@ -281,6 +284,389 @@ class TestCommonUtils(unittest.TestCase):
                 "labels.second",
                 "labels",
             ],
+        )
+
+    def make_test_json_preconditions(self, query_string):
+        """Helper function to test JSON preconditions."""
+        return testbench.common.make_json_preconditions(
+            Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    content_length=0,
+                    data="",
+                    content_type="application/octet-stream",
+                    method="POST",
+                    headers={},
+                    query_string=query_string,
+                )
+            ),
+        )
+
+    def test_make_json_preconditions_empty(self):
+        preconditions = self.make_test_json_preconditions({})
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_json_preconditions_many(self):
+        preconditions = self.make_test_json_preconditions(
+            {
+                "ifGenerationMatch": "5",
+                "ifGenerationNotMatch": "5",
+                "ifMetagenerationMatch": "5",
+                "ifMetagenerationNotMatch": "5",
+            }
+        )
+        self.assertEqual(len(preconditions), 4)
+
+    def test_make_json_preconditions_source(self):
+        preconditions = testbench.common.make_json_preconditions(
+            prefix="ifSource",
+            request=Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    content_length=0,
+                    data="",
+                    content_type="application/octet-stream",
+                    method="POST",
+                    headers={},
+                    query_string={
+                        "ifSourceGenerationMatch": "5",
+                        "ifSourceGenerationNotMatch": "5",
+                        "ifSourceMetagenerationMatch": "5",
+                        "ifSourceMetagenerationNotMatch": "5",
+                    },
+                )
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+    def test_make_json_preconditions_if_generation_match(self):
+        preconditions = self.make_test_json_preconditions({"ifGenerationMatch": "5"})
+        self.assertEqual(len(preconditions), 1)
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+        self.assertTrue(preconditions[0](blob, 5, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](blob, 6, None)
+        self.assertEqual(rest.exception.code, 412)
+
+        preconditions = self.make_test_json_preconditions({"ifGenerationMatch": "0"})
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, None, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](None, 6, None)
+        self.assertEqual(rest.exception.code, 412)
+
+    def test_make_json_preconditions_if_generation_not_match(self):
+        preconditions = self.make_test_json_preconditions({"ifGenerationNotMatch": "5"})
+        self.assertEqual(len(preconditions), 1)
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+        self.assertTrue(preconditions[0](blob, 6, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](blob, 5, None)
+        self.assertEqual(rest.exception.code, 304)
+
+        preconditions = self.make_test_json_preconditions({"ifGenerationNotMatch": "0"})
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, 5, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](None, None, None)
+        self.assertEqual(rest.exception.code, 304)
+
+    def test_make_json_preconditions_if_metageneration_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
+
+        preconditions = self.make_test_json_preconditions(
+            {"ifMetagenerationMatch": "5"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b0, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, 3, None)
+        self.assertEqual(rest.exception.code, 412)
+
+        preconditions = self.make_test_json_preconditions(
+            {"ifMetagenerationMatch": "0"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, 3, None)
+        self.assertEqual(rest.exception.code, 412)
+
+    def test_make_json_preconditions_if_metageneration_not_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
+
+        preconditions = self.make_test_json_preconditions(
+            {"ifMetagenerationNotMatch": "5"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b1, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b0, 3, None)
+        self.assertEqual(rest.exception.code, 304)
+
+        preconditions = self.make_test_json_preconditions(
+            {"ifMetagenerationNotMatch": "0"}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b0, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](None, 3, None)
+        self.assertEqual(rest.exception.code, 304)
+
+    def make_test_xml_preconditions(self, headers):
+        """Helper function to test XML preconditions."""
+        return testbench.common.make_xml_preconditions(
+            Request(
+                create_environ(
+                    base_url="http://localhost:8080",
+                    content_length=0,
+                    data="",
+                    content_type="application/octet-stream",
+                    method="POST",
+                    headers=headers,
+                    query_string={},
+                )
+            ),
+        )
+
+    def test_make_xml_preconditions_empty(self):
+        preconditions = self.make_test_xml_preconditions({})
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_xml_preconditions_many(self):
+        preconditions = self.make_test_xml_preconditions(
+            {
+                "x-goog-if-generation-match": 42,
+                "x-goog-if-metageneration-match": 42,
+            }
+        )
+        self.assertEqual(len(preconditions), 2)
+
+    def test_make_xml_preconditions_if_generation_match(self):
+        preconditions = self.make_test_xml_preconditions(
+            {"x-goog-if-generation-match": 42}
+        )
+        self.assertEqual(len(preconditions), 1)
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=42))
+        self.assertTrue(preconditions[0](blob, 42, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](blob, 43, None)
+        self.assertEqual(rest.exception.code, 412)
+
+        preconditions = self.make_test_xml_preconditions(
+            {"x-goog-if-generation-match": 0}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, None, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=42))
+            preconditions[0](blob, 42, None)
+        self.assertEqual(rest.exception.code, 412)
+
+    def test_make_xml_preconditions_if_metageneration_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=42))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=43))
+
+        preconditions = self.make_test_xml_preconditions(
+            {"x-goog-if-metageneration-match": 42}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](b0, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, 3, None)
+        self.assertEqual(rest.exception.code, 412)
+
+        preconditions = self.make_test_xml_preconditions(
+            {"x-goog-if-metageneration-match": 0}
+        )
+        self.assertEqual(len(preconditions), 1)
+        self.assertTrue(preconditions[0](None, 3, None))
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            preconditions[0](b1, 3, None)
+        self.assertEqual(rest.exception.code, 412)
+
+    def make_grpc_preconditions(self, **kwargs):
+        """Helper function to test gRPC preconditions."""
+        return testbench.common.make_grpc_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                **kwargs,
+            )
+        )
+
+    def test_make_preconditions_empty(self):
+        preconditions = self.make_grpc_preconditions()
+        self.assertEqual(len(preconditions), 0)
+
+    def test_make_preconditions_request_types(self):
+        preconditions = self.make_grpc_preconditions(
+            if_generation_match=5,
+            if_generation_not_match=5,
+            if_metageneration_match=5,
+            if_metageneration_not_match=5,
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = testbench.common.make_grpc_preconditions(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = testbench.common.make_grpc_preconditions(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+        preconditions = testbench.common.make_grpc_preconditions(
+            storage_pb2.UpdateObjectRequest(
+                object=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name", name="object-name"
+                ),
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+    def test_make_preconditions_if_generation_match(self):
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+
+        preconditions = self.make_grpc_preconditions(if_generation_match=5)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, 5, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, 6, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_preconditions(if_generation_match=0)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, None, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, 6, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_generation_not_match(self):
+        blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
+
+        preconditions = self.make_grpc_preconditions(if_generation_not_match=5)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, 6, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, 5, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_preconditions(if_generation_not_match=0)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](blob, 6, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](blob, None, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_metageneration_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
+
+        preconditions = self.make_grpc_preconditions(if_metageneration_match=5)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b0, 3, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b1, 3, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_preconditions(if_metageneration_match=0)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](None, 3, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b0, 3, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_make_preconditions_if_metageneration_not_match(self):
+        b0 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=5))
+        b1 = types.SimpleNamespace(metadata=storage_pb2.Object(metageneration=6))
+
+        preconditions = self.make_grpc_preconditions(if_metageneration_not_match=5)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b1, 3, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](b0, 3, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
+        )
+
+        preconditions = self.make_grpc_preconditions(if_metageneration_not_match=0)
+        self.assertEqual(len(preconditions), 1)
+        context = unittest.mock.Mock()
+        self.assertTrue(preconditions[0](b0, 3, context))
+        context.abort.assert_not_called()
+
+        context = unittest.mock.Mock()
+        self.assertFalse(preconditions[0](None, 3, context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.ABORTED, unittest.mock.ANY
         )
 
     def test_extract_projection(self):
