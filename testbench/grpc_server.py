@@ -60,7 +60,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def ListBuckets(self, request, context):
         if not request.parent.startswith("projects/"):
             return testbench.error.invalid(
-                "invalid format for parent={}" % request.parent
+                "invalid format for parent=%s" % request.parent, context
             )
         project = request.parent[len("projects/") :]
         if len(request.read_mask.paths) == 0:

@@ -164,7 +164,15 @@ class TestGrpc(unittest.TestCase):
         for b in response.buckets:
             self.assertTrue(b.HasField("owner"), msg=b)
             self.assertNotEqual(len(b.acl), 0, msg=b)
-            self.assertEqual(len(b.default_object_acl), 0, msg=b)
+
+    def test_list_buckets_failure(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(parent="test-invalid-format"), context
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
 
     def test_get_iam_policy(self):
         context = unittest.mock.Mock()
