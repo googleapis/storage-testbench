@@ -41,14 +41,22 @@ def extract(request, is_source, context):
         algorithm = request.headers.get(algorithm_field, "")
         key_b64 = request.headers.get(key_field, "")
         key_sha256_b64 = request.headers.get(key_sha256_field, "")
-    else:
+    elif not is_source:
         algorithm = request.common_object_request_params.encryption_algorithm
         key_b64 = base64.b64encode(
             request.common_object_request_params.encryption_key_bytes
-        )
+        ).decode("utf-8")
         key_sha256_b64 = base64.b64encode(
             request.common_object_request_params.encryption_key_sha256_bytes
+        ).decode("utf-8")
+    else:
+        algorithm = request.copy_source_encryption_algorithm
+        key_b64 = base64.b64encode(request.copy_source_encryption_key_bytes).decode(
+            "utf-8"
         )
+        key_sha256_b64 = base64.b64encode(
+            request.copy_source_encryption_key_sha256_bytes
+        ).decode("utf-8")
     return algorithm, key_b64, key_sha256_b64
 
 
@@ -68,7 +76,7 @@ def validation(request, expected_sha256, is_source, context):
     algorithm, key_b64, key_sha256_b64 = extract(request, is_source, context)
     if expected_sha256 == b"":
         if key_sha256_b64 != "":
-            testbench.error.csek(context)
+            return testbench.error.csek(context)
         else:
             return
     return check(
