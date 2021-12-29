@@ -559,6 +559,38 @@ class TestCommonUtils(unittest.TestCase):
         )
         self.assertEqual(len(preconditions), 4)
 
+        preconditions = testbench.common.make_grpc_preconditions(
+            request=storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name", name="object-name"
+                ),
+                source_bucket="projects/_/buckets/bucket-name",
+                source_object="destination-object-name",
+                if_generation_match=5,
+                if_generation_not_match=5,
+                if_metageneration_match=5,
+                if_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
+    def test_make_grpc_preconditions_source(self):
+        preconditions = testbench.common.make_grpc_preconditions(
+            prefix="if_source_",
+            request=storage_pb2.RewriteObjectRequest(
+                destination=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name", name="object-name"
+                ),
+                source_bucket="projects/_/buckets/bucket-name",
+                source_object="destination-object-name",
+                if_source_generation_match=5,
+                if_source_generation_not_match=5,
+                if_source_metageneration_match=5,
+                if_source_metageneration_not_match=5,
+            ),
+        )
+        self.assertEqual(len(preconditions), 4)
+
     def test_make_grpc_preconditions_if_generation_match(self):
         blob = types.SimpleNamespace(metadata=storage_pb2.Object(generation=5))
 

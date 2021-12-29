@@ -430,79 +430,72 @@ def make_xml_preconditions(request):
     return preconditions
 
 
-def make_grpc_preconditions(request):
+def make_grpc_preconditions(request, prefix="if_"):
     """Create the pre-conditions for most gRPC requests."""
 
     def if_metageneration_match(blob, _, ctx):
-        assert request.HasField("if_metageneration_match")
-        if request.if_metageneration_match == 0 and blob is None:
+        assert request.HasField(prefix + "metageneration_match")
+        match = getattr(request, prefix + "metageneration_match")
+        if match == 0 and blob is None:
             return True
         actual = blob.metadata.metageneration if blob is not None else 0
-        if (
-            request.if_metageneration_match != 0
-            and request.if_metageneration_match == actual
-        ):
+        if match != 0 and match == actual:
             return True
         return testbench.error.mismatch(
-            "if_metageneration_match",
-            expect=request.if_metageneration_match,
+            prefix + "if_metageneration_match",
+            expect=match,
             actual=actual,
             context=ctx,
         )
 
     def if_metageneration_not_match(blob, _, ctx):
-        assert request.HasField("if_metageneration_not_match")
-        if request.if_metageneration_not_match == 0 and blob is not None:
+        assert request.HasField(prefix + "metageneration_not_match")
+        match = getattr(request, prefix + "metageneration_not_match")
+        if match == 0 and blob is not None:
             return True
         actual = blob.metadata.metageneration if blob is not None else 0
-        if (
-            request.if_metageneration_not_match != 0
-            and request.if_metageneration_not_match != actual
-        ):
+        if match != 0 and match != actual:
             return True
         return testbench.error.notchanged(
-            "if_metageneration_not_match expected %s == actual %s"
-            % (request.if_metageneration_not_match, actual),
+            prefix
+            + "metageneration_not_match expected %s == actual %s" % (match, actual),
             context=ctx,
         )
 
     def if_generation_match(_, live_generation, ctx):
-        assert request.HasField("if_generation_match")
-        if request.if_generation_match == 0 and live_generation is None:
+        assert request.HasField(prefix + "generation_match")
+        match = getattr(request, prefix + "generation_match")
+        if match == 0 and live_generation is None:
             return True
-        if (
-            request.if_generation_match != 0
-            and request.if_generation_match == live_generation
-        ):
+        if match != 0 and match == live_generation:
             return True
         return testbench.error.mismatch(
-            "if_generation_match",
-            expect=request.if_generation_match,
+            prefix + "generation_match",
+            expect=match,
             actual=live_generation,
             context=ctx,
         )
 
     def if_generation_not_match(_, live_generation, ctx):
-        assert request.HasField("if_generation_not_match")
-        if request.if_generation_not_match == 0 and live_generation is not None:
+        assert request.HasField(prefix + "generation_not_match")
+        match = getattr(request, prefix + "generation_not_match")
+        if match == 0 and live_generation is not None:
             return True
-        if (
-            request.if_generation_not_match != 0
-            and request.if_generation_not_match != live_generation
-        ):
+        if match != 0 and match != live_generation:
             return True
         return testbench.error.notchanged(
-            "if_generation_not_match expected %s == actual %s"
-            % (request.if_generation_not_match, live_generation),
+            prefix
+            + "generation_not_match expected %s == actual %s"
+            % (match, live_generation),
             context=ctx,
         )
 
     preconditions = []
     fields = {
-        "if_metageneration_match": if_metageneration_match,
-        "if_metageneration_not_match": if_metageneration_not_match,
-        "if_generation_match": if_generation_match,
-        "if_generation_not_match": if_generation_not_match,
+        prefix + "metageneration_match": if_metageneration_match,
+        prefix + "metageneration_not_match": if_metageneration_not_match,
+        prefix + "generation_match": if_generation_match,
+        prefix + "generation_not_match": if_generation_not_match,
     }
     for field, predicate in fields.items():
         if hasattr(request, field) and request.HasField(field):
