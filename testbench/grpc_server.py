@@ -15,7 +15,7 @@
 from concurrent import futures
 
 import crc32c
-from google import protobuf
+from google.iam.v1 import iam_policy_pb2
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 from google.protobuf import field_mask_pb2, text_format
 import google.protobuf.empty_pb2 as empty_pb2
@@ -91,6 +91,14 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def GetIamPolicy(self, request, context):
         bucket = self.db.get_bucket(request.resource, context)
         return bucket.iam_policy
+
+    def TestIamPermissions(self, request, context):
+        # If the bucket does not exist this will return an error
+        _ = self.db.get_bucket(request.resource, context)
+        # We do not implement IAM functionality, just return something moderately sensible:
+        return iam_policy_pb2.TestIamPermissionsResponse(
+            permissions=[p for p in request.permissions if p.startswith("storage.")]
+        )
 
     def UpdateBucket(self, request, context):
         intersection = field_mask_pb2.FieldMask(

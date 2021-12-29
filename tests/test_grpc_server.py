@@ -204,6 +204,24 @@ class TestGrpc(unittest.TestCase):
             ],
         )
 
+    def test_test_iam_permissions(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.TestIamPermissions(
+            iam_policy_pb2.TestIamPermissionsRequest(
+                resource="projects/_/buckets/bucket-name",
+                permissions=[
+                    "storage.buckets.create",
+                    "storage.objects.create",
+                    "not-storage.thing.get",
+                ],
+            ),
+            context,
+        )
+        self.assertEqual(
+            set(response.permissions),
+            {"storage.buckets.create", "storage.objects.create"},
+        )
+
     def test_update_bucket(self):
         # First check the default bucket state.
         context = unittest.mock.Mock()
