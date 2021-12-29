@@ -305,6 +305,73 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         items, prefixes = self.db.list_object(request, request.parent, context)
         return storage_pb2.ListObjectsResponse(objects=items, prefixes=prefixes)
 
+    def RewriteObject(self, request, context):
+        self.db.insert_test_bucket()
+        token = request.rewrite_token
+        if token == "":
+            rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+            self.db.insert_rewrite(rewrite)
+        else:
+            rewrite = self.db.get_rewrite(token, context)
+        src_object = self.db.get_object(
+            rewrite.request.source_bucket,
+            rewrite.request.source_object,
+            generation=rewrite.request.source_generation,
+            preconditions=testbench.common.make_grpc_preconditions(
+                rewrite.request, prefix="if_source_"
+            ),
+            context=context,
+        )
+        testbench.csek.validation(
+            rewrite.request,
+            src_object.metadata.customer_encryption.key_sha256_bytes,
+            is_source=True,
+            context=context,
+        )
+        total_bytes_rewritten = len(rewrite.media)
+        total_bytes_rewritten += min(
+            rewrite.max_bytes_rewritten_per_call,
+            len(src_object.media) - len(rewrite.media),
+        )
+        rewrite.media += src_object.media[len(rewrite.media) : total_bytes_rewritten]
+        done, dst_object = total_bytes_rewritten == len(src_object.media), None
+        response = storage_pb2.RewriteResponse(
+            total_bytes_rewritten=total_bytes_rewritten,
+            object_size=len(src_object.media),
+            done=done,
+        )
+        if not done:
+            response.rewrite_token = rewrite.token
+        else:
+            dst_bucket_name = rewrite.request.destination.bucket
+            dst_object_name = rewrite.request.destination.name
+            dst_bucket = self.db.get_bucket(dst_bucket_name, context).metadata
+            dst_metadata = storage_pb2.Object()
+            dst_metadata.CopyFrom(src_object.metadata)
+            # TODO(#227) - merge request and source object metadata
+            dst_metadata.bucket = dst_bucket_name
+            dst_metadata.name = dst_object_name
+            dst_metadata.metageneration = 1
+            dst_metadata.update_time.FromDatetime(dst_metadata.create_time.ToDatetime())
+            dst_media = rewrite.media
+            dst_object, _ = gcs.object.Object.init(
+                rewrite.request,
+                dst_metadata,
+                dst_media,
+                dst_bucket,
+                is_destination=True,
+                context=context,
+            )
+            self.db.insert_object(
+                dst_bucket_name,
+                dst_object,
+                context=context,
+                preconditions=testbench.common.make_grpc_preconditions(rewrite.request),
+            )
+            response.resource.CopyFrom(dst_metadata)
+
+        return response
+
     def StartResumableWrite(self, request, context):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
         upload = gcs.upload.Upload.init_resumable_grpc(request, bucket, context)

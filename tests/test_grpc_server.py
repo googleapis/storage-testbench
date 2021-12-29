@@ -515,6 +515,55 @@ class TestGrpc(unittest.TestCase):
         context.abort.assert_called_once()
         self.assertIsNone(write)
 
+    def test_rewrite_object(self):
+        # We need a large enough payload to make sure the first rewrite does
+        # not complete.  The minimum is 1 MiB
+        media = b"The quick brown fox jumps over the lazy dog\n" * 1024 * 1024
+        request = testbench.common.FakeRequest(
+            args={"name": "test-source-object"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        done = False
+        token = ""
+        while not done:
+            context = unittest.mock.Mock()
+            context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+            response = self.grpc.RewriteObject(
+                storage_pb2.RewriteObjectRequest(
+                    destination=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    ),
+                    source_bucket="projects/_/buckets/bucket-name",
+                    source_object="test-source-object",
+                    rewrite_token=token,
+                    max_bytes_rewritten_per_call=1024,
+                ),
+                context,
+            )
+            context.abort.assert_not_called()
+            done = response.done
+            token = response.rewrite_token
+        self.assertTrue(done)
+        self.assertEqual(token, "")
+        self.assertEqual(response.resource.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.resource.name, "object-name")
+        self.assertEqual(response.resource.size, len(media))
+
+        # Verify the newly created object has the right contents
+        context = unittest.mock.Mock()
+        get = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual(get.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(get.name, "object-name")
+        self.assertNotEqual(0, get.generation)
+        self.assertEqual(get.size, len(media))
+
     def test_resumable_write(self):
         start = self.grpc.StartResumableWrite(
             storage_pb2.StartResumableWriteRequest(
