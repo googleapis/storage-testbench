@@ -32,6 +32,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def __init__(self, db):
         self.db = db
 
+    def DeleteBucket(self, request, context):
+        self.db.insert_test_bucket()
+        self.db.delete_bucket(
+            request.name,
+            context=context,
+            preconditions=testbench.common.make_grpc_bucket_preconditions(request),
+        )
+        return empty_pb2.Empty()
+
     def GetBucket(self, request, context):
         self.db.insert_test_bucket()
         bucket = self.db.get_bucket(
