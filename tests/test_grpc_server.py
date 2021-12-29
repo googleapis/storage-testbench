@@ -17,7 +17,7 @@
 """Unit test for testbench.grpc."""
 
 import json
-import types
+import os
 import unittest
 import unittest.mock
 
@@ -41,6 +41,19 @@ class TestGrpc(unittest.TestCase):
         self.bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.db.insert_bucket(self.bucket, None)
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
+
+    def test_insert_test_bucket(self):
+        os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
+        database = testbench.database.Database.init()
+        server = testbench.grpc_server.StorageServicer(database)
+        names = {b.metadata.name for b in database.list_bucket("", None)}
+        self.assertEqual(names, set())
+
+        os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
+        database = testbench.database.Database.init()
+        server = testbench.grpc_server.StorageServicer(database)
+        names = {b.metadata.name for b in database.list_bucket("", None)}
+        self.assertIn("projects/_/buckets/test-bucket-1", names)
 
     def test_delete_bucket(self):
         # Verify the bucket can be found using REST

@@ -31,9 +31,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def __init__(self, db):
         self.db = db
+        self.db.insert_test_bucket()
 
     def DeleteBucket(self, request, context):
-        self.db.insert_test_bucket()
         self.db.delete_bucket(
             request.name,
             context=context,
@@ -42,7 +42,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return empty_pb2.Empty()
 
     def GetBucket(self, request, context):
-        self.db.insert_test_bucket()
         bucket = self.db.get_bucket(
             request.name,
             context,
@@ -51,18 +50,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return bucket.metadata
 
     def CreateBucket(self, request, context):
-        self.db.insert_test_bucket()
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
         self.db.insert_bucket(bucket, context)
         return bucket.metadata
 
     def GetIamPolicy(self, request, context):
-        self.db.insert_test_bucket()
         bucket = self.db.get_bucket(request.resource, context)
         return bucket.iam_policy
 
     def UpdateBucket(self, request, context):
-        self.db.insert_test_bucket()
         intersection = field_mask_pb2.FieldMask(
             paths=[
                 "name",
@@ -94,7 +90,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return bucket.metadata
 
     def ComposeObject(self, request, context):
-        self.db.insert_test_bucket()
         if len(request.source_objects) == 0:
             return testbench.error.missing(
                 "missing or empty source_objects attribute", context
@@ -160,7 +155,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return blob.metadata
 
     def DeleteObject(self, request, context):
-        self.db.insert_test_bucket()
         self.db.delete_object(
             request.bucket,
             request.object,
@@ -171,7 +165,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return empty_pb2.Empty()
 
     def GetObject(self, request, context):
-        self.db.insert_test_bucket()
         blob = self.db.get_object(
             request.bucket,
             request.object,
@@ -182,7 +175,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return blob.metadata
 
     def ReadObject(self, request, context):
-        self.db.insert_test_bucket()
         blob = self.db.get_object(
             request.bucket,
             request.object,
@@ -206,7 +198,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
 
     def UpdateObject(self, request, context):
-        self.db.insert_test_bucket()
         intersection = field_mask_pb2.FieldMask(
             paths=[
                 "name",
@@ -272,7 +263,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return response
 
     def WriteObject(self, request_iterator, context):
-        self.db.insert_test_bucket()
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             self.db, request_iterator, context
         )
@@ -301,12 +291,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
 
     def ListObjects(self, request, context):
-        self.db.insert_test_bucket()
         items, prefixes = self.db.list_object(request, request.parent, context)
         return storage_pb2.ListObjectsResponse(objects=items, prefixes=prefixes)
 
     def RewriteObject(self, request, context):
-        self.db.insert_test_bucket()
         token = request.rewrite_token
         if token == "":
             rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
