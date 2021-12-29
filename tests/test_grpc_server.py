@@ -42,6 +42,21 @@ class TestGrpc(unittest.TestCase):
         self.db.insert_bucket(self.bucket, None)
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
+    def test_delete_bucket(self):
+        # Verify the bucket can be found using REST
+        b = self.db.get_bucket("bucket-name", context=None)
+        self.assertIsNotNone(b)
+        # Delete the bucket using gRPC
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteBucket(
+            storage_pb2.DeleteBucketRequest(name="projects/_/buckets/bucket-name"),
+            context,
+        )
+        # Verify the bucket is deleted
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = self.db.get_bucket("bucket-name", context=None)
+        self.assertEqual(rest.exception.code, 404)
+
     def test_get_bucket(self):
         context = unittest.mock.Mock()
         response = self.grpc.GetBucket(
