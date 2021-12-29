@@ -27,7 +27,7 @@ from google.protobuf import field_mask_pb2
 
 import gcs
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
-from google.iam.v1 import iam_policy_pb2
+from google.iam.v1 import iam_policy_pb2, policy_pb2
 import testbench
 
 
@@ -202,6 +202,47 @@ class TestGrpc(unittest.TestCase):
                 "roles/storage.legacyBucketReader",
                 "roles/storage.legacyBucketWriter",
             ],
+        )
+
+    def test_set_iam_policy(self):
+        context = unittest.mock.Mock()
+        get = self.grpc.GetIamPolicy(
+            iam_policy_pb2.GetIamPolicyRequest(
+                resource="projects/_/buckets/bucket-name"
+            ),
+            context,
+        )
+        get_etag = bytes(get.etag)
+        policy = policy_pb2.Policy()
+        policy.CopyFrom(get)
+        policy.bindings.append(
+            policy_pb2.Binding(
+                role="role/storage.admin", members=["user:not-a-user@example.com"]
+            )
+        )
+
+        context = unittest.mock.Mock()
+        set = self.grpc.SetIamPolicy(
+            iam_policy_pb2.SetIamPolicyRequest(
+                resource="projects/_/buckets/bucket-name", policy=policy
+            ),
+            context,
+        )
+        # Ignore the ETag field when comparing results
+        policy.etag = set.etag
+        self.assertEqual(set, policy)
+
+        # A second set with the old ETag should fail.
+        context = unittest.mock.Mock()
+        policy.etag = get_etag
+        _ = self.grpc.SetIamPolicy(
+            iam_policy_pb2.SetIamPolicyRequest(
+                resource="projects/_/buckets/bucket-name", policy=policy
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
     def test_test_iam_permissions(self):

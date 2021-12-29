@@ -480,6 +480,10 @@ class Bucket:
     # === IAM === #
 
     @classmethod
+    def __iam_etag(cls):
+        return uuid.uuid4().hex.encode("utf-8")
+
+    @classmethod
     def __init_iam_policy(cls, metadata, context):
         role_mapping = {
             "READER": "roles/storage.legacyBucketReader",
@@ -498,13 +502,27 @@ class Bucket:
         return policy_pb2.Policy(
             version=1,
             bindings=bindings,
-            etag=datetime.datetime.now().isoformat().encode("utf-8"),
+            etag=cls.__iam_etag(),
         )
 
     def get_iam_policy(self, request, context):
         return self.iam_policy
 
     def set_iam_policy(self, request, context):
+        if context is not None:
+            if (
+                request.policy.etag != ""
+                and request.policy.etag != self.iam_policy.etag
+            ):
+                return testbench.error.mismatch(
+                    "etag",
+                    expect=self.iam_policy.etag,
+                    actual=request.policy.etag,
+                    context=context,
+                )
+            self.iam_policy.CopyFrom(request.policy)
+            self.iam_policy.etag = Bucket.__iam_etag()
+            return self.iam_policy
         data = json.loads(request.data)
         if "iam_request" in data:
             data = data["iam_request"]["policy"]
@@ -513,7 +531,7 @@ class Bucket:
         data.pop("resourceId", None)
         policy = json_format.ParseDict(data, policy_pb2.Policy())
         self.iam_policy = policy
-        self.iam_policy.etag = datetime.datetime.now().isoformat().encode("utf-8")
+        self.iam_policy.etag = Bucket.__iam_etag()
         return self.iam_policy
 
     # === METADATA === #
