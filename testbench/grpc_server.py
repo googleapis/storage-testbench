@@ -79,6 +79,72 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
+    def ComposeObject(self, request, context):
+        self.db.insert_test_bucket()
+        if len(request.source_objects) == 0:
+            return testbench.error.missing(
+                "missing or empty source_objects attribute", context
+            )
+        if len(request.destination.name) == 0:
+            return testbench.error.missing(
+                "missing or empty destination object name", context
+            )
+        if len(request.destination.bucket) == 0:
+            return testbench.error.missing(
+                "missing or empty destination bucket name", context
+            )
+        if len(request.source_objects) > 32:
+            return testbench.error.invalid(
+                "The number of source components provided (%d > 32)"
+                % len(request.source_objects),
+                context,
+            )
+        composed_media = b""
+        for source in request.source_objects:
+            if len(source.name) == 0:
+                return testbench.error.missing("Name of source compose object", context)
+
+            if_generation_match = None
+            if source.HasField(
+                "object_preconditions"
+            ) and source.object_preconditions.HasField("if_generation_match"):
+                if_generation_match = source.object_preconditions.if_generation_match
+
+            def precondition(_, live_version, ctx):
+                if if_generation_match is None or if_generation_match == live_version:
+                    return True
+                return testbench.error.mismatch(
+                    "compose.ifGenerationMatch",
+                    expect=if_generation_match,
+                    actual=live_version,
+                    context=ctx,
+                )
+
+            source_blob = self.db.get_object(
+                request.destination.bucket,
+                source.name,
+                generation=source.generation,
+                context=context,
+                preconditions=[precondition],
+            )
+            if source_blob is None:
+                return None
+            composed_media += source_blob.media
+
+        bucket = self.db.get_bucket(request.destination.bucket, context).metadata
+        metadata = storage_pb2.Object()
+        metadata.MergeFrom(request.destination)
+        (blob, _,) = gcs.object.Object.init(
+            request, metadata, composed_media, bucket, True, context
+        )
+        self.db.insert_object(
+            request.destination.bucket,
+            blob,
+            context=context,
+            preconditions=testbench.common.make_grpc_preconditions(request),
+        )
+        return blob.metadata
+
     def DeleteObject(self, request, context):
         self.db.insert_test_bucket()
         self.db.delete_object(
