@@ -47,6 +47,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.insert_bucket(bucket, context)
         return bucket.metadata
 
+    def GetIamPolicy(self, request, context):
+        self.db.insert_test_bucket()
+        bucket = self.db.get_bucket(request.resource, context)
+        return bucket.iam_policy
+
     def UpdateBucket(self, request, context):
         self.db.insert_test_bucket()
         intersection = field_mask_pb2.FieldMask(

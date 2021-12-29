@@ -27,6 +27,7 @@ from google.protobuf import field_mask_pb2
 
 import gcs
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
+from google.iam.v1 import iam_policy_pb2
 import testbench
 
 
@@ -60,6 +61,23 @@ class TestGrpc(unittest.TestCase):
         response = self.grpc.CreateBucket(request, context)
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
+
+    def test_get_iam_policy(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.GetIamPolicy(
+            iam_policy_pb2.GetIamPolicyRequest(
+                resource="projects/_/buckets/bucket-name"
+            ),
+            context,
+        )
+        self.assertEqual(
+            sorted([b.role for b in response.bindings]),
+            [
+                "roles/storage.legacyBucketOwner",
+                "roles/storage.legacyBucketReader",
+                "roles/storage.legacyBucketWriter",
+            ],
+        )
 
     def test_update_bucket(self):
         # First check the default bucket state.
