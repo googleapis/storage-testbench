@@ -15,6 +15,7 @@
 from concurrent import futures
 
 import crc32c
+from google import protobuf
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 from google.protobuf import field_mask_pb2, text_format
 import google.protobuf.empty_pb2 as empty_pb2
@@ -53,6 +54,39 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
         self.db.insert_bucket(bucket, context)
         return bucket.metadata
+
+    def ListBuckets(self, request, context):
+        if not request.parent.startswith("projects/"):
+            return testbench.error.invalid(
+                "invalid format for parent=%s" % request.parent, context
+            )
+        project = request.parent[len("projects/") :]
+        if len(request.read_mask.paths) == 0:
+            # By default we need to filter out `acl`, `default_object_acl`, and `owner`
+            def filter(bucket):
+                b = storage_pb2.Bucket()
+                b.CopyFrom(bucket)
+                b.ClearField("acl")
+                b.ClearField("default_object_acl")
+                b.ClearField("owner")
+                return b
+
+        elif request.read_mask.paths == ["*"]:
+
+            def filter(bucket):
+                b = storage_pb2.Bucket()
+                b.CopyFrom(bucket)
+                return b
+
+        else:
+
+            def filter(bucket):
+                b = storage_pb2.Bucket()
+                request.read_mask.MergeMessage(bucket, b)
+                return b
+
+        buckets = [filter(b.metadata) for b in self.db.list_bucket(project, context)]
+        return storage_pb2.ListBucketsResponse(buckets=buckets)
 
     def GetIamPolicy(self, request, context):
         bucket = self.db.get_bucket(request.resource, context)

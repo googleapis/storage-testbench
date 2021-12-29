@@ -468,6 +468,13 @@ class Bucket:
         cls._init_defaults(metadata, context)
         metadata.bucket_id = request.bucket_id
         metadata.name = "projects/_/buckets/" + request.bucket_id
+        # TODO(#232) - use predefined ACL values from request when available
+        cls.__insert_predefined_acl(
+            metadata, storage_pb2.BUCKET_ACL_PROJECT_PRIVATE, context
+        )
+        cls.__insert_predefined_default_object_acl(
+            metadata, storage_pb2.OBJECT_ACL_PROJECT_PRIVATE, context
+        )
         return (cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl")
 
     # === IAM === #

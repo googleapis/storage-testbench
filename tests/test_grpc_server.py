@@ -90,6 +90,103 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
 
+    def test_list_buckets(self):
+        ids = ["bucket-3", "bucket-2", "bucket-1"]
+        for id in ids:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(
+                storage_pb2.CreateBucketRequest(
+                    parent="projects/test-project",
+                    bucket_id=id,
+                    bucket=storage_pb2.Bucket(),
+                ),
+                context,
+            )
+            context.abort.assert_not_called()
+            self.assertEqual(response.bucket_id, id)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(parent="projects/test-project"), context
+        )
+        context.assert_not_called()
+        expected = {("projects/_/buckets/" + id) for id in ids}
+        actual = {b.name for b in response.buckets}
+        self.assertEqual(actual, actual | expected)
+        for b in response.buckets:
+            self.assertFalse(b.HasField("owner"), msg=b)
+            self.assertEqual(len(b.acl), 0, msg=b)
+            self.assertEqual(len(b.default_object_acl), 0, msg=b)
+
+    def test_list_buckets_all(self):
+        ids = ["bucket-3", "bucket-2", "bucket-1"]
+        for id in ids:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(
+                storage_pb2.CreateBucketRequest(
+                    parent="projects/test-project",
+                    bucket_id=id,
+                    bucket=storage_pb2.Bucket(),
+                ),
+                context,
+            )
+            context.abort.assert_not_called()
+            self.assertEqual(response.bucket_id, id)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(
+                parent="projects/test-project",
+                read_mask=field_mask_pb2.FieldMask(paths=["*"]),
+            ),
+            context,
+        )
+        context.assert_not_called()
+        expected = {("projects/_/buckets/" + id) for id in ids}
+        actual = {b.name for b in response.buckets}
+        self.assertEqual(actual, actual | expected)
+        for b in response.buckets:
+            self.assertTrue(b.HasField("owner"), msg=b)
+            self.assertNotEqual(len(b.acl), 0, msg=b)
+            self.assertNotEqual(len(b.default_object_acl), 0, msg=b)
+
+    def test_list_buckets_filter(self):
+        ids = ["bucket-3", "bucket-2", "bucket-1"]
+        for id in ids:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(
+                storage_pb2.CreateBucketRequest(
+                    parent="projects/test-project",
+                    bucket_id=id,
+                    bucket=storage_pb2.Bucket(),
+                ),
+                context,
+            )
+            context.abort.assert_not_called()
+            self.assertEqual(response.bucket_id, id)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(
+                parent="projects/test-project",
+                read_mask=field_mask_pb2.FieldMask(paths=["name", "owner", "acl"]),
+            ),
+            context,
+        )
+        context.assert_not_called()
+        expected = {("projects/_/buckets/" + id) for id in ids}
+        actual = {b.name for b in response.buckets}
+        self.assertEqual(actual, actual | expected)
+        for b in response.buckets:
+            self.assertTrue(b.HasField("owner"), msg=b)
+            self.assertNotEqual(len(b.acl), 0, msg=b)
+
+    def test_list_buckets_failure(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(parent="test-invalid-format"), context
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_get_iam_policy(self):
         context = unittest.mock.Mock()
         response = self.grpc.GetIamPolicy(
