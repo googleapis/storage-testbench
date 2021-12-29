@@ -24,6 +24,7 @@ from unittest.mock import ANY, Mock
 import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
+from google.storage.v2 import storage_pb2
 
 from testbench import csek, error
 
@@ -60,6 +61,42 @@ class TestCSEK(unittest.TestCase):
         self.assertEqual(algorithm, "AES")
         self.assertEqual(key, "test-only-invalid-key")
         self.assertEqual(sha256, "test-only-invalid-sha")
+
+    def test_extract_grpc(self):
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_hash = hashlib.sha256(key_bytes).digest()
+        context = unittest.mock.Mock()
+        algorithm, key, sha256 = csek.extract(
+            storage_pb2.RewriteObjectRequest(
+                common_object_request_params=storage_pb2.CommonObjectRequestParams(
+                    encryption_algorithm="AES256",
+                    encryption_key_bytes=key_bytes,
+                    encryption_key_sha256_bytes=key_hash,
+                )
+            ),
+            is_source=False,
+            context=context,
+        )
+        self.assertEqual(algorithm, "AES256")
+        self.assertEqual(key, base64.b64encode(key_bytes).decode("utf-8"))
+        self.assertEqual(sha256, base64.b64encode(key_hash).decode("utf-8"))
+
+    def test_extract_grpc_source(self):
+        key_bytes = b"\001\002\003\004\005\006\007\010"
+        key_hash = hashlib.sha256(key_bytes).digest()
+        context = unittest.mock.Mock()
+        algorithm, key, sha256 = csek.extract(
+            storage_pb2.RewriteObjectRequest(
+                copy_source_encryption_algorithm="AES256",
+                copy_source_encryption_key_bytes=key_bytes,
+                copy_source_encryption_key_sha256_bytes=key_hash,
+            ),
+            is_source=True,
+            context=context,
+        )
+        self.assertEqual(algorithm, "AES256")
+        self.assertEqual(key, base64.b64encode(key_bytes).decode("utf-8"))
+        self.assertEqual(sha256, base64.b64encode(key_hash).decode("utf-8"))
 
     def test_check_success(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
@@ -140,6 +177,34 @@ class TestCSEK(unittest.TestCase):
         with self.assertRaises(error.RestException) as rest:
             csek.validation(Request(environ), key_sha256, False, None)
         self.assertEqual(rest.exception.code, 400)
+
+    def test_validation_nothing_expected_failure(self):
+        key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
+        key_sha256 = hashlib.sha256(key).digest()
+        key_b64 = base64.b64encode(key)
+        key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            content_type="application/json",
+            method="POST",
+            headers={
+                "x-goog-encryption-algorithm": "AES256",
+                "x-goog-encryption-key": key_b64,
+                "x-goog-encryption-key-sha256": key_sha256_b64,
+            },
+        )
+        with self.assertRaises(error.RestException) as rest:
+            csek.validation(Request(environ), b"", False, None)
+        self.assertEqual(rest.exception.code, 400)
+
+    def test_validation_nothing_expected_success(self):
+        environ = create_environ(
+            base_url="http://localhost:8080",
+            content_type="application/json",
+            method="POST",
+            headers={},
+        )
+        csek.validation(Request(environ), b"", False, None)
 
 
 if __name__ == "__main__":

@@ -112,8 +112,10 @@ class TestCommonUtils(unittest.TestCase):
         )
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
-            "x-goog-encryption-key": base64.b64encode(key_bytes),
-            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+            "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes).decode(
+                "utf-8"
+            ),
         }
         self.assertEqual(request.headers, {**request.headers, **expected_headers})
         self.assertEqual(request.args, {"userProject": "123456"})
@@ -158,8 +160,10 @@ class TestCommonUtils(unittest.TestCase):
         )
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
-            "x-goog-encryption-key": base64.b64encode(key_bytes),
-            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+            "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes).decode(
+                "utf-8"
+            ),
         }
         self.assertEqual(request.headers, {**request.headers, **expected_headers})
         self.assertEqual(request.args, {"userProject": "123456"})
@@ -203,8 +207,10 @@ class TestCommonUtils(unittest.TestCase):
         )
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
-            "x-goog-encryption-key": base64.b64encode(key_bytes),
-            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes),
+            "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
+            "x-goog-encryption-key-sha256": base64.b64encode(key_sh256_bytes).decode(
+                "utf-8"
+            ),
         }
         self.assertEqual(request.headers, {**request.headers, **expected_headers})
         expected_args = {
