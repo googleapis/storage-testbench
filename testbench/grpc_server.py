@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from concurrent import futures
+import datetime
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
@@ -87,6 +88,36 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         buckets = [filter(b.metadata) for b in self.db.list_bucket(project, context)]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
+
+    def LockBucketRetentionPolicy(self, request, context):
+        if request.if_metageneration_match <= 0:
+            return testbench.error.invalid(
+                "invalid metageneration precondition=%d"
+                % request.if_metageneration_match,
+                context,
+            )
+
+        # We cannot use testbench.common.make_grpc_bucket_precondition because
+        # the if_metageneration_match field is non-optional and there is no *_not_match field.
+        def precondition(bucket, ctx):
+            actual = bucket.metadata.metageneration if bucket is not None else 0
+            if request.if_metageneration_match == actual:
+                return True
+            return testbench.error.mismatch(
+                "if_metageneration_match",
+                expect=request.if_metageneration_match,
+                actual=actual,
+                context=ctx,
+            )
+
+        bucket = self.db.get_bucket(
+            request.bucket, context, preconditions=[precondition]
+        )
+        bucket.metadata.retention_policy.is_locked = True
+        bucket.metadata.retention_policy.effective_time.FromDatetime(
+            datetime.datetime.now()
+        )
+        return bucket.metadata
 
     def GetIamPolicy(self, request, context):
         bucket = self.db.get_bucket(request.resource, context)
