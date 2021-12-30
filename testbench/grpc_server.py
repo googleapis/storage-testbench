@@ -92,6 +92,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.resource, context)
         return bucket.iam_policy
 
+    def SetIamPolicy(self, request, context):
+        bucket = self.db.get_bucket(request.resource, context)
+        bucket.set_iam_policy(request, context)
+        return bucket.iam_policy
+
     def TestIamPermissions(self, request, context):
         # If the bucket does not exist this will return an error
         _ = self.db.get_bucket(request.resource, context)
