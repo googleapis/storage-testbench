@@ -462,6 +462,16 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media)),
         )
 
+    def GetServiceAccount(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        return storage_pb2.ServiceAccount(email_address=project.service_account_email())
+
 
 def run(port, database):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))

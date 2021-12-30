@@ -1067,6 +1067,24 @@ class TestGrpc(unittest.TestCase):
             response_names = [o.name for o in response.objects]
             self.assertEqual(response_names, case["expected"], msg=case)
 
+    def test_get_service_account(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.GetServiceAccount(
+            storage_pb2.GetServiceAccountRequest(project="projects/test-project"),
+            context,
+        )
+        self.assertIn("@", response.email_address)
+
+    def test_get_service_account_failure(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.GetServiceAccount(
+            storage_pb2.GetServiceAccountRequest(project="invalid-format"),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)
