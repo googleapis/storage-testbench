@@ -17,19 +17,9 @@
 import json
 import flask
 
-from gcs import project
 import testbench.common
 
-_VALID_PROJECTS = {}
 _PROJECTS_HANDLER_PATH = "/storage/v1/projects"
-
-
-def get_project(project_id):
-    """Find a project and return the GcsProject object."""
-    # Dynamically create the projects. The GCS testbench does not have functions
-    # to create projects, nor do we want to create such functions. The point is
-    # to test the GCS client library, not the IAM client library.
-    return _VALID_PROJECTS.setdefault(project_id, project.GcsProject(project_id))
 
 
 def get_projects_app(db):
@@ -44,7 +34,7 @@ def get_projects_app(db):
     @retry_test("storage.serviceaccount.get")
     def projects_get(project_id):
         """Implement the `Projects.serviceAccount: get` API."""
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         email = project.service_account_email()
         response = {"kind": "storage#serviceAccount", "email_address": email}
         fields = flask.request.args.get("fields", None)
@@ -54,7 +44,7 @@ def get_projects_app(db):
     @retry_test("storage.hmacKey.create")
     def hmac_keys_insert(project_id):
         """Implement the `HmacKeys: insert` API."""
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         service_account = flask.request.args.get("serviceAccountEmail")
         if service_account is None:
             testbench.error.missing("serviceAccountEmail", None)
@@ -68,7 +58,7 @@ def get_projects_app(db):
         """Implement the 'HmacKeys: list' API: return the HMAC keys in a project."""
         # Lookup the bucket, if this fails the bucket does not exist, and this
         # function should return an error.
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         result = {
             "kind": "storage#hmacKeysMetadata",
             "next_page_token": "",
@@ -97,7 +87,7 @@ def get_projects_app(db):
     @retry_test("storage.hmacKey.delete")
     def hmac_keys_delete(project_id, access_id):
         """Implement the `HmacKeys: delete` API."""
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         project.delete_hmac_key(access_id)
         return ""
 
@@ -105,7 +95,7 @@ def get_projects_app(db):
     @retry_test("storage.hmacKey.get")
     def hmac_keys_get(project_id, access_id):
         """Implement the `HmacKeys: get` API."""
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         response = project.get_hmac_key(access_id)
         fields = flask.request.args.get("fields", None)
         return testbench.common.filter_response_rest(response, None, fields)
@@ -114,7 +104,7 @@ def get_projects_app(db):
     @retry_test("storage.hmacKey.update")
     def hmac_keys_update(project_id, access_id):
         """Implement the `HmacKeys: update` API."""
-        project = get_project(project_id)
+        project = db.get_project(project_id)
         payload = json.loads(flask.request.data)
         response = project.update_hmac_key(access_id, payload)
         fields = flask.request.args.get("fields", None)

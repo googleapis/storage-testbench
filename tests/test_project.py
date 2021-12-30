@@ -25,12 +25,12 @@ from testbench.servers import projects_rest_server
 
 class TestProject(unittest.TestCase):
     def setUp(self):
-        db = testbench.database.Database.init()
-        _, app = projects_rest_server.get_projects_app(db)
+        self.db = testbench.database.Database.init()
+        _, app = projects_rest_server.get_projects_app(self.db)
         self.client = app.test_client()
 
     def test_projects_get(self):
-        project = projects_rest_server.get_project("test-project-id")
+        project = self.db.get_project("test-project-id")
         project_number = project.project_number
         response = self.client.get("/test-project-id/serviceAccount")
         payload = json.loads(response.data)

@@ -48,6 +48,9 @@ class Database:
         self._retry_tests = retry_tests
         self._supported_methods = supported_methods
 
+        self._projects_lock = threading.RLock()
+        self._projects = {}
+
     @classmethod
     def init(cls):
         return cls({}, {}, {}, {}, {}, {}, [])
@@ -335,6 +338,18 @@ class Database:
         with self._rewrites_lock:
             self.get_rewrite(token, context)
             del self._rewrites[token]
+
+    # ==== PROJECTS ==== #
+
+    def get_project(self, project_id):
+        """Find a project and return the GcsProject object."""
+        # Dynamically create the projects. The GCS testbench does not have functions
+        # to create projects, nor do we want to create such functions. The point is
+        # to test the GCS client library, not the IAM client library.
+        with self._projects_lock:
+            return self._projects.setdefault(
+                project_id, gcs.project.GcsProject(project_id)
+            )
 
     # ==== RETRY_TESTS ==== #
 
