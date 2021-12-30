@@ -187,6 +187,76 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_lock_bucket_retention_policy(self):
+        self.assertFalse(self.bucket.metadata.retention_policy.is_locked)
+
+        context = unittest.mock.Mock()
+        response = self.grpc.LockBucketRetentionPolicy(
+            storage_pb2.LockBucketRetentionPolicyRequest(
+                bucket="projects/_/buckets/bucket-name",
+                if_metageneration_match=self.bucket.metadata.metageneration,
+            ),
+            context,
+        )
+        self.assertEqual(response.name, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.bucket_id, "bucket-name")
+        self.assertEqual(response, self.bucket.metadata)
+        self.assertTrue(response.retention_policy.is_locked)
+
+    def test_lock_bucket_retention_policy_invalid_preconditions(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.LockBucketRetentionPolicy(
+            storage_pb2.LockBucketRetentionPolicyRequest(
+                bucket="projects/_/buckets/bucket-name",
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.LockBucketRetentionPolicy(
+            storage_pb2.LockBucketRetentionPolicyRequest(
+                bucket="projects/_/buckets/bucket-name",
+                if_metageneration_match=0,
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.LockBucketRetentionPolicy(
+            storage_pb2.LockBucketRetentionPolicyRequest(
+                bucket="projects/_/buckets/bucket-name",
+                if_metageneration_match=-42,
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_lock_bucket_retention_policy_fails_precondition(self):
+        context = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.LockBucketRetentionPolicy(
+                storage_pb2.LockBucketRetentionPolicyRequest(
+                    bucket="projects/_/buckets/bucket-name",
+                    # Use a valid, but not matching pre-condition
+                    if_metageneration_match=self.bucket.metadata.metageneration + 1,
+                ),
+                context,
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
     def test_get_iam_policy(self):
         context = unittest.mock.Mock()
         response = self.grpc.GetIamPolicy(
