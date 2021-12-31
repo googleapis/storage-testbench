@@ -1106,6 +1106,21 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_create_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+        self.assertNotEqual(response.secret_key_bytes, "")
+        self.assertNotEqual(response.metadata.id, "")
+        self.assertNotEqual(response.metadata.access_id, "")
+        self.assertEqual(response.metadata.service_account_email, sa_email)
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)
