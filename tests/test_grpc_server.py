@@ -1121,6 +1121,30 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(response.metadata.access_id, "")
         self.assertEqual(response.metadata.service_account_email, sa_email)
 
+        context = unittest.mock.Mock()
+        _ = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="invalid-project-name-format",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+        # Missing service account emails should fail
+        context = unittest.mock.Mock()
+        _ = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)

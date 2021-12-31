@@ -502,9 +502,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
         if request.service_account_email == "":
             return testbench.error.invalid(
-                "service account email must be non-empty"
-                % request.service_account_email,
-                context,
+                "service account email must be non-empty", context
             )
         project_id = request.project[len("projects/") :]
         project = self.db.get_project(project_id)
