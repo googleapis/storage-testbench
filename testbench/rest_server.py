@@ -409,7 +409,7 @@ def bucket_notification_list(bucket_name):
 @retry_test(method="storage.notifications.insert")
 def bucket_notification_insert(bucket_name):
     bucket = db.get_bucket(bucket_name, None)
-    return bucket.insert_notification(flask.request, None)
+    return bucket.insert_notification(flask.request.data, None)
 
 
 @gcs.route("/b/<bucket_name>/notificationConfigs/<notification_id>")
