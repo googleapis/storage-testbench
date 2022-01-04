@@ -1243,6 +1243,71 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_list_hmac_keys(self):
+        # Create several keys for two different projects.
+        expected = []
+        sa_emails = [
+            "test-sa-1@test-project-id.iam.gserviceaccount.com",
+            "test-sa-2@test-project-id.iam.gserviceaccount.com",
+        ]
+        for sa in sa_emails:
+            for _ in [1, 2]:
+                context = unittest.mock.Mock()
+                create = self.grpc.CreateHmacKey(
+                    storage_pb2.CreateHmacKeyRequest(
+                        project="projects/test-project-id",
+                        service_account_email=sa,
+                    ),
+                    context,
+                )
+                expected.append(create.metadata)
+
+        # First test without any filtering
+        context = unittest.mock.Mock()
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(project="projects/test-project-id"),
+            context,
+        )
+        expected_access_ids = {k.access_id for k in expected}
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Then only for one of the sa emails
+        context = unittest.mock.Mock()
+        sa_filter = sa_emails[0]
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(
+                project="projects/test-project-id", service_account_email=sa_filter
+            ),
+            context,
+        )
+        expected_access_ids = {
+            k.access_id for k in expected if k.service_account_email == sa_filter
+        }
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Include deleted accounts (there are none, but should work)
+        context = unittest.mock.Mock()
+        sa_filter = sa_emails[0]
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_filter,
+                show_deleted_keys=True,
+            ),
+            context,
+        )
+        expected_access_ids = {
+            k.access_id for k in expected if k.service_account_email == sa_filter
+        }
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.ListHmacKeys(storage_pb2.ListHmacKeysRequest(), context)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)
