@@ -169,32 +169,51 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
-    def GetNotification(self, request, context):
-        loc = request.name.find("/notificationConfigs/")
-        if loc == -1:
-            return testbench.error.invalid(
-                "GetNotification() malformed notification name [%s]" % request.name,
-                context,
-            )
-        bucket = self.db.get_bucket(request.name[:loc], context)
-        notification_id = request.name[loc + len("/notificationConfigs/") :]
-        rest = bucket.get_notification(notification_id, context)
+    def _notification_from_rest(self, rest, bucket_name):
         # We need to make a copy before changing any values
         rest = rest.copy()
         rest.pop("kind")
-        rest["name"] = bucket.metadata.name + "/notificationConfigs/" + rest.pop("id")
+        rest["name"] = bucket_name + "/notificationConfigs/" + rest.pop("id")
         return json_format.ParseDict(rest, storage_pb2.Notification())
+
+    def _decompose_notification_name(self, notification_name, context):
+        loc = notification_name.find("/notificationConfigs/")
+        if loc == -1:
+            testbench.error.invalid(
+                "GetNotification() malformed notification name [%s]"
+                % notification_name,
+                context,
+            )
+            return (None, None)
+        bucket_name = notification_name[:loc]
+        notification_id = notification_name[loc + len("/notificationConfigs/") :]
+        return (bucket_name, notification_id)
+
+    def GetNotification(self, request, context):
+        bucket_name, notification_id = self._decompose_notification_name(
+            request.name, context
+        )
+        if bucket_name is None:
+            return None
+        bucket = self.db.get_bucket(bucket_name, context)
+        rest = bucket.get_notification(notification_id, context)
+        return self._notification_from_rest(rest, bucket_name)
 
     def CreateNotification(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         rest = bucket.insert_notification(
             json.dumps(json_format.MessageToDict(request.notification)), context
         )
-        # We need to make a copy before changing any values
-        rest = rest.copy()
-        rest.pop("kind")
-        rest["name"] = bucket.metadata.name + "/notificationConfigs/" + rest.pop("id")
-        return json_format.ParseDict(rest, storage_pb2.Notification())
+        return self._notification_from_rest(rest, request.parent)
+
+    def ListNotifications(self, request, context):
+        bucket = self.db.get_bucket(request.parent, context)
+        items = bucket.list_notifications(context).get("items", [])
+        return storage_pb2.ListNotificationsResponse(
+            notifications=[
+                self._notification_from_rest(r, request.parent) for r in items
+            ]
+        )
 
     def ComposeObject(self, request, context):
         if len(request.source_objects) == 0:
