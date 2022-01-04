@@ -14,11 +14,12 @@
 
 from concurrent import futures
 import datetime
+import json
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
-from google.protobuf import field_mask_pb2, text_format
+from google.protobuf import field_mask_pb2, json_format, text_format
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 
@@ -166,6 +167,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             request.bucket, bucket.metadata, replace_repeated_field=True
         )
         return bucket.metadata
+
+    def CreateNotification(self, request, context):
+        bucket = self.db.get_bucket(request.parent, context)
+        rest = bucket.insert_notification(
+            json.dumps(json_format.MessageToDict(request.notification)), context
+        )
+        rest.pop("kind")
+        rest["name"] = bucket.metadata.name + "/notificationConfigs/" + rest.pop("id")
+        return json_format.ParseDict(rest, storage_pb2.Notification())
 
     def ComposeObject(self, request, context):
         if len(request.source_objects) == 0:

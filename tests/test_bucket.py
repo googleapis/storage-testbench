@@ -321,11 +321,10 @@ class TestBucket(unittest.TestCase):
 
         expected = []
         for topic in ["test-topic-1", "test-topic-2"]:
-            request = testbench.common.FakeRequest(
-                args={},
-                data=json.dumps({"topic": topic, "payload_format": "JSON_API_V1"}),
+            notification_rest = json.dumps(
+                {"topic": topic, "payload_format": "JSON_API_V1"}
             )
-            notification = bucket.insert_notification(request, None)
+            notification = bucket.insert_notification(notification_rest, None)
             self.assertEqual(notification["topic"], topic)
 
             get_result = bucket.get_notification(notification["id"], None)
