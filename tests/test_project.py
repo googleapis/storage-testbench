@@ -182,12 +182,7 @@ class TestProject(unittest.TestCase):
 
         response = self.client.put(
             path="/test-project-id/hmacKeys/" + access_id,
-            data=json.dumps(
-                {
-                    "state": "INACTIVE",
-                    "etag": "not-a-valid-etag"
-                }
-            ),
+            data=json.dumps({"state": "INACTIVE", "etag": "not-a-valid-etag"}),
         )
         self.assertEqual(response.status_code, 412, msg=response.data)
 
