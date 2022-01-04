@@ -474,7 +474,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
 
     def GetServiceAccount(self, request, context):
-        request.project[len("projects/")]
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
                 "project name must start with projects/, got=%s" % request.project,
@@ -494,7 +493,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return json_format.ParseDict(rest, storage_pb2.HmacKeyMetadata())
 
     def CreateHmacKey(self, request, context):
-        request.project[len("projects/")]
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
                 "project name must start with projects/, got=%s" % request.project,
