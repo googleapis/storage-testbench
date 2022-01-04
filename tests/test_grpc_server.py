@@ -456,6 +456,37 @@ class TestGrpc(unittest.TestCase):
             msg=response,
         )
 
+    def test_list_notifications(self):
+        expected = set()
+        topics = [
+            "projects/test-project-id/topics/test-topic-1",
+            "projects/test-project-id/topics/test-topic-2",
+        ]
+        for topic in topics:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateNotification(
+                storage_pb2.CreateNotificationRequest(
+                    parent="projects/_/buckets/bucket-name",
+                    notification=storage_pb2.Notification(
+                        topic=topic,
+                        custom_attributes={"key": "value"},
+                        payload_format="JSON_API_V1",
+                    ),
+                ),
+                context,
+            )
+            expected.add(response.name)
+
+        context = unittest.mock.Mock()
+        response = self.grpc.ListNotifications(
+            storage_pb2.ListNotificationsRequest(
+                parent="projects/_/buckets/bucket-name"
+            ),
+            context,
+        )
+        names = {n.name for n in response.notifications}
+        self.assertEqual(names, expected)
+
     def test_compose_object(self):
         payloads = {
             "fox": b"The quick brown fox jumps over the lazy dog\n",
