@@ -169,11 +169,29 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
+    def GetNotification(self, request, context):
+        loc = request.name.find("/notificationConfigs/")
+        if loc == -1:
+            return testbench.error.invalid(
+                "GetNotification() malformed notification name [%s]" % request.name,
+                context,
+            )
+        bucket = self.db.get_bucket(request.name[:loc], context)
+        notification_id = request.name[loc + len("/notificationConfigs/") :]
+        rest = bucket.get_notification(notification_id, context)
+        # We need to make a copy before changing any values
+        rest = rest.copy()
+        rest.pop("kind")
+        rest["name"] = bucket.metadata.name + "/notificationConfigs/" + rest.pop("id")
+        return json_format.ParseDict(rest, storage_pb2.Notification())
+
     def CreateNotification(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         rest = bucket.insert_notification(
             json.dumps(json_format.MessageToDict(request.notification)), context
         )
+        # We need to make a copy before changing any values
+        rest = rest.copy()
         rest.pop("kind")
         rest["name"] = bucket.metadata.name + "/notificationConfigs/" + rest.pop("id")
         return json_format.ParseDict(rest, storage_pb2.Notification())

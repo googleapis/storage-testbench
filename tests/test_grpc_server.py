@@ -398,6 +398,43 @@ class TestGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
+    def test_get_notification(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateNotification(
+            storage_pb2.CreateNotificationRequest(
+                parent="projects/_/buckets/bucket-name",
+                notification=storage_pb2.Notification(
+                    # name=...,
+                    topic="projects/test-project-id/topics/test-topic",
+                    custom_attributes={"key": "value"},
+                    payload_format="JSON_API_V1",
+                ),
+            ),
+            context,
+        )
+        self.assertTrue(
+            response.name.startswith(
+                "projects/_/buckets/bucket-name/notificationConfigs/"
+            ),
+            msg=response,
+        )
+
+        context = unittest.mock.Mock()
+        get = self.grpc.GetNotification(
+            storage_pb2.GetNotificationRequest(name=response.name), context
+        )
+        self.assertEqual(get, response)
+
+    def test_get_notification_malformed(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.GetNotification(
+            storage_pb2.GetNotificationRequest(name="projects/_/buckets/bucket-name/"),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_create_notification(self):
         context = unittest.mock.Mock()
         response = self.grpc.CreateNotification(
