@@ -1145,6 +1145,36 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_get_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        context = unittest.mock.Mock()
+        response = self.grpc.GetHmacKey(
+            storage_pb2.GetHmacKeyRequest(
+                access_id=create.metadata.access_id, project="projects/test-project-id"
+            ),
+            context,
+        )
+        self.assertEqual(response, create.metadata)
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.GetHmacKey(
+            storage_pb2.GetHmacKeyRequest(access_id=create.metadata.access_id),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)
