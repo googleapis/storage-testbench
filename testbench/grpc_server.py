@@ -539,6 +539,35 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = project.get_hmac_key(request.access_id)
         return self._hmac_key_metadata_from_rest(rest)
 
+    def ListHmacKeys(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+
+        items = []
+        sa_email = request.service_account_email
+        if len(sa_email) != 0:
+            service_account = project.service_account(sa_email)
+            if service_account:
+                items = service_account.key_items()
+        else:
+            for sa in project.service_accounts.values():
+                items.extend(sa.key_items())
+
+        state_filter = lambda x: x.get("state") != "DELETED"
+        if request.show_deleted_keys:
+            state_filter = lambda x: True
+
+        return storage_pb2.ListHmacKeysResponse(
+            hmac_keys=[
+                self._hmac_key_metadata_from_rest(i) for i in items if state_filter(i)
+            ]
+        )
+
 
 def run(port, database):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
