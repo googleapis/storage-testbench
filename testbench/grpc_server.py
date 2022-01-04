@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 from concurrent import futures
 import datetime
 import json
@@ -481,6 +482,33 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         project_id = request.project[len("projects/") :]
         project = self.db.get_project(project_id)
         return storage_pb2.ServiceAccount(email_address=project.service_account_email())
+
+    def _hmac_key_metadata_from_rest(self, rest):
+        rest = rest.copy()
+        for field in ["etag", "kind"]:
+            rest.pop(field, None)
+        rest["project"] = "projects/" + rest.pop("projectId")
+        rest["create_time"] = rest.pop("timeCreated")
+        rest["update_time"] = rest.pop("updated")
+        return json_format.ParseDict(rest, storage_pb2.HmacKeyMetadata())
+
+    def CreateHmacKey(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        if request.service_account_email == "":
+            return testbench.error.invalid(
+                "service account email must be non-empty", context
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        rest = project.insert_hmac_key(request.service_account_email)
+        return storage_pb2.CreateHmacKeyResponse(
+            secret_key_bytes=base64.b64decode(rest.get("secret").encode("utf-8")),
+            metadata=self._hmac_key_metadata_from_rest(rest.get("metadata")),
+        )
 
 
 def run(port, database):
