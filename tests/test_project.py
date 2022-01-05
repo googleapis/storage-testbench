@@ -154,6 +154,45 @@ class TestProject(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_hmac_update_states(self):
+        insert_response = self.client.post(
+            path="/test-project-id/hmacKeys",
+            query_string={
+                "serviceAccountEmail": "test-sa"
+                + "@test-project-2.iam.gserviceaccount.com",
+            },
+        )
+        payload = json.loads(insert_response.data)
+        self.assertIn("kind", payload)
+        self.assertIn("secret", payload)
+        self.assertIn("metadata", payload)
+        metadata = payload.get("metadata")
+        self.assertIn("accessId", metadata)
+        access_id = metadata.get("accessId")
+
+        response = self.client.put(
+            path="/test-project-id/hmacKeys/" + access_id,
+            data=json.dumps(
+                {
+                    "state": "NOT-A-VALID_STATE",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 400, msg=response.data)
+
+        response = self.client.put(
+            path="/test-project-id/hmacKeys/" + access_id,
+            data=json.dumps({"state": "INACTIVE", "etag": "not-a-valid-etag"}),
+        )
+        self.assertEqual(response.status_code, 412, msg=response.data)
+
+        # Cannot delete inactive HMAC keys
+        response = self.client.delete(
+            path="/test-project-id/hmacKeys/" + access_id,
+            data="",
+        )
+        self.assertEqual(response.status_code, 400, msg=response.data)
+
 
 if __name__ == "__main__":
     unittest.main()
