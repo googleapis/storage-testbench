@@ -1296,6 +1296,63 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_delete_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        metadata = storage_pb2.HmacKeyMetadata()
+        metadata.CopyFrom(create.metadata)
+        metadata.state = "INACTIVE"
+
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=["state"])
+            ),
+            context,
+        )
+        self.assertEqual(response.state, "INACTIVE")
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteHmacKey(
+            storage_pb2.DeleteHmacKeyRequest(
+                access_id=metadata.access_id, project=metadata.project
+            ),
+            context,
+        )
+        context.abort.assert_not_called()
+
+        # The code depends on `context.abort()` raising an exception.
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.GetHmacKey(
+                storage_pb2.GetHmacKeyRequest(
+                    access_id=metadata.access_id, project="projects/test-project-id"
+                ),
+                context,
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteHmacKey(
+            storage_pb2.DeleteHmacKeyRequest(access_id=metadata.access_id),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_get_hmac_key(self):
         sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
         context = unittest.mock.Mock()
