@@ -189,6 +189,16 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         notification_id = notification_name[loc + len("/notificationConfigs/") :]
         return (bucket_name, notification_id)
 
+    def DeleteNotification(self, request, context):
+        bucket_name, notification_id = self._decompose_notification_name(
+            request.name, context
+        )
+        if bucket_name is None:
+            return None
+        bucket = self.db.get_bucket(bucket_name, context)
+        bucket.delete_notification(notification_id, context)
+        return empty_pb2.Empty()
+
     def GetNotification(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context

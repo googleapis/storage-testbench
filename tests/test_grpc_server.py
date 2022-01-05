@@ -398,6 +398,54 @@ class TestGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
+    def test_delete_notification(self):
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateNotification(
+            storage_pb2.CreateNotificationRequest(
+                parent="projects/_/buckets/bucket-name",
+                notification=storage_pb2.Notification(
+                    # name=...,
+                    topic="projects/test-project-id/topics/test-topic",
+                    custom_attributes={"key": "value"},
+                    payload_format="JSON_API_V1",
+                ),
+            ),
+            context,
+        )
+        self.assertTrue(
+            create.name.startswith(
+                "projects/_/buckets/bucket-name/notificationConfigs/"
+            ),
+            msg=create,
+        )
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteNotification(
+            storage_pb2.GetNotificationRequest(name=create.name), context
+        )
+        context.abort.assert_not_called()
+
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.GetNotification(
+                storage_pb2.GetNotificationRequest(name=create.name), context
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_delete_notification_malformed(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteNotification(
+            storage_pb2.GetNotificationRequest(name=""), context
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_get_notification(self):
         context = unittest.mock.Mock()
         response = self.grpc.CreateNotification(
