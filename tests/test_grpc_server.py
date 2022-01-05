@@ -1356,6 +1356,61 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_update_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        metadata = storage_pb2.HmacKeyMetadata()
+        metadata.CopyFrom(create.metadata)
+        metadata.state = "INACTIVE"
+
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=["state"])
+            ),
+            context,
+        )
+        self.assertEqual(response.id, metadata.id)
+        self.assertEqual(response.access_id, metadata.access_id)
+        self.assertEqual(response.project, metadata.project)
+        self.assertEqual(response.service_account_email, metadata.service_account_email)
+        self.assertEqual(response.state, metadata.state)
+        self.assertEqual(response.create_time, metadata.create_time)
+
+        # Verify a missing, empty, or invalid update mask returns an error
+        for mask in [[], ["not-state"], ["state", "and-more"]]:
+            context = unittest.mock.Mock()
+            _ = self.grpc.UpdateHmacKey(
+                storage_pb2.UpdateHmacKeyRequest(
+                    hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=mask)
+                ),
+                context,
+            )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+        # An empty metadata attribute is also an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=storage_pb2.HmacKeyMetadata(),
+                update_mask=field_mask_pb2.FieldMask(paths=["state"]),
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
     def test_run(self):
         port, server = testbench.grpc_server.run(0, self.db)
         self.assertNotEqual(port, 0)

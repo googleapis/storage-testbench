@@ -565,7 +565,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
         project_id = request.project[len("projects/") :]
         project = self.db.get_project(project_id)
-        rest = project.get_hmac_key(request.access_id)
+        rest = project.get_hmac_key(request.access_id, context)
         return self._hmac_key_metadata_from_rest(rest)
 
     def ListHmacKeys(self, request, context):
@@ -596,6 +596,29 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 self._hmac_key_metadata_from_rest(i) for i in items if state_filter(i)
             ]
         )
+
+    def UpdateHmacKey(self, request, context):
+        if request.update_mask.paths == []:
+            return testbench.error.invalid(
+                "UpdateHmacKey() with an empty update mask", context
+            )
+        if request.update_mask.paths != ["state"]:
+            return testbench.error.invalid(
+                "UpdateHmacKey() only the `state` field can be modified [%s]"
+                % ",".join(request.update_mask.paths),
+                context,
+            )
+        project_id = request.hmac_key.project
+        if not project_id.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % project_id, context
+            )
+        project_id = project_id[len("projects/") :]
+        project = self.db.get_project(project_id)
+        rest = project.update_hmac_key(
+            request.hmac_key.access_id, {"state": request.hmac_key.state}, context
+        )
+        return self._hmac_key_metadata_from_rest(rest)
 
 
 def run(port, database):
