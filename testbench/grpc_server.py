@@ -568,6 +568,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             metadata=self._hmac_key_metadata_from_rest(rest.get("metadata")),
         )
 
+    def DeleteHmacKey(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        project.delete_hmac_key(request.access_id, context)
+        return empty_pb2.Empty()
+
     def GetHmacKey(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
