@@ -404,8 +404,7 @@ class TestGrpc(unittest.TestCase):
             storage_pb2.CreateNotificationRequest(
                 parent="projects/_/buckets/bucket-name",
                 notification=storage_pb2.Notification(
-                    # name=...,
-                    topic="projects/test-project-id/topics/test-topic",
+                    topic="//pubsub.googleapis.com/projects/test-project-id/topics/test-topic",
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
                 ),
@@ -448,12 +447,14 @@ class TestGrpc(unittest.TestCase):
 
     def test_get_notification(self):
         context = unittest.mock.Mock()
+        topic_name = (
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
+        )
         response = self.grpc.CreateNotification(
             storage_pb2.CreateNotificationRequest(
                 parent="projects/_/buckets/bucket-name",
                 notification=storage_pb2.Notification(
-                    # name=...,
-                    topic="projects/test-project-id/topics/test-topic",
+                    topic=topic_name,
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
                 ),
@@ -472,6 +473,7 @@ class TestGrpc(unittest.TestCase):
             storage_pb2.GetNotificationRequest(name=response.name), context
         )
         self.assertEqual(get, response)
+        self.assertEqual(get.topic, topic_name)
 
     def test_get_notification_malformed(self):
         context = unittest.mock.Mock()
@@ -484,13 +486,15 @@ class TestGrpc(unittest.TestCase):
         )
 
     def test_create_notification(self):
+        topic_name = (
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
+        )
         context = unittest.mock.Mock()
         response = self.grpc.CreateNotification(
             storage_pb2.CreateNotificationRequest(
                 parent="projects/_/buckets/bucket-name",
                 notification=storage_pb2.Notification(
-                    # name=...,
-                    topic="projects/test-project-id/topics/test-topic",
+                    topic=topic_name,
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
                 ),
@@ -503,12 +507,43 @@ class TestGrpc(unittest.TestCase):
             ),
             msg=response,
         )
+        self.assertEqual(response.topic, topic_name)
+
+        # Invalid topic names return an error
+        invalid_topic_names = [
+            "",
+            "//pubsub.googleapis.com",
+            "//pubsub.googleapis.com/",
+            "//pubsub.googleapis.com/projects",
+            "//pubsub.googleapis.com/projects/",
+            "//pubsub.googleapis.com/projects/test-project-id",
+            "//pubsub.googleapis.com/projects/test-project-id/",
+            "//pubsub.googleapis.com/projects/test-project-id/topics",
+            "//pubsub.googleapis.com/projects/test-project-id/topics/",
+        ]
+        for topic in invalid_topic_names:
+            context = unittest.mock.Mock()
+            context.abort = unittest.mock.MagicMock()
+            context.abort.side_effect = grpc.RpcError()
+            with self.assertRaises(grpc.RpcError):
+                _ = self.grpc.CreateNotification(
+                    storage_pb2.CreateNotificationRequest(
+                        parent="projects/_/buckets/bucket-name",
+                        notification=storage_pb2.Notification(
+                            topic=topic, payload_format="JSON_API_V1"
+                        ),
+                    ),
+                    context,
+                )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
 
     def test_list_notifications(self):
         expected = set()
         topics = [
-            "projects/test-project-id/topics/test-topic-1",
-            "projects/test-project-id/topics/test-topic-2",
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic-1",
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic-2",
         ]
         for topic in topics:
             context = unittest.mock.Mock()

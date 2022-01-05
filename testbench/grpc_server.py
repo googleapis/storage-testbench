@@ -16,6 +16,7 @@ import base64
 from concurrent import futures
 import datetime
 import json
+import re
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
@@ -174,6 +175,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = rest.copy()
         rest.pop("kind")
         rest["name"] = bucket_name + "/notificationConfigs/" + rest.pop("id")
+        rest["topic"] = "//pubsub.googleapis.com/" + rest["topic"]
         return json_format.ParseDict(rest, storage_pb2.Notification())
 
     def _decompose_notification_name(self, notification_name, context):
@@ -210,10 +212,19 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return self._notification_from_rest(rest, bucket_name)
 
     def CreateNotification(self, request, context):
+        pattern = "^//pubsub.googleapis.com/projects/[^/]+/topics/[^/]+$"
+        if re.match(pattern, request.notification.topic) is None:
+            return testbench.error.invalid(
+                "topic names must be in"
+                + " //pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}"
+                + " format, got=%s" % request.notification.topic,
+                context,
+            )
         bucket = self.db.get_bucket(request.parent, context)
-        rest = bucket.insert_notification(
-            json.dumps(json_format.MessageToDict(request.notification)), context
-        )
+        notification = json_format.MessageToDict(request.notification)
+        # Convert topic names to REST format
+        notification["topic"] = notification["topic"][len("//pubsub.googleapis.com/") :]
+        rest = bucket.insert_notification(json.dumps(notification), context)
         return self._notification_from_rest(rest, request.parent)
 
     def ListNotifications(self, request, context):
