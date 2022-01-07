@@ -105,10 +105,10 @@ run the grpc_tools generator:
 ```shell
 cd $HOME/storage-testbench
 
+# This creates a new directory with the protos from `googleapis`.  If
+# the clone already exists use:
+#    git -C $HOME/googleapis pull
 git -C $HOME clone https://github.com/googleapis/googleapis
-# if it already exists, use
-#    git -C $HOME pull 
-git -C $HOME/googleapis checkout origin/preview -- google/storage/v2
 
 pip install grpcio-tools
 python -m grpc_tools.protoc -I$HOME/googleapis \
