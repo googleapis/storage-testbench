@@ -398,6 +398,178 @@ class TestGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
+    def test_delete_notification(self):
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateNotification(
+            storage_pb2.CreateNotificationRequest(
+                parent="projects/_/buckets/bucket-name",
+                notification=storage_pb2.Notification(
+                    topic="//pubsub.googleapis.com/projects/test-project-id/topics/test-topic",
+                    custom_attributes={"key": "value"},
+                    payload_format="JSON_API_V1",
+                ),
+            ),
+            context,
+        )
+        self.assertTrue(
+            create.name.startswith(
+                "projects/_/buckets/bucket-name/notificationConfigs/"
+            ),
+            msg=create,
+        )
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteNotification(
+            storage_pb2.GetNotificationRequest(name=create.name), context
+        )
+        context.abort.assert_not_called()
+
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.GetNotification(
+                storage_pb2.GetNotificationRequest(name=create.name), context
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_delete_notification_malformed(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteNotification(
+            storage_pb2.GetNotificationRequest(name=""), context
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_get_notification(self):
+        context = unittest.mock.Mock()
+        topic_name = (
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
+        )
+        response = self.grpc.CreateNotification(
+            storage_pb2.CreateNotificationRequest(
+                parent="projects/_/buckets/bucket-name",
+                notification=storage_pb2.Notification(
+                    topic=topic_name,
+                    custom_attributes={"key": "value"},
+                    payload_format="JSON_API_V1",
+                ),
+            ),
+            context,
+        )
+        self.assertTrue(
+            response.name.startswith(
+                "projects/_/buckets/bucket-name/notificationConfigs/"
+            ),
+            msg=response,
+        )
+
+        context = unittest.mock.Mock()
+        get = self.grpc.GetNotification(
+            storage_pb2.GetNotificationRequest(name=response.name), context
+        )
+        self.assertEqual(get, response)
+        self.assertEqual(get.topic, topic_name)
+
+    def test_get_notification_malformed(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.GetNotification(
+            storage_pb2.GetNotificationRequest(name="projects/_/buckets/bucket-name/"),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_create_notification(self):
+        topic_name = (
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateNotification(
+            storage_pb2.CreateNotificationRequest(
+                parent="projects/_/buckets/bucket-name",
+                notification=storage_pb2.Notification(
+                    topic=topic_name,
+                    custom_attributes={"key": "value"},
+                    payload_format="JSON_API_V1",
+                ),
+            ),
+            context,
+        )
+        self.assertTrue(
+            response.name.startswith(
+                "projects/_/buckets/bucket-name/notificationConfigs/"
+            ),
+            msg=response,
+        )
+        self.assertEqual(response.topic, topic_name)
+
+        # Invalid topic names return an error
+        invalid_topic_names = [
+            "",
+            "//pubsub.googleapis.com",
+            "//pubsub.googleapis.com/",
+            "//pubsub.googleapis.com/projects",
+            "//pubsub.googleapis.com/projects/",
+            "//pubsub.googleapis.com/projects/test-project-id",
+            "//pubsub.googleapis.com/projects/test-project-id/",
+            "//pubsub.googleapis.com/projects/test-project-id/topics",
+            "//pubsub.googleapis.com/projects/test-project-id/topics/",
+        ]
+        for topic in invalid_topic_names:
+            context = unittest.mock.Mock()
+            context.abort = unittest.mock.MagicMock()
+            context.abort.side_effect = grpc.RpcError()
+            with self.assertRaises(grpc.RpcError):
+                _ = self.grpc.CreateNotification(
+                    storage_pb2.CreateNotificationRequest(
+                        parent="projects/_/buckets/bucket-name",
+                        notification=storage_pb2.Notification(
+                            topic=topic, payload_format="JSON_API_V1"
+                        ),
+                    ),
+                    context,
+                )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+    def test_list_notifications(self):
+        expected = set()
+        topics = [
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic-1",
+            "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic-2",
+        ]
+        for topic in topics:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateNotification(
+                storage_pb2.CreateNotificationRequest(
+                    parent="projects/_/buckets/bucket-name",
+                    notification=storage_pb2.Notification(
+                        topic=topic,
+                        custom_attributes={"key": "value"},
+                        payload_format="JSON_API_V1",
+                    ),
+                ),
+                context,
+            )
+            expected.add(response.name)
+
+        context = unittest.mock.Mock()
+        response = self.grpc.ListNotifications(
+            storage_pb2.ListNotificationsRequest(
+                parent="projects/_/buckets/bucket-name"
+            ),
+            context,
+        )
+        names = {n.name for n in response.notifications}
+        self.assertEqual(names, expected)
+
     def test_compose_object(self):
         payloads = {
             "fox": b"The quick brown fox jumps over the lazy dog\n",
@@ -1079,6 +1251,252 @@ class TestGrpc(unittest.TestCase):
         context = unittest.mock.Mock()
         _ = self.grpc.GetServiceAccount(
             storage_pb2.GetServiceAccountRequest(project="invalid-format"),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_create_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+        self.assertNotEqual(response.secret_key_bytes, "")
+        self.assertNotEqual(response.metadata.id, "")
+        self.assertNotEqual(response.metadata.access_id, "")
+        self.assertEqual(response.metadata.service_account_email, sa_email)
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="invalid-project-name-format",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+        # Missing service account emails should fail
+        context = unittest.mock.Mock()
+        _ = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_delete_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        metadata = storage_pb2.HmacKeyMetadata()
+        metadata.CopyFrom(create.metadata)
+        metadata.state = "INACTIVE"
+
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=["state"])
+            ),
+            context,
+        )
+        self.assertEqual(response.state, "INACTIVE")
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteHmacKey(
+            storage_pb2.DeleteHmacKeyRequest(
+                access_id=metadata.access_id, project=metadata.project
+            ),
+            context,
+        )
+        context.abort.assert_not_called()
+
+        # The code depends on `context.abort()` raising an exception.
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.GetHmacKey(
+                storage_pb2.GetHmacKeyRequest(
+                    access_id=metadata.access_id, project="projects/test-project-id"
+                ),
+                context,
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.DeleteHmacKey(
+            storage_pb2.DeleteHmacKeyRequest(access_id=metadata.access_id),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_get_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        context = unittest.mock.Mock()
+        response = self.grpc.GetHmacKey(
+            storage_pb2.GetHmacKeyRequest(
+                access_id=create.metadata.access_id, project="projects/test-project-id"
+            ),
+            context,
+        )
+        self.assertEqual(response, create.metadata)
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.GetHmacKey(
+            storage_pb2.GetHmacKeyRequest(access_id=create.metadata.access_id),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_list_hmac_keys(self):
+        # Create several keys for two different projects.
+        expected = []
+        sa_emails = [
+            "test-sa-1@test-project-id.iam.gserviceaccount.com",
+            "test-sa-2@test-project-id.iam.gserviceaccount.com",
+        ]
+        for sa in sa_emails:
+            for _ in [1, 2]:
+                context = unittest.mock.Mock()
+                create = self.grpc.CreateHmacKey(
+                    storage_pb2.CreateHmacKeyRequest(
+                        project="projects/test-project-id",
+                        service_account_email=sa,
+                    ),
+                    context,
+                )
+                expected.append(create.metadata)
+
+        # First test without any filtering
+        context = unittest.mock.Mock()
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(project="projects/test-project-id"),
+            context,
+        )
+        expected_access_ids = {k.access_id for k in expected}
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Then only for one of the sa emails
+        context = unittest.mock.Mock()
+        sa_filter = sa_emails[0]
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(
+                project="projects/test-project-id", service_account_email=sa_filter
+            ),
+            context,
+        )
+        expected_access_ids = {
+            k.access_id for k in expected if k.service_account_email == sa_filter
+        }
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Include deleted accounts (there are none, but should work)
+        context = unittest.mock.Mock()
+        sa_filter = sa_emails[0]
+        response = self.grpc.ListHmacKeys(
+            storage_pb2.ListHmacKeysRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_filter,
+                show_deleted_keys=True,
+            ),
+            context,
+        )
+        expected_access_ids = {
+            k.access_id for k in expected if k.service_account_email == sa_filter
+        }
+        self.assertEqual({k.access_id for k in response.hmac_keys}, expected_access_ids)
+
+        # Missing or malformed project id is an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.ListHmacKeys(storage_pb2.ListHmacKeysRequest(), context)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_update_hmac_key(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        metadata = storage_pb2.HmacKeyMetadata()
+        metadata.CopyFrom(create.metadata)
+        metadata.state = "INACTIVE"
+
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=["state"])
+            ),
+            context,
+        )
+        self.assertEqual(response.id, metadata.id)
+        self.assertEqual(response.access_id, metadata.access_id)
+        self.assertEqual(response.project, metadata.project)
+        self.assertEqual(response.service_account_email, metadata.service_account_email)
+        self.assertEqual(response.state, metadata.state)
+        self.assertEqual(response.create_time, metadata.create_time)
+
+        # Verify a missing, empty, or invalid update mask returns an error
+        for mask in [[], ["not-state"], ["state", "and-more"]]:
+            context = unittest.mock.Mock()
+            _ = self.grpc.UpdateHmacKey(
+                storage_pb2.UpdateHmacKeyRequest(
+                    hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=mask)
+                ),
+                context,
+            )
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+        # An empty metadata attribute is also an error
+        context = unittest.mock.Mock()
+        _ = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=storage_pb2.HmacKeyMetadata(),
+                update_mask=field_mask_pb2.FieldMask(paths=["state"]),
+            ),
             context,
         )
         context.abort.assert_called_once_with(

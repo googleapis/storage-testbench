@@ -71,29 +71,27 @@ class ServiceAccount(object):
         """Return the keys in this service account as a list of JSON objects."""
         return [k.get("metadata") for k in self.keys.values()]
 
-    def delete_key(self, key_id):
+    def delete_key(self, key_id, context):
         """Delete an existing HMAC key from the service account."""
         key = self.keys.get(key_id)
         if key is None:
-            testbench.error.notfound("key %s" % key_id, None)
+            return testbench.error.notfound("key %s" % key_id, context)
         resource = key.get("metadata")
-        if resource is None:
-            testbench.error.missing("resource for HMAC key %s" % key_id, None)
+        # by constructions our keys always have a `metadata`` field
+        assert resource is not None
         if resource.get("state") == "ACTIVE":
-            testbench.error.invalid("Deleting ACTIVE key %s" % key_id, None)
+            return testbench.error.invalid("Deleting ACTIVE key %s" % key_id, context)
         resource["state"] = "DELETED"
         self.keys.pop(key_id)
         return resource
 
-    def get_key(self, key_id):
+    def get_key(self, key_id, context):
         """Get an existing HMAC key from the service account."""
         key = self.keys.get(key_id)
         if key is None:
-            testbench.error.notfound("key %s" % key_id, None)
-        metadata = key.get("metadata")
-        if metadata is None:
-            testbench.error.missing("resource for HMAC key %s" % key_id, None)
-        return metadata
+            return testbench.error.notfound("key %s" % key_id, context)
+        # by constructions our keys always have a `metadata`` field
+        return key.get("metadata")
 
     def _check_etag(self, key_resource, etag, where):
         """Verify that ETag values match the current ETag."""
@@ -104,26 +102,27 @@ class ServiceAccount(object):
             "ETag for `HmacKeys: update` in %s" % where, expected, etag, None
         )
 
-    def update_key(self, key_id, payload):
+    def update_key(self, key_id, payload, context):
         """Get an existing HMAC key from the service account."""
         key = self.keys.get(key_id)
         if key is None:
-            testbench.error.notfound("key %s" % key_id, None)
+            return testbench.error.notfound("key %s" % key_id, context)
         metadata = key.get("metadata")
-        if metadata is None:
-            testbench.error.missing("resource for HMAC key %s" % key_id, None)
-        self._check_etag(metadata, payload.get("etag"), "payload")
-        self._check_etag(metadata, flask.request.headers.get("if-match-etag"), "header")
+        # by constructions our keys always have a `metadata`` field
+        assert metadata is not None
+        if context is None:
+            self._check_etag(metadata, payload.get("etag"), "payload")
+            self._check_etag(
+                metadata, flask.request.headers.get("if-match-etag"), "header"
+            )
 
         state = payload.get("state")
         if state not in ("ACTIVE", "INACTIVE"):
-            testbench.error.invalid(
-                "state `HmacKeys: update` request %s" % key_id, None
+            return testbench.error.invalid(
+                "state `HmacKeys: update` request %s" % key_id, context
             )
-        if metadata.get("state") == "DELETED":
-            testbench.error.invalid(
-                "Restoring DELETE key in `HmacKeys: update` request %s" % key_id, None
-            )
+        # Unlike production, we never hold on to deleted keys
+        assert metadata.get("state") != "DELETED"
         key["generator"] += 1
         metadata["state"] = state
         metadata["etag"] = base64.b64encode(
@@ -166,26 +165,32 @@ class GcsProject(object):
         """Return a ServiceAccount object given its email."""
         return self.service_accounts.get(service_account_email)
 
-    def delete_hmac_key(self, access_id):
+    def delete_hmac_key(self, access_id, context=None):
         """Remove a key from the project."""
         (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account)
         if sa is None:
-            testbench.error.notfound("service account for key=%s" % access_id, None)
-        return sa.delete_key(key_id)
+            return testbench.error.notfound(
+                "service account for key=%s" % access_id, context
+            )
+        return sa.delete_key(key_id, context)
 
-    def get_hmac_key(self, access_id):
+    def get_hmac_key(self, access_id, context=None):
         """Get an existing key in the project."""
         (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account)
         if sa is None:
-            testbench.error.notfound("service account for key=%s" % access_id, None)
-        return sa.get_key(key_id)
+            return testbench.error.notfound(
+                "service account for key=%s" % access_id, context
+            )
+        return sa.get_key(key_id, context)
 
-    def update_hmac_key(self, access_id, payload):
+    def update_hmac_key(self, access_id, payload, context=None):
         """Update an existing key in the project."""
         (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account, None)
         if sa is None:
-            testbench.error.notfound("service account for key=%s" % access_id, None)
-        return sa.update_key(key_id, payload)
+            return testbench.error.notfound(
+                "service account for key=%s" % access_id, context
+            )
+        return sa.update_key(key_id, payload, context)

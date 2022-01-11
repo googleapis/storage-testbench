@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 from concurrent import futures
 import datetime
+import json
+import re
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
-from google.protobuf import field_mask_pb2, text_format
+from google.protobuf import field_mask_pb2, json_format, text_format
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 
@@ -166,6 +169,72 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             request.bucket, bucket.metadata, replace_repeated_field=True
         )
         return bucket.metadata
+
+    def _notification_from_rest(self, rest, bucket_name):
+        # We need to make a copy before changing any values
+        rest = rest.copy()
+        rest.pop("kind")
+        rest["name"] = bucket_name + "/notificationConfigs/" + rest.pop("id")
+        rest["topic"] = "//pubsub.googleapis.com/" + rest["topic"]
+        return json_format.ParseDict(rest, storage_pb2.Notification())
+
+    def _decompose_notification_name(self, notification_name, context):
+        loc = notification_name.find("/notificationConfigs/")
+        if loc == -1:
+            testbench.error.invalid(
+                "GetNotification() malformed notification name [%s]"
+                % notification_name,
+                context,
+            )
+            return (None, None)
+        bucket_name = notification_name[:loc]
+        notification_id = notification_name[loc + len("/notificationConfigs/") :]
+        return (bucket_name, notification_id)
+
+    def DeleteNotification(self, request, context):
+        bucket_name, notification_id = self._decompose_notification_name(
+            request.name, context
+        )
+        if bucket_name is None:
+            return None
+        bucket = self.db.get_bucket(bucket_name, context)
+        bucket.delete_notification(notification_id, context)
+        return empty_pb2.Empty()
+
+    def GetNotification(self, request, context):
+        bucket_name, notification_id = self._decompose_notification_name(
+            request.name, context
+        )
+        if bucket_name is None:
+            return None
+        bucket = self.db.get_bucket(bucket_name, context)
+        rest = bucket.get_notification(notification_id, context)
+        return self._notification_from_rest(rest, bucket_name)
+
+    def CreateNotification(self, request, context):
+        pattern = "^//pubsub.googleapis.com/projects/[^/]+/topics/[^/]+$"
+        if re.match(pattern, request.notification.topic) is None:
+            return testbench.error.invalid(
+                "topic names must be in"
+                + " //pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}"
+                + " format, got=%s" % request.notification.topic,
+                context,
+            )
+        bucket = self.db.get_bucket(request.parent, context)
+        notification = json_format.MessageToDict(request.notification)
+        # Convert topic names to REST format
+        notification["topic"] = notification["topic"][len("//pubsub.googleapis.com/") :]
+        rest = bucket.insert_notification(json.dumps(notification), context)
+        return self._notification_from_rest(rest, request.parent)
+
+    def ListNotifications(self, request, context):
+        bucket = self.db.get_bucket(request.parent, context)
+        items = bucket.list_notifications(context).get("items", [])
+        return storage_pb2.ListNotificationsResponse(
+            notifications=[
+                self._notification_from_rest(r, request.parent) for r in items
+            ]
+        )
 
     def ComposeObject(self, request, context):
         if len(request.source_objects) == 0:
@@ -471,6 +540,107 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         project_id = request.project[len("projects/") :]
         project = self.db.get_project(project_id)
         return storage_pb2.ServiceAccount(email_address=project.service_account_email())
+
+    def _hmac_key_metadata_from_rest(self, rest):
+        rest = rest.copy()
+        for field in ["etag", "kind"]:
+            rest.pop(field, None)
+        rest["project"] = "projects/" + rest.pop("projectId")
+        rest["create_time"] = rest.pop("timeCreated")
+        rest["update_time"] = rest.pop("updated")
+        return json_format.ParseDict(rest, storage_pb2.HmacKeyMetadata())
+
+    def CreateHmacKey(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        if request.service_account_email == "":
+            return testbench.error.invalid(
+                "service account email must be non-empty", context
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        rest = project.insert_hmac_key(request.service_account_email)
+        return storage_pb2.CreateHmacKeyResponse(
+            secret_key_bytes=base64.b64decode(rest.get("secret").encode("utf-8")),
+            metadata=self._hmac_key_metadata_from_rest(rest.get("metadata")),
+        )
+
+    def DeleteHmacKey(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        project.delete_hmac_key(request.access_id, context)
+        return empty_pb2.Empty()
+
+    def GetHmacKey(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+        rest = project.get_hmac_key(request.access_id, context)
+        return self._hmac_key_metadata_from_rest(rest)
+
+    def ListHmacKeys(self, request, context):
+        if not request.project.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % request.project,
+                context,
+            )
+        project_id = request.project[len("projects/") :]
+        project = self.db.get_project(project_id)
+
+        items = []
+        sa_email = request.service_account_email
+        if len(sa_email) != 0:
+            service_account = project.service_account(sa_email)
+            if service_account:
+                items = service_account.key_items()
+        else:
+            for sa in project.service_accounts.values():
+                items.extend(sa.key_items())
+
+        state_filter = lambda x: x.get("state") != "DELETED"
+        if request.show_deleted_keys:
+            state_filter = lambda x: True
+
+        return storage_pb2.ListHmacKeysResponse(
+            hmac_keys=[
+                self._hmac_key_metadata_from_rest(i) for i in items if state_filter(i)
+            ]
+        )
+
+    def UpdateHmacKey(self, request, context):
+        if request.update_mask.paths == []:
+            return testbench.error.invalid(
+                "UpdateHmacKey() with an empty update mask", context
+            )
+        if request.update_mask.paths != ["state"]:
+            return testbench.error.invalid(
+                "UpdateHmacKey() only the `state` field can be modified [%s]"
+                % ",".join(request.update_mask.paths),
+                context,
+            )
+        project_id = request.hmac_key.project
+        if not project_id.startswith("projects/"):
+            return testbench.error.invalid(
+                "project name must start with projects/, got=%s" % project_id, context
+            )
+        project_id = project_id[len("projects/") :]
+        project = self.db.get_project(project_id)
+        rest = project.update_hmac_key(
+            request.hmac_key.access_id, {"state": request.hmac_key.state}, context
+        )
+        return self._hmac_key_metadata_from_rest(rest)
 
 
 def run(port, database):

@@ -671,12 +671,12 @@ class Bucket:
 
     # === NOTIFICATIONS === #
 
-    def insert_notification(self, request, context):
+    def insert_notification(self, notification_rest: str, context):
         notification = {
             "kind": "storage#notification",
             "id": "notification-%s" % uuid.uuid4().hex,
         }
-        data = json.loads(request.data)
+        data = json.loads(notification_rest)
         for required_key in {"topic", "payload_format"}:
             value = data.pop(required_key, None)
             if value is not None:
