@@ -532,7 +532,7 @@ def object_delete(bucket_name, object_name):
     db.delete_object(
         bucket_name,
         object_name,
-        generation=flask.request.args.get("generation", None),
+        generation=int(flask.request.args.get("generation", 0)),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
     )

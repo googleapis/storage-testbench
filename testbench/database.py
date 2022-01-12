@@ -107,7 +107,14 @@ class Database:
         with self._resources_lock:
             bucket = self.get_bucket(bucket_name, context, preconditions)
             if len(self._live_generations[bucket.metadata.name]) > 0:
-                testbench.error.invalid("Deleting non-empty bucket", context)
+                testbench.error.invalid(
+                    "Deleting non-empty bucket %s %s"
+                    % (
+                        bucket.metadata.name,
+                        self._live_generations[bucket.metadata.name],
+                    ),
+                    context,
+                )
             del self._buckets[bucket.metadata.name]
             del self._objects[bucket.metadata.name]
             del self._live_generations[bucket.metadata.name]
@@ -290,7 +297,12 @@ class Database:
             self.__set_live_generation(bucket_name, object_name, generation, context)
 
     def delete_object(
-        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+        self,
+        bucket_name: str,
+        object_name: str,
+        context=None,
+        generation: int = 0,
+        preconditions=[],
     ):
         with self._resources_lock:
             blob, live_generation = self._get_object(
@@ -298,7 +310,7 @@ class Database:
             )
             # _get_object() raises if the object is not found or the generation mismatches.
             # There are only two cases:
-            if (generation is None or generation == 0) or live_generation == generation:
+            if generation == 0 or live_generation == generation:
                 self.__del_live_generation(bucket_name, object_name, context)
             bucket = self.__get_bucket_for_object(bucket_name, context)
             bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
