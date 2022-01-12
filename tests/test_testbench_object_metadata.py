@@ -119,6 +119,35 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         response = self.client.get("/storage/v1/b/bucket-name/o/fox.txt")
         self.assertEqual(response.status_code, 404)
 
+    def test_delete_with_generation(self):
+        # Create a bucket and object
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = "The quick brown fox jumps over the lazy dog"
+        response = self.client.put(
+            "/bucket-name/fox.txt",
+            content_type="text/plain",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get("/storage/v1/b/bucket-name/o/fox.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        rest = json.loads(response.data)
+
+        # Delete the object using a generation number
+        response = self.client.delete(
+            "/storage/v1/b/bucket-name/o/fox.txt?generation=%s" % rest.get("generation")
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        response = self.client.get("/storage/v1/b/bucket-name/o/fox.txt")
+        self.assertEqual(response.status_code, 404)
+
     def test_object_acl_crud(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
