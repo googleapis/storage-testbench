@@ -90,6 +90,51 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
 
+    def test_create_bucket_predefined_acls(self):
+        acls = [
+            storage_pb2.BUCKET_ACL_AUTHENTICATED_READ,
+            storage_pb2.BUCKET_ACL_PROJECT_PRIVATE,
+            storage_pb2.BUCKET_ACL_PRIVATE,
+            storage_pb2.BUCKET_ACL_PUBLIC_READ,
+            storage_pb2.BUCKET_ACL_PUBLIC_READ_WRITE,
+            storage_pb2.PREDEFINED_BUCKET_ACL_UNSPECIFIED,
+        ]
+        for i, acl in enumerate(acls):
+            id = "test-bucket-name-%d" % i
+            request = storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id=id,
+                bucket=storage_pb2.Bucket(),
+                predefined_acl=acl,
+            )
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(request, context)
+            self.assertEqual(response.bucket_id, id)
+            self.assertNotEqual(len(response.acl), 0, msg=response)
+
+    def test_create_bucket_predefined_default_object_acls(self):
+        acls = [
+            storage_pb2.OBJECT_ACL_AUTHENTICATED_READ,
+            storage_pb2.OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL,
+            storage_pb2.OBJECT_ACL_BUCKET_OWNER_READ,
+            storage_pb2.OBJECT_ACL_PROJECT_PRIVATE,
+            storage_pb2.OBJECT_ACL_PRIVATE,
+            storage_pb2.OBJECT_ACL_PUBLIC_READ,
+            storage_pb2.PREDEFINED_OBJECT_ACL_UNSPECIFIED,
+        ]
+        for i, acl in enumerate(acls):
+            id = "test-bucket-name-%d" % i
+            request = storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id=id,
+                bucket=storage_pb2.Bucket(),
+                predefined_default_object_acl=acl,
+            )
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(request, context)
+            self.assertEqual(response.bucket_id, id)
+            self.assertNotEqual(len(response.default_object_acl), 0, msg=response)
+
     def test_list_buckets(self):
         ids = ["bucket-3", "bucket-2", "bucket-1"]
         for id in ids:
