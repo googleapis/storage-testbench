@@ -107,9 +107,6 @@ class Database:
         with self._resources_lock:
             bucket = self.get_bucket(bucket_name, context, preconditions)
             if len(self._live_generations[bucket.metadata.name]) > 0:
-                print("\n")
-                print(self._live_generations[bucket.metadata.name])
-                print("\n")
                 testbench.error.invalid(
                     "Deleting non-empty bucket %s %s"
                     % (
