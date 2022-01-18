@@ -84,6 +84,15 @@ gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --reload --acc
 > ⚠️ Ensure that the virtual environment you created to install the dependencies is active.
 
 
+### Start the gRPC server
+
+If you want to test the gRPC API, you must make a request which will start
+the testbench's gRPC server (it will not start by default):
+
+```bash
+curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=9000"
+```
+
 ### Check that the testbench is running
 
 Ensure the testbench is running by sending it a request from a different terminal, such as:
