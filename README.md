@@ -15,6 +15,8 @@ is expected to be used by Storage library maintainers.
   - [When to use this testbench](#when-to-use-this-testbench)
   - [How to use this testbench](#how-to-use-this-testbench)
     - [Initial set up](#initial-set-up)
+    - [Run the testbench](#run-the-testbench)
+    - [Start the gRPC server](#start-the-gRPC-server)
     - [Check that the testbench is running](#check-that-the-testbench-is-running)
   - [Updating Proto Files](#updating-proto-files)
   - [Force Failures](#force-failures)
@@ -87,10 +89,11 @@ gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --reload --acc
 ### Start the gRPC server
 
 If you want to test the gRPC API, you must make a request which will start
-the testbench's gRPC server (it will not start by default):
+the testbench's gRPC server. Also, the gRPC server must run on a different port
+than the HTTP server. To serve gRPC requests on port 8888, run:
 
 ```bash
-curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=9000"
+curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=8888"
 ```
 
 ### Check that the testbench is running
