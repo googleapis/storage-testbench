@@ -988,9 +988,8 @@ class TestGrpc(unittest.TestCase):
             context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
             response = self.grpc.RewriteObject(
                 storage_pb2.RewriteObjectRequest(
-                    destination=storage_pb2.Object(
-                        name="object-name", bucket="projects/_/buckets/bucket-name"
-                    ),
+                    destination_bucket="projects/_/buckets/bucket-name",
+                    destination_name="object-name",
                     source_bucket="projects/_/buckets/bucket-name",
                     source_object="test-source-object",
                     rewrite_token=token,
@@ -1005,6 +1004,49 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(token, "")
         self.assertEqual(response.resource.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(response.resource.name, "object-name")
+        self.assertEqual(response.resource.size, len(media))
+
+        # Verify the newly created object has the right contents
+        context = unittest.mock.Mock()
+        get = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual(get.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(get.name, "object-name")
+        self.assertNotEqual(0, get.generation)
+        self.assertEqual(get.size, len(media))
+
+    def test_rewrite_object_with_destination(self):
+        # A small payload works for this test
+        media = b"The quick brown fox jumps over the lazy dog\n"
+        request = testbench.common.FakeRequest(
+            args={"name": "test-source-object"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        response = self.grpc.RewriteObject(
+            storage_pb2.RewriteObjectRequest(
+                destination_bucket="projects/_/buckets/bucket-name",
+                destination_name="object-name",
+                source_bucket="projects/_/buckets/bucket-name",
+                source_object="test-source-object",
+                rewrite_token="",
+                max_bytes_rewritten_per_call=1024,
+                destination=storage_pb2.Object(cache_control="test-only-invalid"),
+            ),
+            context,
+        )
+        context.abort.assert_not_called()
+        self.assertTrue(response.done)
+        self.assertEqual(response.resource.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(response.resource.name, "object-name")
+        self.assertEqual(response.resource.cache_control, "test-only-invalid")
         self.assertEqual(response.resource.size, len(media))
 
         # Verify the newly created object has the right contents

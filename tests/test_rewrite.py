@@ -89,9 +89,9 @@ class TestRewrite(unittest.TestCase):
 
     def test_rewrite_grpc(self):
         request = storage_pb2.RewriteObjectRequest(
+            destination_bucket="projects/_/buckets/destination-bucket",
+            destination_name="destination-object",
             destination=storage_pb2.Object(
-                bucket="projects/_/buckets/destination-bucket",
-                name="destination-object",
                 metadata={"key": "value"},
             ),
             source_bucket="projects/_/buckets/source-bucket",
@@ -107,13 +107,27 @@ class TestRewrite(unittest.TestCase):
             TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
         )
 
+    def test_rewrite_grpc_no_destination_object(self):
+        request = storage_pb2.RewriteObjectRequest(
+            destination_bucket="projects/_/buckets/destination-bucket",
+            destination_name="destination-object",
+            source_bucket="projects/_/buckets/source-bucket",
+            source_object="source-object",
+        )
+        context = unittest.mock.Mock()
+        rewrite = gcs.rewrite.Rewrite.init_grpc(request, context)
+        self.assertEqual("source-bucket", rewrite.src_bucket_name)
+        self.assertEqual("source-object", rewrite.src_object_name)
+        self.assertEqual("destination-bucket", rewrite.dst_bucket_name)
+        self.assertEqual("destination-object", rewrite.dst_object_name)
+        self.assertEqual(
+            TestRewrite.MIN_REWRITE_BYTES, rewrite.max_bytes_rewritten_per_call
+        )
+
     def test_rewrite_grpc_low_bytes(self):
         request = storage_pb2.RewriteObjectRequest(
-            destination=storage_pb2.Object(
-                bucket="projects/_/buckets/destination-bucket",
-                name="destination-object",
-                metadata={"key": "value"},
-            ),
+            destination_bucket="projects/_/buckets/destination-bucket",
+            destination_name="destination-object",
             source_bucket="projects/_/buckets/source-bucket",
             source_object="source-object",
             max_bytes_rewritten_per_call=int(TestRewrite.MIN_REWRITE_BYTES / 2),
@@ -126,11 +140,8 @@ class TestRewrite(unittest.TestCase):
 
     def test_rewrite_grpc_high_bytes(self):
         request = storage_pb2.RewriteObjectRequest(
-            destination=storage_pb2.Object(
-                bucket="projects/_/buckets/destination-bucket",
-                name="destination-object",
-                metadata={"key": "value"},
-            ),
+            destination_bucket="projects/_/buckets/destination-bucket",
+            destination_name="destination-object",
             source_bucket="projects/_/buckets/source-bucket",
             source_object="source-object",
             max_bytes_rewritten_per_call=int(2 * TestRewrite.MIN_REWRITE_BYTES),
@@ -148,56 +159,56 @@ class TestRewrite(unittest.TestCase):
                 source_object="source-object",
             ),
             "bad destination.bucket [1]": storage_pb2.RewriteObjectRequest(
-                destination=storage_pb2.Object(
-                    bucket="destination-bucket",
-                    name="destination-object",
-                    metadata={"key": "value"},
-                ),
+                destination_bucket="destination-bucket",
+                destination_name="destination-object",
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "bad destination.bucket [2]": storage_pb2.RewriteObjectRequest(
-                destination=storage_pb2.Object(
-                    bucket="projects/_/buckets/",
-                    name="destination-object",
-                    metadata={"key": "value"},
-                ),
+                destination_bucket="projects/_/buckets/",
+                destination_name="destination-object",
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "missing destination.name": storage_pb2.RewriteObjectRequest(
-                destination=storage_pb2.Object(
-                    bucket="projects/_/buckets/destination-bucket",
-                    metadata={"key": "value"},
-                ),
+                destination_bucket="projects/_/buckets/destination-bucket",
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "bad source bucket [1]": storage_pb2.RewriteObjectRequest(
-                destination=storage_pb2.Object(
-                    bucket="projects/_/buckets/destination-bucket",
-                    name="destination-object",
-                    metadata={"key": "value"},
-                ),
+                destination_bucket="projects/_/buckets/destination-bucket",
+                destination_name="destination-object",
                 source_bucket="source-bucket",
                 source_object="source-object",
             ),
             "bad source_bucket [2]": storage_pb2.RewriteObjectRequest(
-                destination=storage_pb2.Object(
-                    bucket="projects/_/buckets/destination-bucket",
-                    name="destination-object",
-                    metadata={"key": "value"},
-                ),
+                destination_bucket="projects/_/buckets/destination-bucket",
+                destination_name="destination-object",
                 source_bucket="projects/_/buckets/",
                 source_object="source-object",
             ),
             "missing source_object": storage_pb2.RewriteObjectRequest(
+                destination_bucket="projects/_/buckets/destination-bucket",
+                destination_name="destination-object",
+                source_bucket="projects/_/buckets/source-bucket",
+            ),
+            "inconsistent object name": storage_pb2.RewriteObjectRequest(
+                destination_bucket="projects/_/buckets/destination-bucket",
+                destination_name="destination-object",
                 destination=storage_pb2.Object(
-                    bucket="projects/_/buckets/destination-bucket",
-                    name="destination-object",
-                    metadata={"key": "value"},
+                    name="inconsistent-object-name",
                 ),
                 source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
+            ),
+            "inconsistent bucket name": storage_pb2.RewriteObjectRequest(
+                destination_bucket="projects/_/buckets/destination-bucket",
+                destination_name="destination-object",
+                destination=storage_pb2.Object(
+                    bucket="inconsistent-bucket-name",
+                ),
+                source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
             ),
         }
         for case, request in cases.items():

@@ -292,7 +292,7 @@ class TestObject(unittest.TestCase):
                 content_language="test-value",
                 content_type="octet-stream",
                 storage_class="regional",
-                customer_encryption=storage_pb2.Object.CustomerEncryption(
+                customer_encryption=storage_pb2.CustomerEncryption(
                     encryption_algorithm="AES", key_sha256_bytes=b"123456"
                 ),
                 custom_time=testbench.common.rest_rfc3339_to_proto(
