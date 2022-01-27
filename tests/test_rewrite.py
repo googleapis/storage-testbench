@@ -161,53 +161,35 @@ class TestRewrite(unittest.TestCase):
             "bad destination.bucket [1]": storage_pb2.RewriteObjectRequest(
                 destination_bucket="destination-bucket",
                 destination_name="destination-object",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "bad destination.bucket [2]": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/",
                 destination_name="destination-object",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "missing destination.name": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/destination-bucket",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="projects/_/buckets/source-bucket",
                 source_object="source-object",
             ),
             "bad source bucket [1]": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/destination-bucket",
                 destination_name="destination-object",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="source-bucket",
                 source_object="source-object",
             ),
             "bad source_bucket [2]": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/destination-bucket",
                 destination_name="destination-object",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="projects/_/buckets/",
                 source_object="source-object",
             ),
             "missing source_object": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/destination-bucket",
                 destination_name="destination-object",
-                destination=storage_pb2.Object(
-                    metadata={"key": "value"},
-                ),
                 source_bucket="projects/_/buckets/source-bucket",
             ),
             "inconsistent object name": storage_pb2.RewriteObjectRequest(
@@ -215,18 +197,18 @@ class TestRewrite(unittest.TestCase):
                 destination_name="destination-object",
                 destination=storage_pb2.Object(
                     name="inconsistent-object-name",
-                    metadata={"key": "value"},
                 ),
                 source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
             ),
             "inconsistent bucket name": storage_pb2.RewriteObjectRequest(
                 destination_bucket="projects/_/buckets/destination-bucket",
                 destination_name="destination-object",
                 destination=storage_pb2.Object(
                     bucket="inconsistent-bucket-name",
-                    metadata={"key": "value"},
                 ),
                 source_bucket="projects/_/buckets/source-bucket",
+                source_object="source-object",
             ),
         }
         for case, request in cases.items():
