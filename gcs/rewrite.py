@@ -89,26 +89,30 @@ class Rewrite(types.SimpleNamespace):
             return testbench.error.invalid(
                 "invalid or missing source object name in rewrite request", context
             )
-        if not request.HasField("destination"):
-            return testbench.error.invalid(
-                "missing destination object in rewrite request", context
-            )
-        if not request.destination.bucket.startswith("projects/_/buckets/"):
+        if not request.destination_bucket.startswith("projects/_/buckets/"):
             return testbench.error.invalid(
                 "invalid or missing source bucket name in rewrite request", context
             )
         dst_bucket_name = testbench.common.bucket_name_from_proto(
-            request.destination.bucket
+            request.destination_bucket
         )
         if dst_bucket_name is None or len(dst_bucket_name) == 0:
             return testbench.error.invalid(
                 "invalid or missing destination bucket name in rewrite request", context
             )
-        dst_object_name = request.destination.name
+        dst_object_name = request.destination_name
         if dst_object_name is None or len(dst_object_name) == 0:
             return testbench.error.invalid(
                 "invalid or missing destination object name in rewrite request", context
             )
+        if request.HasField("destination"):
+            destination = request.destination
+            if destination.bucket != "" and destination.bucket != dst_bucket_name:
+                return testbench.error.invalid("inconsistent bucket name", context)
+            if destination.name != "" and destination.name != dst_object_name:
+                return testbench.error.invalid(
+                    "inconsistent destination object name", context
+                )
         return cls(
             request=request,
             src_bucket_name=src_bucket_name,

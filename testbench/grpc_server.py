@@ -477,33 +477,36 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         if not done:
             response.rewrite_token = rewrite.token
+            return response
+
+        dst_bucket_name = rewrite.request.destination_bucket
+        dst_object_name = rewrite.request.destination_name
+        dst_bucket = self.db.get_bucket(dst_bucket_name, context).metadata
+        dst_metadata = storage_pb2.Object()
+        if rewrite.request.HasField("destination"):
+            dst_metadata.CopyFrom(rewrite.request.destination)
         else:
-            dst_bucket_name = rewrite.request.destination.bucket
-            dst_object_name = rewrite.request.destination.name
-            dst_bucket = self.db.get_bucket(dst_bucket_name, context).metadata
-            dst_metadata = storage_pb2.Object()
             dst_metadata.CopyFrom(src_object.metadata)
-            # TODO(#227) - merge request and source object metadata
-            dst_metadata.bucket = dst_bucket_name
-            dst_metadata.name = dst_object_name
-            dst_metadata.metageneration = 1
-            dst_metadata.update_time.FromDatetime(dst_metadata.create_time.ToDatetime())
-            dst_media = rewrite.media
-            dst_object, _ = gcs.object.Object.init(
-                rewrite.request,
-                dst_metadata,
-                dst_media,
-                dst_bucket,
-                is_destination=True,
-                context=context,
-            )
-            self.db.insert_object(
-                dst_bucket_name,
-                dst_object,
-                context=context,
-                preconditions=testbench.common.make_grpc_preconditions(rewrite.request),
-            )
-            response.resource.CopyFrom(dst_metadata)
+        dst_metadata.bucket = dst_bucket_name
+        dst_metadata.name = dst_object_name
+        dst_metadata.metageneration = 1
+        dst_metadata.update_time.FromDatetime(dst_metadata.create_time.ToDatetime())
+        dst_media = rewrite.media
+        dst_object, _ = gcs.object.Object.init(
+            rewrite.request,
+            dst_metadata,
+            dst_media,
+            dst_bucket,
+            is_destination=True,
+            context=context,
+        )
+        self.db.insert_object(
+            dst_bucket_name,
+            dst_object,
+            context=context,
+            preconditions=testbench.common.make_grpc_preconditions(rewrite.request),
+        )
+        response.resource.CopyFrom(dst_metadata)
 
         return response
 
