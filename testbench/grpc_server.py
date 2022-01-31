@@ -160,14 +160,32 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
+        if not request.update_mask.IsValidForDescriptor(storage_pb2.Bucket.DESCRIPTOR):
+            return testbench.error.invalid(
+                "UpdateBucket() invalid field for Bucket [%s]"
+                % ",".join(intersection.paths),
+                context,
+            )
         bucket = self.db.get_bucket(
             request.bucket.name,
             context,
             preconditions=testbench.common.make_grpc_bucket_preconditions(request),
         )
         request.update_mask.MergeMessage(
-            request.bucket, bucket.metadata, replace_repeated_field=True
+            request.bucket, bucket.metadata, replace_repeated_field=False
         )
+        # Manually replace the repeated fields.
+        if "acl" in request.update_mask.paths:
+            del bucket.metadata.acl[:]
+            bucket.metadata.acl.extend(request.bucket.acl)
+        if "default_object_acl" in request.update_mask.paths:
+            bucket.metadata.default_object_acl[:]
+            bucket.metadata.default_object_acl.extend(request.bucket.default_object_acl)
+        if "labels" in request.update_mask.paths:
+            bucket.metadata.labels.clear()
+            bucket.metadata.labels.update(request.bucket.labels)
+        bucket.metadata.metageneration += 1
+        bucket.metadata.update_time.FromDatetime(datetime.datetime.now())
         return bucket.metadata
 
     def _notification_from_rest(self, rest, bucket_name):
@@ -371,6 +389,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
+        if not request.update_mask.IsValidForDescriptor(storage_pb2.Object.DESCRIPTOR):
+            return testbench.error.invalid(
+                "UpdateObject() invalid field for Object [%s]"
+                % ",".join(intersection.paths),
+                context,
+            )
         self.db.insert_test_bucket()
         blob = self.db.get_object(
             request.object.bucket,
@@ -380,8 +404,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             preconditions=testbench.common.make_grpc_preconditions(request),
         )
         request.update_mask.MergeMessage(
-            request.object, blob.metadata, replace_repeated_field=True
+            request.object, blob.metadata, replace_repeated_field=False
         )
+        # Manually replace the repeated fields.
+        if "acl" in request.update_mask.paths:
+            del blob.metadata.acl[:]
+            blob.metadata.acl.extend(request.object.acl)
+        if "metadata" in request.update_mask.paths:
+            blob.metadata.metadata.clear()
+            blob.metadata.metadata.update(request.object.metadata)
+        blob.metadata.metageneration += 1
+        blob.metadata.update_time.FromDatetime(datetime.datetime.now())
         return blob.metadata
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:

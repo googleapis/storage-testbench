@@ -388,6 +388,7 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(dict(), get.labels)
         self.assertEqual("STANDARD", get.storage_class)
         self.assertEqual("DEFAULT", get.rpo)
+        metageneration = get.metageneration
 
         # Then change some properties, note that we set some attributes but not the
         # corresponding field mask, those should not change.
@@ -399,8 +400,12 @@ class TestGrpc(unittest.TestCase):
                     labels={"key": "value"},
                     storage_class="NEARLINE",
                     rpo="ASYNC_TURBO",
+                    acl=get.acl,
+                    default_object_acl=get.default_object_acl,
                 ),
-                update_mask=field_mask_pb2.FieldMask(paths=["labels", "rpo"]),
+                update_mask=field_mask_pb2.FieldMask(
+                    paths=["labels", "rpo", "acl", "default_object_acl"]
+                ),
             ),
             context,
         )
@@ -408,6 +413,7 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual({"key": "value"}, response.labels)
         self.assertEqual("STANDARD", response.storage_class)
         self.assertEqual("ASYNC_TURBO", response.rpo)
+        self.assertLess(metageneration, response.metageneration)
 
         # Finally verify the changes are persisted
         context = unittest.mock.Mock()
@@ -430,6 +436,7 @@ class TestGrpc(unittest.TestCase):
             "create_time",
             "update_time",
             "owner",
+            "not-a-valid-field",
         ]:
             context = unittest.mock.Mock()
             _ = self.grpc.UpdateBucket(
@@ -819,6 +826,7 @@ class TestGrpc(unittest.TestCase):
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        metageneration = blob.metadata.metageneration
         self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
         response = self.grpc.UpdateObject(
@@ -829,9 +837,10 @@ class TestGrpc(unittest.TestCase):
                     metadata={"key": "value"},
                     content_type="text/plain",
                     cache_control="fancy cache",
+                    acl=blob.metadata.acl,
                 ),
                 update_mask=field_mask_pb2.FieldMask(
-                    paths=["content_type", "metadata"]
+                    paths=["content_type", "metadata", "acl"]
                 ),
             ),
             context,
@@ -839,6 +848,7 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual("text/plain", response.content_type)
         self.assertEqual({"key": "value"}, response.metadata)
         self.assertEqual("", response.cache_control)
+        self.assertLess(metageneration, response.metageneration)
 
         # Verify the update is "persisted" as opposed to just changing the response
         context = unittest.mock.Mock()
@@ -875,6 +885,7 @@ class TestGrpc(unittest.TestCase):
             "update_storage_class_time",
             "owner",
             "customer_encryption",
+            "not-a-valid-field",
         ]:
             context = unittest.mock.Mock(name="testing with path=" + invalid)
             _ = self.grpc.UpdateObject(
