@@ -677,17 +677,17 @@ def __get_streamer_response_custom_error_fn(database, method, test_id, error_cod
             d = _extract_data(data)
             bytes_downloaded = 0
             for r in range(0, len(d), chunk_size):
+                if bytes_downloaded < limit:
+                    chunk_end = min(r + chunk_size, len(d))
+                    chunk_downloaded = chunk_end - r
+                    bytes_downloaded += chunk_downloaded
+                    yield d[r:chunk_end]
                 if bytes_downloaded >= limit:
                     database.dequeue_next_instruction(test_id, method)
                     raise testbench.error.RestException(
                         f"Retry Test: Caused a {error_code}. Fault injected after downloading {bytes_downloaded} bytes",
                         error_code
                     )
-                else:
-                    chunk_end = min(r + chunk_size, len(d))
-                    chunk_downloaded = chunk_end - r
-                    bytes_downloaded += chunk_downloaded
-                    yield d[r:chunk_end]
 
         # Inject fault outside of the streamer considering execution flow and werkzeug wrappers
         try:

@@ -370,7 +370,7 @@ class TestTestbenchRetry(unittest.TestCase):
             _ = len(response.data)
         self.assertIn("connection reset by peer", ex.exception.msg)
 
-    def test_retry_test_return_error_after_bytes(self):
+    def test_retry_test_return_error_after_bytes_uploaded(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
         )
@@ -439,6 +439,42 @@ class TestTestbenchRetry(unittest.TestCase):
                 "x-retry-test-id": id,
             },
             data=chunk,
+        )
+        self.assertEqual(response.status_code, 504, msg=response.data)
+
+    def test_retry_test_return_error_after_bytes_downloaded(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(UPLOAD_QUANTUM)
+        response = self.client.put(
+            "/bucket-name/256kb.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a failure for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {"instructions": {"storage.objects.get": ["return-504-after-256K"]}}
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/256kb.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
         )
         self.assertEqual(response.status_code, 504, msg=response.data)
 
