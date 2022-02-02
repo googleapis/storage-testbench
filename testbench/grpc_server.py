@@ -17,6 +17,7 @@ from concurrent import futures
 import datetime
 import json
 import re
+from warnings import catch_warnings
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
@@ -171,9 +172,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context,
             preconditions=testbench.common.make_grpc_bucket_preconditions(request),
         )
-        request.update_mask.MergeMessage(
-            request.bucket, bucket.metadata, replace_repeated_field=False
-        )
+        # TODO(#270) - cleanup the manual steps
+        paths = set(request.update_mask.paths)
+        safe_paths = paths.copy()
+        safe_paths.discard("acl")
+        safe_paths.discard("default_object_acl")
+        safe_paths.discard("labels")
+        mask = field_mask_pb2.FieldMask()
+        mask.paths[:] = list(safe_paths)
+        mask.MergeMessage(request.bucket, bucket.metadata)
         # Manually replace the repeated fields.
         if "acl" in request.update_mask.paths:
             del bucket.metadata.acl[:]
@@ -403,9 +410,14 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             generation=request.object.generation,
             preconditions=testbench.common.make_grpc_preconditions(request),
         )
-        request.update_mask.MergeMessage(
-            request.object, blob.metadata, replace_repeated_field=False
-        )
+        # TODO(#270) - cleanup the manual steps
+        paths = set(request.update_mask.paths)
+        safe_paths = paths.copy()
+        safe_paths.discard("acl")
+        safe_paths.discard("metadata")
+        mask = field_mask_pb2.FieldMask()
+        mask.paths[:] = list(safe_paths)
+        mask.MergeMessage(request.object, blob.metadata)
         # Manually replace the repeated fields.
         if "acl" in request.update_mask.paths:
             del blob.metadata.acl[:]

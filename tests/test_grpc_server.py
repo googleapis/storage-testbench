@@ -393,22 +393,20 @@ class TestGrpc(unittest.TestCase):
         # Then change some properties, note that we set some attributes but not the
         # corresponding field mask, those should not change.
         context = unittest.mock.Mock()
-        response = self.grpc.UpdateBucket(
-            storage_pb2.UpdateBucketRequest(
-                bucket=storage_pb2.Bucket(
-                    name="projects/_/buckets/bucket-name",
-                    labels={"key": "value"},
-                    storage_class="NEARLINE",
-                    rpo="ASYNC_TURBO",
-                    acl=get.acl,
-                    default_object_acl=get.default_object_acl,
-                ),
-                update_mask=field_mask_pb2.FieldMask(
-                    paths=["labels", "rpo", "acl", "default_object_acl"]
-                ),
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/bucket-name",
+                labels={"key": "value"},
+                storage_class="NEARLINE",
+                rpo="ASYNC_TURBO",
+                acl=get.acl,
+                default_object_acl=get.default_object_acl,
             ),
-            context,
+            update_mask=field_mask_pb2.FieldMask(
+                paths=["labels", "rpo", "acl", "default_object_acl"]
+            ),
         )
+        response = self.grpc.UpdateBucket(request, context)
         self.assertEqual("projects/_/buckets/bucket-name", response.name)
         self.assertEqual({"key": "value"}, response.labels)
         self.assertEqual("STANDARD", response.storage_class)
@@ -823,30 +821,31 @@ class TestGrpc(unittest.TestCase):
     def test_update_object(self):
         media = b"How vexingly quick daft zebras jump!"
         request = testbench.common.FakeRequest(
-            args={"name": "object-name"}, data=media, headers={}, environ={}
+            args={"name": "object-name", "metadata": {"key: value"}},
+            data=media,
+            headers={},
+            environ={},
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         metageneration = blob.metadata.metageneration
         self.db.insert_object("bucket-name", blob, None)
         context = unittest.mock.Mock()
-        response = self.grpc.UpdateObject(
-            storage_pb2.UpdateObjectRequest(
-                object=storage_pb2.Object(
-                    bucket="projects/_/buckets/bucket-name",
-                    name="object-name",
-                    metadata={"key": "value"},
-                    content_type="text/plain",
-                    cache_control="fancy cache",
-                    acl=blob.metadata.acl,
-                ),
-                update_mask=field_mask_pb2.FieldMask(
-                    paths=["content_type", "metadata", "acl"]
-                ),
+        request = storage_pb2.UpdateObjectRequest(
+            object=storage_pb2.Object(
+                bucket="projects/_/buckets/bucket-name",
+                name="object-name",
+                metadata={"key": "value", "new-key": "new-value"},
+                content_type="text/plain",
+                cache_control="fancy cache",
+                acl=blob.metadata.acl,
             ),
-            context,
+            update_mask=field_mask_pb2.FieldMask(
+                paths=["content_type", "metadata", "acl"]
+            ),
         )
+        response = self.grpc.UpdateObject(request, context)
         self.assertEqual("text/plain", response.content_type)
-        self.assertEqual({"key": "value"}, response.metadata)
+        self.assertEqual({"key": "value", "new-key": "new-value"}, response.metadata)
         self.assertEqual("", response.cache_control)
         self.assertLess(metageneration, response.metageneration)
 
@@ -859,7 +858,7 @@ class TestGrpc(unittest.TestCase):
             context,
         )
         self.assertEqual("text/plain", get.content_type)
-        self.assertEqual({"key": "value"}, get.metadata)
+        self.assertEqual({"key": "value", "new-key": "new-value"}, get.metadata)
         self.assertEqual("", get.cache_control)
 
     def test_update_object_invalid(self):
