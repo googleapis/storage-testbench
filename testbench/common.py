@@ -671,6 +671,35 @@ def __get_streamer_response_fn(database, method, conn, test_id):
     return response_handler
 
 
+def __get_streamer_response_custom_error_fn(database, method, test_id, error_code, limit, chunk_size=4):
+    def response_handler(data):
+        def streamer():
+            d = _extract_data(data)
+            bytes_downloaded = 0
+            for r in range(0, len(d), chunk_size):
+                if bytes_downloaded >= limit:
+                    database.dequeue_next_instruction(test_id, method)
+                    raise testbench.error.RestException(
+                        f"Retry Test: Caused a {error_code}. Fault injected after downloading {bytes_downloaded} bytes",
+                        error_code
+                    )
+                else:
+                    chunk_end = min(r + chunk_size, len(d))
+                    chunk_downloaded = chunk_end - r
+                    bytes_downloaded += chunk_downloaded
+                    yield d[r:chunk_end]
+
+        # Inject fault outside of the streamer considering execution flow and werkzeug wrappers
+        try:
+            response = flask.Response(streamer())
+            data = response.data
+            return response
+        except testbench.error.RestException as e:
+            raise e
+
+    return response_handler
+
+
 def __get_default_response_fn(data):
     return data
 
@@ -752,6 +781,11 @@ def handle_retry_test_instruction(database, request, method):
                     grpc_code=StatusCode.INTERNAL,  # not really used
                     context=None,
                 )
+    if error_after_bytes_matches and method == "storage.objects.get":
+        items = list(error_after_bytes_matches.groups())
+        error_code = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return __get_streamer_response_custom_error_fn(database, method, test_id, error_code, after_bytes)
     retry_return_short_response = testbench.common.retry_return_short_response.match(
         next_instruction
     )
