@@ -447,14 +447,22 @@ class TestTestbenchRetry(unittest.TestCase):
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
         )
         self.assertEqual(response.status_code, 200)
-        # Use the XML API to inject an object with some data.
+        # Use the XML API to inject a larger object and smaller object.
         media = self._create_block(UPLOAD_QUANTUM)
-        response = self.client.put(
+        blob_larger = self.client.put(
             "/bucket-name/256kb.txt",
             content_type="text/plain",
             data=media,
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(blob_larger.status_code, 200)
+
+        media = self._create_block(128)
+        blob_smaller = self.client.put(
+            "/bucket-name/128.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(blob_smaller.status_code, 200)
 
         # Setup a failure for reading back the object.
         response = self.client.post(
@@ -471,6 +479,15 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertIn("id", create_rest)
         id = create_rest.get("id")
 
+        # The 128-bytes file is too small to trigger the "return-504-after-256K" fault injection.
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/128.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+        # The 256KB file triggers the "return-504-after-256K" fault injection.
         response = self.client.get(
             "/storage/v1/b/bucket-name/o/256kb.txt",
             query_string={"alt": "media"},

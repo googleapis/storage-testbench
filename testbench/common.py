@@ -671,7 +671,9 @@ def __get_streamer_response_fn(database, method, conn, test_id):
     return response_handler
 
 
-def __get_streamer_response_custom_error_fn(database, method, test_id, error_code, limit, chunk_size=4):
+def __get_streamer_response_custom_error_fn(
+    database, method, test_id, error_code, limit, chunk_size=4
+):
     def response_handler(data):
         def streamer():
             d = _extract_data(data)
@@ -686,7 +688,7 @@ def __get_streamer_response_custom_error_fn(database, method, test_id, error_cod
                     database.dequeue_next_instruction(test_id, method)
                     raise testbench.error.RestException(
                         f"Retry Test: Caused a {error_code}. Fault injected after downloading {bytes_downloaded} bytes",
-                        error_code
+                        error_code,
                     )
 
         # Inject fault outside of the streamer considering execution flow and werkzeug wrappers
@@ -786,7 +788,9 @@ def handle_retry_test_instruction(database, request, method):
         items = list(error_after_bytes_matches.groups())
         error_code = int(items[0])
         after_bytes = int(items[1]) * 1024
-        return __get_streamer_response_custom_error_fn(database, method, test_id, error_code, after_bytes)
+        return __get_streamer_response_custom_error_fn(
+            database, method, test_id, error_code, after_bytes
+        )
     retry_return_short_response = testbench.common.retry_return_short_response.match(
         next_instruction
     )
