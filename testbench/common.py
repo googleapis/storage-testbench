@@ -781,6 +781,7 @@ def handle_retry_test_instruction(database, request, method):
                     grpc_code=StatusCode.INTERNAL,  # not really used
                     context=None,
                 )
+    # TODO(cathyo@): introduce Retry Test API method "storage.objects.download" for large file downloads
     if error_after_bytes_matches and method == "storage.objects.get":
         items = list(error_after_bytes_matches.groups())
         error_code = int(items[0])

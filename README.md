@@ -242,7 +242,7 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | Failure Id              | Description
 | ----------------------- | ---
 | return-X                                  | Testbench will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
-| return-X-after-YK                         | Testbench will return X after YKiB of uploaded data
-| return-broken-stream-final-chunk-after-YB | Testbench will break connection on final chunk of a resumable upload after Y bytes.
+| return-X-after-YK                         | Testbench will return X after YKiB of uploaded or downloaded data
+| return-broken-stream-final-chunk-after-YB | Testbench will break connection on final chunk of a resumable upload after Y bytes
 | return-broken-stream                      | Testbench will fail after a few bytes
 | return-reset-connection                   | Testbench will fail with a reset connection
