@@ -370,6 +370,65 @@ class TestTestbenchRetry(unittest.TestCase):
             _ = len(response.data)
         self.assertIn("connection reset by peer", ex.exception.msg)
 
+    def test_retry_test_return_broken_stream_after_bytes(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+        # Use the XML API to inject a larger object and smaller object.
+        media = self._create_block(UPLOAD_QUANTUM)
+        blob_larger = self.client.put(
+            "/bucket-name/256k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(blob_larger.status_code, 200)
+
+        media = self._create_block(128)
+        blob_smaller = self.client.put(
+            "/bucket-name/128.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(blob_smaller.status_code, 200)
+
+        # Setup a failure for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["return-broken-stream-after-256K"]
+                    }
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        # The 128-bytes file is too small to trigger the "return-504-after-256K" fault injection.
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/128.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+        # The 256KiB file triggers the "return-broken-stream-after-256K" fault injection.
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/256k.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
+        with self.assertRaises(testbench.error.RestException) as ex:
+            _ = len(response.data)
+        self.assertIn("connection reset by peer", ex.exception.msg)
+
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
