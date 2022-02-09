@@ -736,7 +736,7 @@ def handle_retry_test_instruction(database, request, method):
             raise testbench.error.RestException(
                 "Injected 'connection reset by peer' fault", 500
             )
-        elif items[0] == "broken-stream" and method == "storage.objects.get":
+        elif items[0] == "broken-stream":
             conn = request.environ.get("gunicorn.socket", None)
             return __get_streamer_response_fn(database, method, conn, test_id)
     broken_stream_after_bytes = (
