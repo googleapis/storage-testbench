@@ -664,12 +664,12 @@ def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_s
                         conn.close()
                     # This exception is raised to abort the flow control. The
                     # connection has already been closed, causing the client to
-                    # receive a "connection reset by peer" (or a similar error).
+                    # receive a "broken stream" or "connection reset by peer" error.
                     # The exception is useful in unit tests (where there is no
                     # socket to close), and stops the testbench from trying to
                     # complete a request that we intentionally aborted.
                     raise testbench.error.RestException(
-                        "Injected 'connection reset by peer' fault", 500
+                        "Injected 'broken stream' fault", 500
                     )
 
         return flask.Response(streamer())
@@ -746,7 +746,9 @@ def handle_retry_test_instruction(database, request, method):
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
         conn = request.environ.get("gunicorn.socket", None)
-        return __get_streamer_response_fn(database, method, conn, test_id, after_bytes)
+        return __get_streamer_response_fn(
+            database, method, conn, test_id, limit=after_bytes
+        )
     error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
         next_instruction
     )

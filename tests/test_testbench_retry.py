@@ -368,7 +368,7 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         with self.assertRaises(testbench.error.RestException) as ex:
             _ = len(response.data)
-        self.assertIn("connection reset by peer", ex.exception.msg)
+        self.assertIn("broken stream", ex.exception.msg)
 
     def test_retry_test_return_broken_stream_after_bytes(self):
         response = self.client.post(
@@ -427,7 +427,7 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         with self.assertRaises(testbench.error.RestException) as ex:
             _ = len(response.data)
-        self.assertIn("connection reset by peer", ex.exception.msg)
+        self.assertIn("broken stream", ex.exception.msg)
 
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(
