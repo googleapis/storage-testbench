@@ -89,6 +89,7 @@ class TestGrpc(unittest.TestCase):
         response = self.grpc.CreateBucket(request, context)
         self.assertEqual(response.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(response.bucket_id, "test-bucket-name")
+        self.assertTrue(response.project.startswith("projects/"))
 
     def test_create_bucket_predefined_acls(self):
         acls = [

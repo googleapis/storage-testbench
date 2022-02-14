@@ -318,7 +318,7 @@ class Bucket:
             {
                 "name": lambda x: ("name", bucket_id),
                 "bucketId": lambda x: ("id", bucket_id),
-                "project": lambda x: ("projectNumber", x.replace("project/", "")),
+                "project": lambda x: ("projectNumber", x.replace("projects/", "")),
                 "createTime": lambda x: ("timeCreated", x),
                 "updateTime": lambda x: ("updated", x),
                 "iamConfig": lambda x: (
@@ -452,7 +452,7 @@ class Bucket:
             )
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
         metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
-        metadata.project = "project/" + testbench.acl.PROJECT_NUMBER
+        metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
         return (
             cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
             testbench.common.extract_projection(request, default_projection, context),
