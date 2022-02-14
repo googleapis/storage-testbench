@@ -19,7 +19,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="googleapis-storage-testbench",
-    version="0.15.0",
+    version="0.16.0",
     author="Google LLC",
     author_email="googleapis-packages@google.com",
     description="A testbench for Google Cloud Storage client libraries",
