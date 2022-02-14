@@ -43,6 +43,9 @@ class TestBucketGrpc(unittest.TestCase):
         self.assertEqual(bucket.metadata.storage_class, "REGIONAL")
         self.assertLess(0, bucket.metadata.metageneration)
 
+        rest = bucket.rest()
+        self.assertNotEqual(int(rest.get("projectNumber")), 0)
+
     def test_init_validates_names(self):
         request = storage_pb2.CreateBucketRequest(
             parent="projects/test-project",
