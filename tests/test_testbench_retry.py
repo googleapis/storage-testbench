@@ -74,6 +74,7 @@ class TestTestbenchRetry(unittest.TestCase):
                 "compose",
                 "copy",
                 "rewrite",
+                "download",
             ]
         }
         OBJECT_ACL_OPERATIONS = {
@@ -393,41 +394,38 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertEqual(blob_smaller.status_code, 200)
 
         # Setup a failure for reading back the object.
-        response = self.client.post(
-            "/retry_test",
-            data=json.dumps(
-                {
-                    "instructions": {
-                        "storage.objects.get": ["return-broken-stream-after-256K"]
-                    }
-                }
-            ),
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            response.headers.get("content-type").startswith("application/json")
-        )
-        create_rest = json.loads(response.data)
-        self.assertIn("id", create_rest)
-        id = create_rest.get("id")
+        for method in ["storage.objects.get", "storage.objects.download"]:
+            response = self.client.post(
+                "/retry_test",
+                data=json.dumps(
+                    {"instructions": {method: ["return-broken-stream-after-256K"]}}
+                ),
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(
+                response.headers.get("content-type").startswith("application/json")
+            )
+            create_rest = json.loads(response.data)
+            self.assertIn("id", create_rest)
+            id = create_rest.get("id")
 
-        # The 128-bytes file is too small to trigger the "return-504-after-256K" fault injection.
-        response = self.client.get(
-            "/storage/v1/b/bucket-name/o/128.txt",
-            query_string={"alt": "media"},
-            headers={"x-retry-test-id": id},
-        )
-        self.assertEqual(response.status_code, 200, msg=response.data)
+            # The 128-bytes file is too small to trigger the "return-504-after-256K" fault injection.
+            response = self.client.get(
+                "/storage/v1/b/bucket-name/o/128.txt",
+                query_string={"alt": "media"},
+                headers={"x-retry-test-id": id},
+            )
+            self.assertEqual(response.status_code, 200, msg=response.data)
 
-        # The 256KiB file triggers the "return-broken-stream-after-256K" fault injection.
-        response = self.client.get(
-            "/storage/v1/b/bucket-name/o/256k.txt",
-            query_string={"alt": "media"},
-            headers={"x-retry-test-id": id},
-        )
-        with self.assertRaises(testbench.error.RestException) as ex:
-            _ = len(response.data)
-        self.assertIn("broken stream", ex.exception.msg)
+            # The 256KiB file triggers the "return-broken-stream-after-256K" fault injection.
+            response = self.client.get(
+                "/storage/v1/b/bucket-name/o/256k.txt",
+                query_string={"alt": "media"},
+                headers={"x-retry-test-id": id},
+            )
+            with self.assertRaises(testbench.error.RestException) as ex:
+                _ = len(response.data)
+            self.assertIn("broken stream", ex.exception.msg)
 
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(
