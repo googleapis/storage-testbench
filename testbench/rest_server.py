@@ -541,6 +541,7 @@ def object_delete(bucket_name, object_name):
 
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
+@retry_test(method="storage.objects.download")
 def object_get(bucket_name, object_name):
     blob = db.get_object(
         bucket_name,
