@@ -742,7 +742,10 @@ def handle_retry_test_instruction(database, request, method):
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
-    if broken_stream_after_bytes and method in ["storage.objects.get", "storage.objects.download"]:
+    if broken_stream_after_bytes and method in [
+        "storage.objects.get",
+        "storage.objects.download",
+    ]:
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
         conn = request.environ.get("gunicorn.socket", None)
