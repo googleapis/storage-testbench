@@ -541,7 +541,6 @@ def object_delete(bucket_name, object_name):
 
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
-@retry_test(method="storage.objects.download")
 def object_get(bucket_name, object_name):
     blob = db.get_object(
         bucket_name,
@@ -863,6 +862,7 @@ download.register_error_handler(Exception, testbench.error.RestException.handler
 
 
 @download.route("/b/<bucket_name>/o/<path:object_name>")
+@retry_test(method="storage.objects.download")
 def download_object_get(bucket_name, object_name):
     return object_get(bucket_name, object_name)
 
