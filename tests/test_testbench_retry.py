@@ -394,7 +394,11 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertEqual(blob_smaller.status_code, 200)
 
         # Setup a failure for reading back the object.
-        for method in ["storage.objects.get", "storage.objects.download"]:
+        cases = {
+            "storage.objects.get": "/storage/v1/b/bucket-name/o/",
+            "storage.objects.download": "/download/storage/v1/b/bucket-name/o/",
+        }
+        for method, endpoint in cases.items():
             response = self.client.post(
                 "/retry_test",
                 data=json.dumps(
@@ -411,7 +415,7 @@ class TestTestbenchRetry(unittest.TestCase):
 
             # The 128-bytes file is too small to trigger the "return-504-after-256K" fault injection.
             response = self.client.get(
-                "/storage/v1/b/bucket-name/o/128.txt",
+                endpoint + "128.txt",
                 query_string={"alt": "media"},
                 headers={"x-retry-test-id": id},
             )
@@ -419,7 +423,7 @@ class TestTestbenchRetry(unittest.TestCase):
 
             # The 256KiB file triggers the "return-broken-stream-after-256K" fault injection.
             response = self.client.get(
-                "/storage/v1/b/bucket-name/o/256k.txt",
+                endpoint + "256k.txt",
                 query_string={"alt": "media"},
                 headers={"x-retry-test-id": id},
             )
