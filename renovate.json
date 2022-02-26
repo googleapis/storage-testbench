@@ -6,7 +6,7 @@
     {
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["python"],
-      "matchCurrentVersion": "3.9",
+      "matchCurrentVersion": "3.10",
       "schedule": ["before 12pm on Monday"]
     }
   ]
