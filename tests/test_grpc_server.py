@@ -363,20 +363,21 @@ class TestGrpc(unittest.TestCase):
 
     def test_test_iam_permissions(self):
         context = unittest.mock.Mock()
+        permissions = [
+            "storage.buckets.create",
+            "storage.objects.create",
+            "not-storage.thing.get",
+        ]
         response = self.grpc.TestIamPermissions(
             iam_policy_pb2.TestIamPermissionsRequest(
                 resource="projects/_/buckets/bucket-name",
-                permissions=[
-                    "storage.buckets.create",
-                    "storage.objects.create",
-                    "not-storage.thing.get",
-                ],
+                permissions=permissions,
             ),
             context,
         )
         self.assertEqual(
             set(response.permissions),
-            {"storage.buckets.create", "storage.objects.create"},
+            permissions,
         )
 
     def test_update_bucket(self):

@@ -135,9 +135,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def TestIamPermissions(self, request, context):
         # If the bucket does not exist this will return an error
         _ = self.db.get_bucket(request.resource, context)
-        # We do not implement IAM functionality, just return something moderately sensible:
+        # We do not implement IAM functionality, just echo the request permissions back:
         return iam_policy_pb2.TestIamPermissionsResponse(
-            permissions=[p for p in request.permissions if p.startswith("storage.")]
+            permissions=request.permissions
         )
 
     def UpdateBucket(self, request, context):
