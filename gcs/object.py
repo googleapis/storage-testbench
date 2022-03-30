@@ -453,7 +453,7 @@ class Object:
             def streamer():
                 yield media
 
-        elif instructions is not None and instructions.startswith(u"stall-always"):
+        elif instructions is not None and instructions.startswith("stall-always"):
 
             def streamer():
                 chunk_size = 16 * 1024
@@ -474,7 +474,7 @@ class Object:
                     yield response_payload[r:chunk_end]
 
         elif instructions is not None and instructions.startswith(
-            u"return-503-after-256K"
+            "return-503-after-256K"
         ):
             if begin == 0:
                 request_socket = request.environ.get("gunicorn.socket", None)
@@ -503,10 +503,10 @@ class Object:
                         chunk_end = min(r + chunk_size, len(response_payload))
                         yield response_payload[r:chunk_end]
 
-            elif instructions.endswith(u"/retry-1"):
+            elif instructions.endswith("/retry-1"):
                 print("## Return error for retry 1")
                 return flask.Response("Service Unavailable", status=503)
-            elif instructions.endswith(u"/retry-2"):
+            elif instructions.endswith("/retry-2"):
                 print("## Return error for retry 2")
                 return flask.Response("Service Unavailable", status=503)
             else:
