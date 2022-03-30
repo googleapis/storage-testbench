@@ -52,5 +52,8 @@ setuptools.setup(
         "scalpl==0.4.2",
         "crc32c==2.2",
         "gunicorn==20.1.0",
+        # Werkzeug == 2.1.0 does not work with httpbin
+        #    https://github.com/postmanlabs/httpbin/issues/673
+        "Werkzeug==2.0.3",
     ],
 )
