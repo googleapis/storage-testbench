@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install Black
-        run: pip install black==21.7b0
+        run: pip install black==22.3.0
       - name: Format Python Code
         run: git ls-files -z | grep -Ez -v '(pb2|pb2_grpc)\.py$' | grep -z '\.py$' | xargs -0 python3 -m black --quiet
       - name: Check Differences After Formatting
