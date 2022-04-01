@@ -47,13 +47,13 @@ setuptools.setup(
         "googleapis-common-protos==1.56.0",
         "protobuf==3.19.4",
         "flask==2.0.3",
-        "httpbin==0.7.0",
+        # Werkzeug == 2.1.0 does not work with httpbin
+        #    https://github.com/postmanlabs/httpbin/issues/673
+        # "httpbin==0.7.0",
         "requests-toolbelt==0.9.1",
         "scalpl==0.4.2",
         "crc32c==2.2",
         "gunicorn==20.1.0",
-        # Werkzeug == 2.1.0 does not work with httpbin
-        #    https://github.com/postmanlabs/httpbin/issues/673
-        "Werkzeug==2.0.3",
+        "Werkzeug==2.1.0",
     ],
 )

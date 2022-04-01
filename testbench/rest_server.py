@@ -14,7 +14,7 @@
 
 import argparse
 import datetime
-import httpbin
+import vendor.httpbin as httpbin
 import json
 import logging
 
