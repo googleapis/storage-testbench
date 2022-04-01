@@ -54,6 +54,6 @@ setuptools.setup(
         "gunicorn==20.1.0",
         # Werkzeug == 2.1.0 does not work with httpbin
         #    https://github.com/postmanlabs/httpbin/issues/673
-        "Werkzeug==2.0.3",
+        "Werkzeug==2.1.1",
     ],
 )
