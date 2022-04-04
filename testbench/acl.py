@@ -167,6 +167,7 @@ def extract_predefined_default_object_acl(request, context):
 
 # === COMPUTE PREDEFINED ACL === #
 
+
 def compute_predefined_bucket_acl(bucket_name, predefined_acl, context):
     if predefined_acl is None:
         return []
