@@ -85,7 +85,7 @@ class Bucket:
     def __preprocess_rest_pap(cls, pap):
         pap = pap.upper()
         if pap == "UNSPECIFIED" or pap == "INHERITED":
-            return "PUBLIC_ACCESS_PREVENTION_UNSPECIFIED"
+            return "INHERITED"
         return pap
 
     @classmethod
@@ -213,9 +213,6 @@ class Bucket:
 
     @classmethod
     def __postprocess_rest_pap(cls, pap):
-        # '..._unspecified' is the default enum values, and default values
-        # are not present in proto3
-        assert pap != "public_access_prevention_unspecified"
         return pap.lower()
 
     @classmethod
@@ -371,11 +368,7 @@ class Bucket:
     def __insert_predefined_default_object_acl(
         cls, metadata, predefined_default_object_acl, context
     ):
-        if (
-            predefined_default_object_acl == ""
-            or predefined_default_object_acl
-            == storage_pb2.PREDEFINED_OBJECT_ACL_UNSPECIFIED
-        ):
+        if predefined_default_object_acl is None or predefined_default_object_acl == "":
             return
         if metadata.iam_config.uniform_bucket_level_access.enabled:
             testbench.error.invalid(
@@ -436,11 +429,9 @@ class Bucket:
                 testbench.acl.extract_predefined_default_object_acl(request, context)
             )
             if (
-                predefined_default_object_acl
-                == storage_pb2.PREDEFINED_OBJECT_ACL_UNSPECIFIED
+                predefined_default_object_acl is None
+                or predefined_default_object_acl == ""
             ):
-                predefined_default_object_acl = storage_pb2.OBJECT_ACL_PROJECT_PRIVATE
-            elif predefined_default_object_acl == "":
                 predefined_default_object_acl = "projectPrivate"
             elif is_uniform:
                 testbench.error.invalid(
@@ -468,16 +459,13 @@ class Bucket:
         cls._init_defaults(metadata, context)
         metadata.bucket_id = request.bucket_id
         metadata.name = "projects/_/buckets/" + request.bucket_id
-        predefined_acl = (
-            request.predefined_acl
-            if request.predefined_acl != storage_pb2.PREDEFINED_BUCKET_ACL_UNSPECIFIED
-            else storage_pb2.BUCKET_ACL_PROJECT_PRIVATE
-        )
+        predefined_acl = "projectPrivate"
+        if request.predefined_acl is not None and request.predefined_acl != "":
+            predefined_acl = request.predefined_acl
         predefined_default_object_acl = (
             request.predefined_default_object_acl
-            if request.predefined_default_object_acl
-            != storage_pb2.PREDEFINED_OBJECT_ACL_UNSPECIFIED
-            else storage_pb2.OBJECT_ACL_PROJECT_PRIVATE
+            if request.predefined_default_object_acl != ""
+            else "projectPrivate"
         )
         cls.__insert_predefined_acl(metadata, predefined_acl, context)
         cls.__insert_predefined_default_object_acl(

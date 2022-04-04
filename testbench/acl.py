@@ -167,24 +167,14 @@ def extract_predefined_default_object_acl(request, context):
 
 # === COMPUTE PREDEFINED ACL === #
 
-predefined_bucket_acl_map = {
-    "authenticated_read": 1,
-    "private": 2,
-    "project_private": 3,
-    "public_read": 4,
-    "public_read_write": 5,
-}
-
 
 def compute_predefined_bucket_acl(bucket_name, predefined_acl, context):
-    if context is None:
-        predefined_acl = testbench.common.to_snake_case(predefined_acl)
-        predefined_acl = predefined_acl.replace("-", "_")
-        predefined_acl = predefined_bucket_acl_map.get(predefined_acl)
-        if predefined_acl is None:
-            return []
+    if predefined_acl is None:
+        return []
+    predefined_acl = testbench.common.to_snake_case(predefined_acl)
+    predefined_acl = predefined_acl.replace("-", "_")
     acls = []
-    if predefined_acl == 1:
+    if predefined_acl == "authenticated_read":
         acls.append(
             create_bucket_acl(
                 bucket_name, get_project_entity("owners", context), "OWNER", context
@@ -193,13 +183,13 @@ def compute_predefined_bucket_acl(bucket_name, predefined_acl, context):
         acls.append(
             create_bucket_acl(bucket_name, "allAuthenticatedUsers", "READER", context)
         )
-    elif predefined_acl == 2:
+    elif predefined_acl == "private":
         acls.append(
             create_bucket_acl(
                 bucket_name, get_project_entity("owners", context), "OWNER", context
             )
         )
-    elif predefined_acl == 3:
+    elif predefined_acl == "project_private":
         acls.append(
             create_bucket_acl(
                 bucket_name, get_project_entity("owners", context), "OWNER", context
@@ -215,14 +205,14 @@ def compute_predefined_bucket_acl(bucket_name, predefined_acl, context):
                 bucket_name, get_project_entity("viewers", context), "READER", context
             )
         )
-    elif predefined_acl == 4:
+    elif predefined_acl == "public_read":
         acls.append(
             create_bucket_acl(
                 bucket_name, get_project_entity("owners", context), "OWNER", context
             )
         )
         acls.append(create_bucket_acl(bucket_name, "allUsers", "READER", context))
-    elif predefined_acl == 5:
+    elif predefined_acl == "public_read_write":
         acls.append(
             create_bucket_acl(
                 bucket_name, get_project_entity("owners", context), "OWNER", context
@@ -232,25 +222,13 @@ def compute_predefined_bucket_acl(bucket_name, predefined_acl, context):
     return acls
 
 
-predefined_object_acl_map = {
-    "authenticated_read": 1,
-    "bucket_owner_full_control": 2,
-    "bucket_owner_read": 3,
-    "private": 4,
-    "project_private": 5,
-    "public_read": 6,
-}
-
-
 def __compute_predefined_object_acl(bucket_name, predefined_acl, acl_factory, context):
-    if context is None:
-        predefined_acl = testbench.common.to_snake_case(predefined_acl)
-        predefined_acl = predefined_acl.replace("-", "_")
-        predefined_acl = predefined_object_acl_map.get(predefined_acl)
-        if predefined_acl is None:
-            return []
+    if predefined_acl is None:
+        return []
+    predefined_acl = testbench.common.to_snake_case(predefined_acl)
+    predefined_acl = predefined_acl.replace("-", "_")
     acls = []
-    if predefined_acl == 1:
+    if predefined_acl == "authenticated_read":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context
@@ -259,7 +237,7 @@ def __compute_predefined_object_acl(bucket_name, predefined_acl, acl_factory, co
         acls.append(
             acl_factory(bucket_name, "allAuthenticatedUsers", "READER", context)
         )
-    elif predefined_acl == 2:
+    elif predefined_acl == "bucket_owner_full_control":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context
@@ -270,7 +248,7 @@ def __compute_predefined_object_acl(bucket_name, predefined_acl, acl_factory, co
                 bucket_name, get_project_entity("owners", context), "OWNER", context
             )
         )
-    elif predefined_acl == 3:
+    elif predefined_acl == "bucket_owner_read":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context
@@ -281,13 +259,13 @@ def __compute_predefined_object_acl(bucket_name, predefined_acl, acl_factory, co
                 bucket_name, get_project_entity("owners", context), "READER", context
             )
         )
-    elif predefined_acl == 4:
+    elif predefined_acl == "private":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context
             )
         )
-    elif predefined_acl == 5:
+    elif predefined_acl == "project_private":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context
@@ -308,7 +286,7 @@ def __compute_predefined_object_acl(bucket_name, predefined_acl, acl_factory, co
                 bucket_name, get_project_entity("viewers", context), "READER", context
             )
         )
-    elif predefined_acl == 6:
+    elif predefined_acl == "public_read":
         acls.append(
             acl_factory(
                 bucket_name, get_object_entity("OWNER", context), "OWNER", context

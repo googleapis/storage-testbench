@@ -93,12 +93,12 @@ class TestGrpc(unittest.TestCase):
 
     def test_create_bucket_predefined_acls(self):
         acls = [
-            storage_pb2.BUCKET_ACL_AUTHENTICATED_READ,
-            storage_pb2.BUCKET_ACL_PROJECT_PRIVATE,
-            storage_pb2.BUCKET_ACL_PRIVATE,
-            storage_pb2.BUCKET_ACL_PUBLIC_READ,
-            storage_pb2.BUCKET_ACL_PUBLIC_READ_WRITE,
-            storage_pb2.PREDEFINED_BUCKET_ACL_UNSPECIFIED,
+            "authenticatedRead",
+            "projectPrivate",
+            "private",
+            "publicRead",
+            "publicReadWrite",
+            "",
         ]
         for i, acl in enumerate(acls):
             id = "test-bucket-name-%d" % i
@@ -115,13 +115,13 @@ class TestGrpc(unittest.TestCase):
 
     def test_create_bucket_predefined_default_object_acls(self):
         acls = [
-            storage_pb2.OBJECT_ACL_AUTHENTICATED_READ,
-            storage_pb2.OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL,
-            storage_pb2.OBJECT_ACL_BUCKET_OWNER_READ,
-            storage_pb2.OBJECT_ACL_PROJECT_PRIVATE,
-            storage_pb2.OBJECT_ACL_PRIVATE,
-            storage_pb2.OBJECT_ACL_PUBLIC_READ,
-            storage_pb2.PREDEFINED_OBJECT_ACL_UNSPECIFIED,
+            "authenticatedRead",
+            "bucketOwnerFullControl",
+            "bucketOwnerRead",
+            "projectPrivate",
+            "private",
+            "publicRead",
+            "",
         ]
         for i, acl in enumerate(acls):
             id = "test-bucket-name-%d" % i
