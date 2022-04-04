@@ -236,7 +236,6 @@ class TestBucket(unittest.TestCase):
             bucket_rest = bucket.rest()
             self.assertEqual("storage#bucket", bucket_rest.get("kind"))
             self.assertEqual("test-bucket-name", bucket_rest.get("name"))
-            # The `publicAccessPrevention` enum maps to "not set" in the underlying protos.
             self.assertEqual(
                 {"uniformBucketLevelAccess": {}, "publicAccessPrevention": "inherited"},
                 bucket_rest.get("iamConfiguration"),
@@ -514,19 +513,13 @@ class TestBucket(unittest.TestCase):
             data=json.dumps(
                 {
                     "name": "bucket",
-                    "location": "US",
+                    "location": "US-EAST1+US-WEST1",
                     "storageClass": "STANDARD",
-                    "customPlacementConfig": {
-                        "dataLocations": ["US-EAST1", "US-WEST1"]
-                    },
                 }
             ),
         )
         bucket, _ = gcs.bucket.Bucket.init(request, None)
-        self.assertEqual(
-            bucket.metadata.custom_placement_config.data_locations,
-            ["US-EAST1", "US-WEST1"],
-        )
+        self.assertEqual(bucket.metadata.location, "US-EAST1+US-WEST1")
 
 
 if __name__ == "__main__":

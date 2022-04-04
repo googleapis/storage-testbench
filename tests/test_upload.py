@@ -380,7 +380,7 @@ class TestHolder(unittest.TestCase):
         bucket, _ = gcs.bucket.Bucket.init(request, None)
         spec = storage_pb2.WriteObjectSpec(
             resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
-            predefined_acl=storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE,
+            predefined_acl="projectPrivate",
             if_generation_not_match=1,
             if_metageneration_match=2,
             if_metageneration_not_match=3,
@@ -400,9 +400,7 @@ class TestHolder(unittest.TestCase):
             storage_pb2.Object(name="object", bucket="projects/_/buckets/bucket-name"),
         )
         predefined_acl = testbench.acl.extract_predefined_acl(upload.request, False, "")
-        self.assertEqual(
-            predefined_acl, storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
-        )
+        self.assertEqual(predefined_acl, "projectPrivate")
         self.assertTrue(hasattr(upload, "preconditions"))
         self.assertEqual(len(upload.preconditions), 3)
 

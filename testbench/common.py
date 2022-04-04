@@ -106,16 +106,6 @@ class FakeRequest(types.SimpleNamespace):
                 args[field_json] = headers[field_xml]
         return args
 
-    _PREDEFINED_ACL_MAP = {
-        storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED: "",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_AUTHENTICATED_READ: "authenticatedREad",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_BUCKET_OWNER_FULL_CONTROL: "bucketOwnerFullControl",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_BUCKET_OWNER_READ: "bucketOwnerRead",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PRIVATE: "private",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE: "projectPrivate",
-        storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PUBLIC_READ: "publicRead",
-    }
-
     @classmethod
     def init_protobuf(cls, request, context):
         assert context is not None
@@ -142,9 +132,7 @@ class FakeRequest(types.SimpleNamespace):
             self.generation = 0
 
         if hasattr(request, "predefined_acl"):
-            self.args["predefinedAcl"] = FakeRequest._PREDEFINED_ACL_MAP[
-                request.predefined_acl
-            ]
+            self.args["predefinedAcl"] = request.predefined_acl
             self.predefined_acl = request.predefined_acl
         else:
             self.predefined_acl = None

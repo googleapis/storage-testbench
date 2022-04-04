@@ -91,7 +91,7 @@ class TestCommonUtils(unittest.TestCase):
         protobuf_request = storage_pb2.StartResumableWriteRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
-                predefined_acl=storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE,
+                predefined_acl="projectPrivate",
                 if_generation_match=1,
                 if_generation_not_match=2,
                 if_metageneration_match=3,
@@ -139,7 +139,7 @@ class TestCommonUtils(unittest.TestCase):
         protobuf_request = storage_pb2.WriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
-                predefined_acl=storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE,
+                predefined_acl="projectPrivate",
                 if_generation_match=1,
                 if_generation_not_match=2,
                 if_metageneration_match=3,

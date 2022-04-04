@@ -56,11 +56,7 @@ class Object:
 
     @classmethod
     def __insert_predefined_acl(cls, metadata, bucket, predefined_acl, context):
-        if (
-            predefined_acl == ""
-            or predefined_acl
-            == storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
-        ):
+        if predefined_acl == "" or predefined_acl is None:
             return
         if bucket.iam_config.uniform_bucket_level_access.enabled:
             testbench.error.invalid(
@@ -176,14 +172,7 @@ class Object:
             predefined_acl = testbench.acl.extract_predefined_acl(
                 request, is_destination, context
             )
-            if (
-                predefined_acl
-                == storage_pb2.PredefinedObjectAcl.PREDEFINED_OBJECT_ACL_UNSPECIFIED
-            ):
-                predefined_acl = (
-                    storage_pb2.PredefinedObjectAcl.OBJECT_ACL_PROJECT_PRIVATE
-                )
-            elif predefined_acl == "":
+            if predefined_acl is None or predefined_acl == "":
                 predefined_acl = "projectPrivate"
             elif is_uniform:
                 testbench.error.invalid(

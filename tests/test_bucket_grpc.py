@@ -97,17 +97,14 @@ class TestBucketGrpc(unittest.TestCase):
             )
 
     def test_init_grpc_pap(self):
-        cases = {
-            "inherited": storage_pb2.Bucket.IamConfig.INHERITED,
-            "enforced": storage_pb2.Bucket.IamConfig.ENFORCED,
-        }
-        for rest_value, grpc_value in cases.items():
+        cases = ["inherited", "enforced"]
+        for value in cases:
             request = storage_pb2.CreateBucketRequest(
                 parent="projects/test-project",
                 bucket_id="test-bucket-name",
                 bucket=storage_pb2.Bucket(
                     iam_config=storage_pb2.Bucket.IamConfig(
-                        public_access_prevention=grpc_value
+                        public_access_prevention=value
                     )
                 ),
             )
@@ -117,7 +114,7 @@ class TestBucketGrpc(unittest.TestCase):
             self.assertEqual("storage#bucket", bucket_rest.get("kind"))
             self.assertEqual("test-bucket-name", bucket_rest.get("name"))
             self.assertEqual(
-                {"publicAccessPrevention": rest_value},
+                {"publicAccessPrevention": value},
                 bucket_rest.get("iamConfiguration"),
             )
 
