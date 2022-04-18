@@ -103,7 +103,7 @@ class Database:
                 testbench.error.invalid("Project id %s" % project_id, context)
             if not prefix:
                 return self._buckets.values()
-            
+
             buckets = []
             for bucket in self._buckets.values():
                 name = bucket.metadata.name

@@ -94,7 +94,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 request.read_mask.MergeMessage(bucket, b)
                 return b
 
-        buckets = [filter(b.metadata) for b in self.db.list_bucket(project, prefix, context)]
+        buckets = [
+            filter(b.metadata) for b in self.db.list_bucket(project, prefix, context)
+        ]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
 
     def LockBucketRetentionPolicy(self, request, context):

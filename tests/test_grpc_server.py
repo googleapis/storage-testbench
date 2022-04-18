@@ -240,7 +240,8 @@ class TestGrpc(unittest.TestCase):
             self.assertEqual(response.bucket_id, id)
         context = unittest.mock.Mock()
         response = self.grpc.ListBuckets(
-            storage_pb2.ListBucketsRequest(parent="projects/test-project", prefix="a-"), context
+            storage_pb2.ListBucketsRequest(parent="projects/test-project", prefix="a-"),
+            context,
         )
         context.assert_not_called()
         want = [ids[0], ids[2]]

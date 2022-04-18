@@ -48,7 +48,9 @@ class TestDatabaseBucket(unittest.TestCase):
         list_result = database.list_bucket("test-project-id", "", None)
         names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
-        list_result = database.list_bucket("test-project-id", "nonexistent-prefix", None)
+        list_result = database.list_bucket(
+            "test-project-id", "nonexistent-prefix", None
+        )
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
         database.delete_bucket("bucket-name", None)
