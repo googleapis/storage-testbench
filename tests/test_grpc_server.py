@@ -46,13 +46,13 @@ class TestGrpc(unittest.TestCase):
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database = testbench.database.Database.init()
         server = testbench.grpc_server.StorageServicer(database)
-        names = {b.metadata.name for b in database.list_bucket("", None)}
+        names = {b.metadata.name for b in database.list_bucket("", "", None)}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database = testbench.database.Database.init()
         server = testbench.grpc_server.StorageServicer(database)
-        names = {b.metadata.name for b in database.list_bucket("", None)}
+        names = {b.metadata.name for b in database.list_bucket("", "", None)}
         self.assertIn("projects/_/buckets/test-bucket-1", names)
 
     def test_delete_bucket(self):
@@ -223,6 +223,34 @@ class TestGrpc(unittest.TestCase):
         for b in response.buckets:
             self.assertTrue(b.HasField("owner"), msg=b)
             self.assertNotEqual(len(b.acl), 0, msg=b)
+
+    def test_list_buckets_prefix(self):
+        ids = ["a-bucket-3", "b-bucket-2", "a-bucket-1"]
+        for id in ids:
+            context = unittest.mock.Mock()
+            response = self.grpc.CreateBucket(
+                storage_pb2.CreateBucketRequest(
+                    parent="projects/test-project",
+                    bucket_id=id,
+                    bucket=storage_pb2.Bucket(),
+                ),
+                context,
+            )
+            context.abort.assert_not_called()
+            self.assertEqual(response.bucket_id, id)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListBuckets(
+            storage_pb2.ListBucketsRequest(parent="projects/test-project", prefix="a-"), context
+        )
+        context.assert_not_called()
+        want = [ids[0], ids[2]]
+        expected = {("projects/_/buckets/" + id) for id in want}
+        actual = {b.name for b in response.buckets}
+        self.assertEqual(actual, actual | expected)
+        for b in response.buckets:
+            self.assertFalse(b.HasField("owner"), msg=b)
+            self.assertEqual(len(b.acl), 0, msg=b)
+            self.assertEqual(len(b.default_object_acl), 0, msg=b)
 
     def test_list_buckets_failure(self):
         context = unittest.mock.Mock()

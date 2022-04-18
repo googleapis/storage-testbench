@@ -66,6 +66,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 "invalid format for parent=%s" % request.parent, context
             )
         project = request.parent[len("projects/") :]
+        prefix = request.prefix
+        if prefix:
+            prefix = "projects/_/buckets/" + prefix
+
         if len(request.read_mask.paths) == 0:
             # By default we need to filter out `acl`, `default_object_acl`, and `owner`
             def filter(bucket):
@@ -90,7 +94,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 request.read_mask.MergeMessage(bucket, b)
                 return b
 
-        buckets = [filter(b.metadata) for b in self.db.list_bucket(project, context)]
+        buckets = [filter(b.metadata) for b in self.db.list_bucket(project, prefix, context)]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
 
     def LockBucketRetentionPolicy(self, request, context):

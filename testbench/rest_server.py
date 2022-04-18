@@ -190,9 +190,10 @@ def bucket_list():
     project = flask.request.args.get("project")
     projection = flask.request.args.get("projection", "noAcl")
     fields = flask.request.args.get("fields", None)
+    prefix = flask.request.args.get("prefix", "")
     response = {
         "kind": "storage#buckets",
-        "items": [bucket.rest() for bucket in db.list_bucket(project, None)],
+        "items": [bucket.rest() for bucket in db.list_bucket(project, prefix, None)],
     }
     return testbench.common.filter_response_rest(response, projection, fields)
 
