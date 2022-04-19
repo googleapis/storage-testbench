@@ -97,11 +97,20 @@ class Database:
             self._objects[bucket.metadata.name] = {}
             self._live_generations[bucket.metadata.name] = {}
 
-    def list_bucket(self, project_id, context):
+    def list_bucket(self, project_id, prefix, context):
         with self._resources_lock:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
-            return self._buckets.values()
+            if not prefix:
+                return self._buckets.values()
+
+            buckets = []
+            for bucket in self._buckets.values():
+                name = bucket.metadata.name
+                if name.find(prefix) == 0:
+                    buckets.append(bucket)
+
+            return buckets
 
     def delete_bucket(self, bucket_name, context, preconditions=[]):
         with self._resources_lock:

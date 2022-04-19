@@ -45,11 +45,16 @@ class TestDatabaseBucket(unittest.TestCase):
 
         get_result = database.get_bucket("bucket-name", None)
         self.assertEqual(bucket.metadata, get_result.metadata)
-        list_result = database.list_bucket("test-project-id", None)
+        list_result = database.list_bucket("test-project-id", "", None)
         names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
+        list_result = database.list_bucket(
+            "test-project-id", "nonexistent-prefix", None
+        )
+        names = {b.metadata.name for b in list_result}
+        self.assertEqual(names, set())
         database.delete_bucket("bucket-name", None)
-        list_result = database.list_bucket("test-project-id", None)
+        list_result = database.list_bucket("test-project-id", "", None)
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
@@ -91,7 +96,7 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({}),
             )
-            database.list_bucket("invalid-project-id-", None)
+            database.list_bucket("invalid-project-id-", "", None)
         self.assertEqual(rest.exception.code, 400)
 
     def test_delete_not_empty(self):
@@ -123,7 +128,7 @@ class TestDatabaseBucket(unittest.TestCase):
         )
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database.insert_test_bucket()
-        names = {b.metadata.name for b in database.list_bucket("", None)}
+        names = {b.metadata.name for b in database.list_bucket("", "", None)}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
