@@ -67,8 +67,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
         project = request.parent[len("projects/") :]
         prefix = request.prefix
-        if prefix:
-            prefix = "projects/_/buckets/" + prefix
 
         if len(request.read_mask.paths) == 0:
             # By default we need to filter out `acl`, `default_object_acl`, and `owner`

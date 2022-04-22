@@ -104,6 +104,7 @@ class Database:
             if not prefix:
                 return self._buckets.values()
 
+            prefix = "projects/_/buckets/" + prefix
             buckets = []
             for bucket in self._buckets.values():
                 name = bucket.metadata.name
