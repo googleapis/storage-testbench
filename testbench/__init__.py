@@ -18,7 +18,6 @@ from . import (
     common,
     csek,
     database,
-    handle_gzip,
     grpc_server,
     rest_server,
 )
