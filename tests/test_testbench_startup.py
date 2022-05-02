@@ -121,7 +121,7 @@ class TestTestbenchStartup(unittest.TestCase):
         while not started and time.time() - start < 120:
             line = self.plain.stderr.readline()
             if "Running on " in line:
-                m = re.compile("Running on .*:([0-9]+)/ ").search(line)
+                m = re.compile("Running on .*:([0-9]+)").search(line)
                 if m is not None:
                     started = True
                     port = m[1]
