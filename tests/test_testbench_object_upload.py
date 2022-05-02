@@ -464,15 +464,16 @@ class TestTestbenchObjectUpload(unittest.TestCase):
         query_rest.pop("owner")
         self.assertEqual(insert_rest, query_rest)
 
-    def test_upload_validate_upload_type(self):
+    def test_upload_empty_upload_type(self):
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"name": "zebra"},
             content_type="text/plain",
             data="",
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
 
+    def test_upload_validate_upload_type(self):
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"name": "zebra", "uploadType": "invalid"},
