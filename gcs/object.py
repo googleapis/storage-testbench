@@ -16,6 +16,7 @@
 
 import base64
 import datetime
+import gzip
 import hashlib
 import json
 import re
@@ -196,13 +197,15 @@ class Object:
     @classmethod
     def init_media(cls, request, bucket):
         object_name = request.args.get("name", None)
-        media = testbench.common.extract_media(request)
         if object_name is None:
             testbench.error.missing("name", None)
+        media = testbench.common.extract_media(request)
         metadata = {
             "bucket": testbench.common.bucket_name_from_proto(bucket.name),
             "name": object_name,
             "metadata": {"x_emulator_upload": "simple"},
+            "contentEncoding": request.args.get("contentEncoding", None),
+            "kmsKeyName": request.args.get("kmsKeyName", None),
         }
         return cls.init_dict(request, metadata, media, bucket, False)
 
@@ -385,11 +388,21 @@ class Object:
             hashes.append("md5=%s" % testbench.common.rest_md5_from_proto(cs.md5_hash))
         return ",".join(hashes) if len(hashes) != 0 else None
 
-    def rest_media(self, request, delay=time.sleep):
+    def _decompress_on_download(self, request):
+        """Returns True if a request requires decompressive transcoding."""
+        if self.metadata.content_encoding != "gzip":
+            return False
+        # If `gzip` appears in the `Accept-Encoding` header then we disable
+        # decompressive transcoding
+        return not ("gzip" in request.headers.get("accept-encoding", ""))
+
+    def _download_range(self, request, response_payload):
         range_header = request.headers.get("range")
-        response_payload = self.media
+        length = len(response_payload)
+        if range_header is None or self._decompress_on_download(request):
+            return 0, length, length, response_payload
         begin = 0
-        end = len(response_payload)
+        end = length
         if range_header is not None:
             m = re.match("bytes=([0-9]+)-([0-9]+)", range_header)
             if m:
@@ -404,12 +417,27 @@ class Object:
             if m:
                 last = int(m.group(1))
                 response_payload = response_payload[-last:]
+        return begin, end, length, response_payload
 
-        streamer, length, headers = None, len(response_payload), {}
-        content_range = "bytes %d-%d/%d" % (begin, end - 1, len(self.media))
+    def rest_media(self, request, delay=time.sleep):
+        response_payload = (
+            gzip.decompress(self.media)
+            if self._decompress_on_download(request)
+            else self.media
+        )
+        begin, end, length, response_payload = self._download_range(
+            request, response_payload
+        )
+        headers = {}
+        content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
 
         instructions = testbench.common.extract_instruction(request, None)
-        if instructions == "return-broken-stream":
+        if instructions is None:
+
+            def streamer():
+                yield response_payload
+
+        elif instructions == "return-broken-stream":
             request_socket = request.environ.get("gunicorn.socket", None)
 
             def streamer():
@@ -442,7 +470,7 @@ class Object:
             def streamer():
                 yield media
 
-        elif instructions is not None and instructions.startswith("stall-always"):
+        elif instructions.startswith("stall-always"):
 
             def streamer():
                 chunk_size = 16 * 1024
@@ -462,9 +490,9 @@ class Object:
                         time.sleep(10)
                     yield response_payload[r:chunk_end]
 
-        elif instructions is not None and instructions.startswith(
+        elif instructions.startswith(
             "return-503-after-256K"
-        ):
+        ) or instructions.startswith("break-after-256K"):
             if begin == 0:
                 request_socket = request.environ.get("gunicorn.socket", None)
 
@@ -507,6 +535,8 @@ class Object:
                 yield response_payload
 
         headers["Content-Range"] = content_range
+        if self._decompress_on_download(request):
+            headers["x-guploader-response-body-transformations"] = "gunzipped"
         headers["x-goog-hash"] = self.x_goog_hash_header()
         headers["x-goog-generation"] = self.metadata.generation
         headers["x-goog-metageneration"] = self.metadata.metageneration

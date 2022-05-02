@@ -86,7 +86,10 @@ def xml_get_object(bucket_name, object_name):
     )
     response = blob.rest_media(fake_request)
     response.headers["x-goog-stored-content-length"] = len(blob.media)
-    response.headers["x-goog-stored-content-encoding"] = "identity"
+    encoding = blob.metadata.content_encoding
+    response.headers["x-goog-stored-content-encoding"] = (
+        "identity" if encoding is None or encoding == "" else encoding
+    )
     return response
 
 
@@ -1041,18 +1044,16 @@ def delete_resumable_upload(bucket_name):
 server = flask.Flask(__name__)
 server.debug = False
 server.register_error_handler(Exception, testbench.error.RestException.handler)
-server.wsgi_app = testbench.handle_gzip.HandleGzipMiddleware(
-    DispatcherMiddleware(
-        root,
-        {
-            "/httpbin": httpbin.app,
-            GCS_HANDLER_PATH: gcs,
-            DOWNLOAD_HANDLER_PATH: download,
-            UPLOAD_HANDLER_PATH: upload,
-            PROJECTS_HANDLER_PATH: projects_app,
-            IAM_HANDLER_PATH: iam_app,
-        },
-    )
+server.wsgi_app = DispatcherMiddleware(
+    root,
+    {
+        "/httpbin": httpbin.app,
+        GCS_HANDLER_PATH: gcs,
+        DOWNLOAD_HANDLER_PATH: download,
+        UPLOAD_HANDLER_PATH: upload,
+        PROJECTS_HANDLER_PATH: projects_app,
+        IAM_HANDLER_PATH: iam_app,
+    },
 )
 
 httpbin.app.register_error_handler(Exception, testbench.error.RestException.handler)

@@ -79,15 +79,21 @@ class FakeRequest(types.SimpleNamespace):
         "if_metageneration_not_match": "ifMetagenerationNotMatch",
     }
 
+    _COMMON_HEADERS = {
+        "range",
+        "accept-encoding",
+    }
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     @classmethod
     def init_xml(cls, request):
+        # Copy any common headers or starting with `x-goog-`
         headers = {
             key.lower(): value
             for key, value in request.headers.items()
-            if key.lower().startswith("x-goog-") or key.lower() == "range"
+            if key.lower().startswith("x-goog-") or key.lower() in cls._COMMON_HEADERS
         }
         args = request.args.to_dict()
         args.update(cls.xml_headers_to_json_args(headers))

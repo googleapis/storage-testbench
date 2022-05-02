@@ -19,21 +19,24 @@
 import json
 
 
+def _format_object_metadata_part(metadata):
+    return "\r\n".join(
+        [
+            "Content-Type: application/json; charset=UTF-8",
+            "",
+            json.dumps(metadata),
+            "",
+        ]
+    )
+
+
 def format_multipart_upload(metadata, media, content_type="application/octet-stream"):
     boundary = "test_separator_deadbeef"
     payload = (
         ("--" + boundary + "\r\n").join(
             [
                 "",
-                # object metadata "part"
-                "\r\n".join(
-                    [
-                        "Content-Type: application/json; charset=UTF-8",
-                        "",
-                        json.dumps(metadata),
-                        "",
-                    ]
-                ),
+                _format_object_metadata_part(metadata),
                 # object media "part"
                 "\r\n".join(
                     [
@@ -49,5 +52,35 @@ def format_multipart_upload(metadata, media, content_type="application/octet-str
         + "--"
         + boundary
         + "--\r\n"
+    )
+    return boundary, payload
+
+
+def format_multipart_upload_bytes(
+    metadata, media, content_type="application/octet-stream"
+):
+    boundary = "test_separator_deadbeef"
+    full_separator = b"--" + boundary.encode("utf-8") + b"\r\n"
+    payload = (
+        full_separator.join(
+            [
+                b"",
+                # object metadata "part"
+                _format_object_metadata_part(metadata).encode("utf-8"),
+                # object media "part"
+                b"\r\n".join(
+                    [
+                        b"Content-Type: " + content_type.encode("utf-8"),
+                        b"Content-Length: %d" % len(media),
+                        b"",
+                        media,
+                        b"",
+                    ]
+                ),
+            ]
+        )
+        + b"--"
+        + boundary.encode("utf-8")
+        + b"--\r\n"
     )
     return boundary, payload
