@@ -879,7 +879,7 @@ upload.register_error_handler(Exception, testbench.error.RestException.handler)
 def object_insert(bucket_name):
     db.insert_test_bucket()
     bucket = db.get_bucket(bucket_name, None).metadata
-    upload_type = flask.request.args.get("uploadType")
+    upload_type = flask.request.args.get("uploadType", "resumable")
     if upload_type is None:
         testbench.error.missing("uploadType", None)
     elif upload_type not in {"multipart", "media", "resumable"}:
@@ -889,6 +889,7 @@ def object_insert(bucket_name):
         db.insert_upload(upload)
         response = flask.make_response("")
         response.headers["Location"] = upload.location
+        response.headers["X-Goog-Upload-URL"] = upload.location
         return response
     blob, projection = None, ""
     if upload_type == "media":
