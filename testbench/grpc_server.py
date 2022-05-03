@@ -190,7 +190,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             del bucket.metadata.acl[:]
             bucket.metadata.acl.extend(request.bucket.acl)
         if "default_object_acl" in request.update_mask.paths:
-            bucket.metadata.default_object_acl[:]
+            del bucket.metadata.default_object_acl[:]
             bucket.metadata.default_object_acl.extend(request.bucket.default_object_acl)
         if "labels" in request.update_mask.paths:
             bucket.metadata.labels.clear()
