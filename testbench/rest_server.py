@@ -14,7 +14,6 @@
 
 import argparse
 import datetime
-import httpbin
 import json
 import logging
 
@@ -26,7 +25,7 @@ from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from google.storage.v2 import storage_pb2
 import gcs as gcs_type
 import testbench
-from testbench.servers import iam_rest_server, projects_rest_server
+from testbench.servers import iam_rest_server, projects_rest_server, echo
 
 
 db = testbench.database.Database.init()
@@ -1047,7 +1046,7 @@ server.register_error_handler(Exception, testbench.error.RestException.handler)
 server.wsgi_app = DispatcherMiddleware(
     root,
     {
-        "/httpbin": httpbin.app,
+        "/httpbin": echo.app(),
         GCS_HANDLER_PATH: gcs,
         DOWNLOAD_HANDLER_PATH: download,
         UPLOAD_HANDLER_PATH: upload,
@@ -1055,8 +1054,6 @@ server.wsgi_app = DispatcherMiddleware(
         IAM_HANDLER_PATH: iam_app,
     },
 )
-
-httpbin.app.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
 def _run():
