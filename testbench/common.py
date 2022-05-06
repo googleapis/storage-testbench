@@ -641,6 +641,12 @@ def _extract_data(data):
     return data
 
 
+def _extract_headers(response):
+    if isinstance(response, flask.Response):
+        return response.headers
+    return dict()
+
+
 def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_size=4):
     def response_handler(data):
         def streamer():
@@ -666,7 +672,7 @@ def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_s
                         "Injected 'broken stream' fault", 500
                     )
 
-        return flask.Response(streamer())
+        return flask.Response(streamer(), headers=_extract_headers(data))
 
     return response_handler
 
