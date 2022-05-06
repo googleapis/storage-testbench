@@ -425,6 +425,7 @@ class TestTestbenchRetry(unittest.TestCase):
             query_string={"alt": "media"},
             headers={"x-retry-test-id": id},
         )
+        self.assertIn("x-goog-generation", response.headers)
         with self.assertRaises(testbench.error.RestException) as ex:
             _ = len(response.data)
         self.assertIn("broken stream", ex.exception.msg)
