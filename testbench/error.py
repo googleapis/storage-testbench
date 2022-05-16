@@ -34,7 +34,8 @@ class RestException(Exception):
         # clients depend on code being specified, otherwise behavior is
         # undefined.
         return flask.make_response(
-            flask.jsonify(code=self.code, message=self.msg), self.code
+            flask.jsonify(error={"code": self.code, "message": self.msg}),
+            self.code,
         )
 
     @staticmethod
