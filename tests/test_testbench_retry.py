@@ -214,7 +214,11 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 500)
         error = json.loads(response.data)
-        self.assertIn("connection reset by peer", error.get("message"))
+        self.assertIn(
+            "connection reset by peer",
+            error.get("error", dict()).get("message"),
+            msg=response.data,
+        )
 
     def test_retry_test_return_no_metadata_on_resumable_complete(self):
         response = self.client.post(
