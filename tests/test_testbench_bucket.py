@@ -128,6 +128,9 @@ class TestTestbenchBucket(unittest.TestCase):
         )
         insert_rest = json.loads(response.data)
         self.assertEqual(insert_rest, {**insert_rest, **insert_data})
+        self.assertIn("etag", insert_rest)
+        self.assertIn("bucket", insert_rest)
+        self.assertIn("kind", insert_rest)
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/acl/allAuthenticatedUsers"
@@ -138,6 +141,9 @@ class TestTestbenchBucket(unittest.TestCase):
         )
         get_rest = json.loads(response.data)
         self.assertEqual(get_rest, insert_rest)
+        self.assertIn("etag", get_rest)
+        self.assertIn("bucket", get_rest)
+        self.assertIn("kind", get_rest)
 
         response = self.client.patch(
             "/storage/v1/b/bucket-name/acl/allAuthenticatedUsers",
@@ -149,6 +155,9 @@ class TestTestbenchBucket(unittest.TestCase):
         )
         patch_rest = json.loads(response.data)
         self.assertEqual(patch_rest.get("role", None), "OWNER")
+        self.assertIn("etag", patch_rest)
+        self.assertIn("bucket", patch_rest)
+        self.assertIn("kind", patch_rest)
 
         update_data = patch_rest.copy()
         update_data["role"] = "READER"
@@ -162,6 +171,9 @@ class TestTestbenchBucket(unittest.TestCase):
         )
         update_rest = json.loads(response.data)
         self.assertEqual(update_rest.get("role", None), "READER")
+        self.assertIn("etag", update_rest)
+        self.assertIn("bucket", update_rest)
+        self.assertIn("kind", update_rest)
 
         response = self.client.get("/storage/v1/b/bucket-name/acl")
         self.assertEqual(response.status_code, 200)
@@ -172,6 +184,11 @@ class TestTestbenchBucket(unittest.TestCase):
         self.assertIn(
             "allAuthenticatedUsers", [a.get("entity") for a in list_rest.get("items")]
         )
+        self.assertNotEqual(len(list_rest.get("items")), 0)
+        front = list_rest.get("items")[0]
+        self.assertIn("etag", front)
+        self.assertIn("bucket", front)
+        self.assertIn("kind", front)
 
         response = self.client.delete(
             "/storage/v1/b/bucket-name/acl/allAuthenticatedUsers"
