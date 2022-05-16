@@ -18,6 +18,7 @@ from . import (
     common,
     csek,
     database,
+    proto2rest,
     grpc_server,
     rest_server,
 )
