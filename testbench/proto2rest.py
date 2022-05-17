@@ -13,14 +13,14 @@
 # limitations under the License.
 
 """
-Convert resources from their proto representation to their rest representation.
+Convert resources from their proto representation to their REST representation.
 
 The testbench keeps resources (buckets, objects, etc.) as protos. In the REST
 APIs, we need to convert these types to their REST representation. For the
 most part, we rely on `google.protobuf.json_format.MessageToDict()` to do
 the heavy lifting. But some fields have different names, other fields are
 missing in the proto representation, and some fields use different
-representationsin, for example, bucket names in protos are
+representationsin. For example, bucket names in protos are
 `projects/_/buckets/${bucket_id}`.
 
 This module contains a number of helper functions to perform these transformations.
