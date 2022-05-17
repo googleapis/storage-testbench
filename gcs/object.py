@@ -70,62 +70,6 @@ class Object:
         metadata.acl.extend(acls)
 
     @classmethod
-    def __postprocess_customer_encryption(cls, metadata):
-        # There is no need to base64 encode the data, because json_format.MessageToDict() already does.
-        return testbench.common.rest_adjust(
-            metadata,
-            {"keySha256Bytes": lambda x: ("keySha256", x)},
-        )
-
-    @classmethod
-    def __postprocess_object_metadata(cls, metadata):
-        """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
-        # For some fields the storage/v2 name just needs to change slightly.
-        bucket_id = testbench.common.bucket_name_from_proto(
-            metadata.get("bucket", None)
-        )
-        metadata = testbench.common.rest_adjust(
-            metadata,
-            {
-                "bucket": lambda x: ("bucket", bucket_id),
-                "createTime": lambda x: ("timeCreated", x),
-                "updateTime": lambda x: ("updated", x),
-                "kmsKey": lambda x: ("kmsKeyName", x),
-                "retentionExpireTime": lambda x: ("retentionExpirationTime", x),
-                "deleteTime": lambda x: ("timeDeleted", x),
-                "updateStorageClassTime": lambda x: ("timeStorageClassUpdated", x),
-                "customerEncryption": lambda x: (
-                    "customerEncryption",
-                    cls.__postprocess_customer_encryption(x),
-                ),
-            },
-        )
-        metadata["kind"] = "storage#object"
-        metadata["id"] = "%s/o/%s/%s" % (
-            metadata["bucket"],
-            metadata["name"],
-            metadata["generation"],
-        )
-        # Checksums need special treatment
-        cs = metadata.pop("checksums", None)
-        if cs is not None:
-            if "crc32c" in cs:
-                metadata["crc32c"] = base64.b64encode(
-                    struct.pack(">I", cs["crc32c"])
-                ).decode("utf-8")
-            if "md5Hash" in cs:
-                metadata["md5Hash"] = cs["md5Hash"]
-        # Finally the ACLs, if present, require additional fields
-        if "acl" in metadata:
-            for a in metadata["acl"]:
-                a["kind"] = "storage#objectAccessControl"
-                if bucket_id is not None:
-                    a["bucket"] = bucket_id
-                a["object"] = metadata.get("name", None)
-                a["generation"] = metadata.get("generation", None)
-        return metadata
-
-    @classmethod
     def init(cls, request, metadata, media, bucket, is_destination, context):
         instruction = testbench.common.extract_instruction(request, context)
         if instruction == "inject-upload-data-error":
@@ -360,9 +304,7 @@ class Object:
 
     @classmethod
     def rest(cls, metadata):
-        response = cls.__postprocess_object_metadata(
-            json_format.MessageToDict(metadata)
-        )
+        response = testbench.proto2rest.object_as_rest(metadata)
         old_metadata = {}
         if "metadata" in response:
             for key, value in response["metadata"].items():
