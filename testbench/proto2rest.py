@@ -28,6 +28,7 @@ This module contains a number of helper functions to perform these transformatio
 
 import base64
 import hashlib
+from os import access
 import struct
 
 from google.protobuf import json_format
@@ -117,13 +118,37 @@ def __postprocess_rest_lifecycle(lc):
     return lc
 
 
+def _etag_bucket_access_control(entry):
+    return hashlib.md5(
+        "#".join(
+            [
+                entry["bucket"],
+                entry["entity"],
+                entry["role"],
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _etag_object_access_control(entry):
+    return hashlib.md5(
+        "#".join(
+            [
+                entry["bucket"],
+                entry.get("object", ""),
+                entry.get("generation", ""),
+                entry["entity"],
+                entry["role"],
+            ]
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def __postprocess_rest_bucket_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#bucketAccessControl"
     copy["bucket"] = bucket_id
-    copy["etag"] = hashlib.md5(
-        "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
-    ).hexdigest()
+    copy["etag"] = _etag_bucket_access_control(copy)
     return copy
 
 
@@ -131,9 +156,7 @@ def __postprocess_rest_default_object_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#objectAccessControl"
     copy["bucket"] = bucket_id
-    copy["etag"] = hashlib.md5(
-        "#".join([copy["bucket"], copy["entity"], copy["role"]]).encode("utf-8")
-    ).hexdigest()
+    copy["etag"] = _etag_object_access_control(copy)
     return copy
 
 
@@ -185,6 +208,18 @@ def __postprocess_customer_encryption(metadata):
     )
 
 
+def __postprocess_object_access_control(
+    bucket_id, object_id, generation, access_control
+):
+    copy = access_control.copy()
+    copy["kind"] = "storage#objectAccessControl"
+    copy["bucket"] = bucket_id
+    copy["object"] = object_id
+    copy["generation"] = generation
+    copy["etag"] = _etag_object_access_control(copy)
+    return copy
+
+
 def __postprocess_object_rest(metadata):
     """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
     # For some fields the storage/v2 name just needs to change slightly.
@@ -222,12 +257,12 @@ def __postprocess_object_rest(metadata):
             metadata["md5Hash"] = cs["md5Hash"]
     # Finally the ACLs, if present, require additional fields
     if "acl" in metadata:
-        for a in metadata["acl"]:
-            a["kind"] = "storage#objectAccessControl"
-            if bucket_id is not None:
-                a["bucket"] = bucket_id
-            a["object"] = metadata.get("name", None)
-            a["generation"] = metadata.get("generation", None)
+        metadata["acl"] = [
+            __postprocess_object_access_control(
+                bucket_id, metadata["name"], metadata["generation"], a
+            )
+            for a in metadata["acl"]
+        ]
     return metadata
 
 
@@ -244,3 +279,13 @@ def bucket_access_control_as_rest(bucket_id: str, acl: storage_pb2.BucketAccessC
 def object_as_rest(object: storage_pb2.Object):
     metadata = json_format.MessageToDict(object)
     return __postprocess_object_rest(metadata)
+
+
+def object_access_control_as_rest(
+    bucket_id: str,
+    object_id: str,
+    generation: str,
+    metadata: storage_pb2.ObjectAccessControl,
+):
+    rest = json_format.MessageToDict(metadata)
+    return __postprocess_object_access_control(bucket_id, object_id, generation, rest)

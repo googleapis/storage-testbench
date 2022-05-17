@@ -916,7 +916,7 @@ def preprocess_object_metadata(metadata):
     # them if present, ignore then otherwise
     if "acl" in md:
         for a in md["acl"]:
-            for field in ["kind", "bucket", "object", "generation"]:
+            for field in ["kind", "bucket", "object", "generation", "etag"]:
                 a.pop(field, None)
     return md
 

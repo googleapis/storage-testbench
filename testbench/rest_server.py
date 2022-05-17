@@ -761,11 +761,15 @@ def object_acl_list(bucket_name, object_name):
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
     )
-    response = {"kind": "storage#objectAccessControls", "items": []}
-    for acl in blob.metadata.acl:
-        acl_rest = json_format.MessageToDict(acl)
-        acl_rest["kind"] = "storage#objectAccessControl"
-        response["items"].append(acl_rest)
+    response = {
+        "kind": "storage#objectAccessControls",
+        "items": [
+            testbench.proto2rest.object_access_control_as_rest(
+                bucket_name, object_name, str(blob.metadata.generation), a
+            )
+            for a in blob.metadata.acl
+        ],
+    }
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -781,8 +785,9 @@ def object_acl_insert(bucket_name, object_name):
         context=None,
     )
     acl = blob.insert_acl(flask.request, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.object_access_control_as_rest(
+        bucket_name, object_name, str(blob.metadata.generation), acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -798,8 +803,9 @@ def object_acl_get(bucket_name, object_name, entity):
         context=None,
     )
     acl = blob.get_acl(entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.object_access_control_as_rest(
+        bucket_name, object_name, str(blob.metadata.generation), acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -815,8 +821,9 @@ def object_acl_update(bucket_name, object_name, entity):
         context=None,
     )
     acl = blob.update_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.object_access_control_as_rest(
+        bucket_name, object_name, str(blob.metadata.generation), acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -835,8 +842,9 @@ def object_acl_patch(bucket_name, object_name, entity):
         context=None,
     )
     acl = blob.patch_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.object_access_control_as_rest(
+        bucket_name, object_name, str(blob.metadata.generation), acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -852,7 +860,7 @@ def object_acl_delete(bucket_name, object_name, entity):
         context=None,
     )
     blob.delete_acl(entity, None)
-    return ""
+    return flask.make_response("")
 
 
 # Define the WSGI application to handle bucket requests.
