@@ -12,10 +12,9 @@ from google.protobuf import symbol_database as _symbol_database
 _sym_db = _symbol_database.Default()
 
 
-from google.api import annotations_pb2 as google_dot_api_dot_annotations__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgoogle/iam/v1/options.proto\x12\rgoogle.iam.v1\x1a\x1cgoogle/api/annotations.proto\"4\n\x10GetPolicyOptions\x12 \n\x18requested_policy_version\x18\x01 \x01(\x05\x42\x84\x01\n\x11\x63om.google.iam.v1B\x0cOptionsProtoP\x01Z0google.golang.org/genproto/googleapis/iam/v1;iam\xf8\x01\x01\xaa\x02\x13Google.Cloud.Iam.V1\xca\x02\x13Google\\Cloud\\Iam\\V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bgoogle/iam/v1/options.proto\x12\rgoogle.iam.v1\"4\n\x10GetPolicyOptions\x12 \n\x18requested_policy_version\x18\x01 \x01(\x05\x42\x84\x01\n\x11\x63om.google.iam.v1B\x0cOptionsProtoP\x01Z0google.golang.org/genproto/googleapis/iam/v1;iam\xf8\x01\x01\xaa\x02\x13Google.Cloud.Iam.V1\xca\x02\x13Google\\Cloud\\Iam\\V1b\x06proto3')
 
 
 
@@ -31,6 +30,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'\n\021com.google.iam.v1B\014OptionsProtoP\001Z0google.golang.org/genproto/googleapis/iam/v1;iam\370\001\001\252\002\023Google.Cloud.Iam.V1\312\002\023Google\\Cloud\\Iam\\V1'
-  _GETPOLICYOPTIONS._serialized_start=76
-  _GETPOLICYOPTIONS._serialized_end=128
+  _GETPOLICYOPTIONS._serialized_start=46
+  _GETPOLICYOPTIONS._serialized_end=98
 # @@protoc_insertion_point(module_scope)

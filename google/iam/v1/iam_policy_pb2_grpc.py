@@ -7,7 +7,8 @@ from google.iam.v1 import policy_pb2 as google_dot_iam_dot_v1_dot_policy__pb2
 
 
 class IAMPolicyStub(object):
-    """## API Overview
+    """API Overview
+
 
     Manages Identity and Access Management (IAM) policies.
 
@@ -58,7 +59,8 @@ class IAMPolicyStub(object):
 
 
 class IAMPolicyServicer(object):
-    """## API Overview
+    """API Overview
+
 
     Manages Identity and Access Management (IAM) policies.
 
@@ -88,6 +90,8 @@ class IAMPolicyServicer(object):
     def SetIamPolicy(self, request, context):
         """Sets the access control policy on the specified resource. Replaces any
         existing policy.
+
+        Can return `NOT_FOUND`, `INVALID_ARGUMENT`, and `PERMISSION_DENIED` errors.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -105,7 +109,7 @@ class IAMPolicyServicer(object):
     def TestIamPermissions(self, request, context):
         """Returns permissions that a caller has on the specified resource.
         If the resource does not exist, this will return an empty set of
-        permissions, not a NOT_FOUND error.
+        permissions, not a `NOT_FOUND` error.
 
         Note: This operation is designed to be used for building permission-aware
         UIs and command-line tools, not for authorization checking. This operation
@@ -141,7 +145,8 @@ def add_IAMPolicyServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class IAMPolicy(object):
-    """## API Overview
+    """API Overview
+
 
     Manages Identity and Access Management (IAM) policies.
 
