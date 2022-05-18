@@ -273,11 +273,13 @@ def bucket_delete(bucket_name):
 @retry_test(method="storage.bucket_acl.list")
 def bucket_acl_list(bucket_name):
     bucket = db.get_bucket(bucket_name, None)
-    response = {"kind": "storage#bucketAccessControls", "items": []}
-    for acl in bucket.metadata.acl:
-        acl_rest = json_format.MessageToDict(acl)
-        acl_rest["kind"] = "storage#bucketAccessControl"
-        response["items"].append(acl_rest)
+    response = {
+        "kind": "storage#bucketAccessControls",
+        "items": [
+            testbench.proto2rest.bucket_access_control_as_rest(bucket_name, acl)
+            for acl in bucket.metadata.acl
+        ],
+    }
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -287,8 +289,7 @@ def bucket_acl_list(bucket_name):
 def bucket_acl_insert(bucket_name):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.insert_acl(flask.request, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#bucketAccessControl"
+    response = testbench.proto2rest.bucket_access_control_as_rest(bucket_name, acl)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -298,8 +299,7 @@ def bucket_acl_insert(bucket_name):
 def bucket_acl_get(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.get_acl(entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#bucketAccessControl"
+    response = testbench.proto2rest.bucket_access_control_as_rest(bucket_name, acl)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -309,8 +309,7 @@ def bucket_acl_get(bucket_name, entity):
 def bucket_acl_update(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.update_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#bucketAccessControl"
+    response = testbench.proto2rest.bucket_access_control_as_rest(bucket_name, acl)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -321,8 +320,7 @@ def bucket_acl_patch(bucket_name, entity):
     testbench.common.enforce_patch_override(flask.request)
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.patch_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#bucketAccessControl"
+    response = testbench.proto2rest.bucket_access_control_as_rest(bucket_name, acl)
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -332,7 +330,7 @@ def bucket_acl_patch(bucket_name, entity):
 def bucket_acl_delete(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     bucket.delete_acl(entity, None)
-    return ""
+    return flask.make_response("")
 
 
 @gcs.route("/b/<bucket_name>/defaultObjectAcl")

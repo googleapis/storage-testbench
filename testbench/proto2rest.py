@@ -178,3 +178,8 @@ def __postprocess_bucket_rest(data):
 def bucket_as_rest(bucket: storage_pb2.Bucket):
     metadata = json_format.MessageToDict(bucket)
     return __postprocess_bucket_rest(metadata)
+
+
+def bucket_access_control_as_rest(bucket_id: str, acl: storage_pb2.BucketAccessControl):
+    rest = json_format.MessageToDict(acl)
+    return __postprocess_rest_bucket_acl(bucket_id, rest)
