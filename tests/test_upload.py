@@ -34,6 +34,11 @@ import testbench
 
 
 class TestHolder(unittest.TestCase):
+    def mock_context(self):
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(return_value=dict())
+        return context
+
     def test_init_resumable_rest_incorrect_usage(self):
         bucket_metadata = json.dumps({"name": "bucket-test"})
         environ = create_environ(
@@ -291,7 +296,7 @@ class TestHolder(unittest.TestCase):
             ),
             finish_write=True,
         )
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         db = unittest.mock.Mock()
         db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
@@ -357,7 +362,7 @@ class TestHolder(unittest.TestCase):
                 finish_write=True,
             )
 
-            context = unittest.mock.Mock()
+            context = self.mock_context()
             db = unittest.mock.Mock()
             db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
             upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
@@ -386,7 +391,9 @@ class TestHolder(unittest.TestCase):
             if_metageneration_not_match=3,
         )
         request = storage_pb2.StartResumableWriteRequest(write_object_spec=spec)
-        upload = gcs.upload.Upload.init_resumable_grpc(request, bucket.metadata, "")
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, self.mock_context()
+        )
         # Verify the annotations inserted by the testbench.
         annotations = upload.metadata.metadata
         self.assertGreaterEqual(
@@ -414,7 +421,7 @@ class TestHolder(unittest.TestCase):
                 resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
             )
         )
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload = gcs.upload.Upload.init_resumable_grpc(
             request, bucket.metadata, context
         )
@@ -442,7 +449,7 @@ class TestHolder(unittest.TestCase):
             ),
             finish_write=False,
         )
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         db = unittest.mock.Mock()
         db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
@@ -484,7 +491,7 @@ class TestHolder(unittest.TestCase):
                 resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
             )
         )
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload = gcs.upload.Upload.init_resumable_grpc(
             request, bucket.metadata, context
         )
@@ -502,12 +509,12 @@ class TestHolder(unittest.TestCase):
         db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
 
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNotNone(upload)
         self.assertTrue(upload.complete)
 
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         context.abort = unittest.mock.MagicMock()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
@@ -525,7 +532,7 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
@@ -562,7 +569,7 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1, r2, r3], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
@@ -602,7 +609,7 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1, r2, r3], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
@@ -625,7 +632,7 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [r1], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
@@ -634,7 +641,7 @@ class TestHolder(unittest.TestCase):
 
     def test_init_object_write_grpc_empty(self):
         db = unittest.mock.Mock()
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [], context)
         self.assertIsNone(upload)
         context.abort.assert_called_once_with(
