@@ -317,9 +317,12 @@ class TestObject(unittest.TestCase):
             checksummed_data=storage_pb2.ChecksummedData(content=b"123456789"),
             finish_write=True,
         )
-        context = unittest.mock.Mock()
         db = unittest.mock.Mock()
         db.get_bucket = unittest.mock.MagicMock(return_value=self.bucket)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(return_value=dict())
+
         upload, _ = gcs.upload.Upload.init_write_object_grpc(db, [request], context)
         blob, _ = gcs.object.Object.init(
             upload.request,

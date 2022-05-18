@@ -32,6 +32,11 @@ import testbench
 
 
 class TestGrpc(unittest.TestCase):
+    def mock_context(self):
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(return_value=dict())
+        return context
+
     def setUp(self):
         self.db = testbench.database.Database.init()
         request = testbench.common.FakeRequest(
@@ -972,7 +977,7 @@ class TestGrpc(unittest.TestCase):
             finish_write=True,
         )
 
-        write = self.grpc.WriteObject([r1, r2, r3], "fake-context")
+        write = self.grpc.WriteObject([r1, r2, r3], context=self.mock_context())
         self.assertIsNotNone(write)
         self.assertIsNotNone(write.resource)
         blob = write.resource
@@ -1006,7 +1011,7 @@ class TestGrpc(unittest.TestCase):
             finish_write=False,
         )
 
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         context.abort = unittest.mock.MagicMock()
         write = self.grpc.WriteObject([r1], context)
         context.abort.assert_called_once()
@@ -1112,7 +1117,7 @@ class TestGrpc(unittest.TestCase):
                     )
                 )
             ),
-            context="fake-context",
+            context=self.mock_context(),
         )
         self.assertIsNotNone(start.upload_id)
 

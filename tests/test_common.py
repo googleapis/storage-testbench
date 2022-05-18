@@ -33,6 +33,11 @@ import testbench
 
 
 class TestCommonUtils(unittest.TestCase):
+    def mock_context(self):
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(return_value=dict())
+        return context
+
     def test_snake_case(self):
         self.assertEqual(
             testbench.common.to_snake_case("authenticatedRead"), "authenticated_read"
@@ -83,9 +88,6 @@ class TestCommonUtils(unittest.TestCase):
         self.assertIn("REQUEST_METHOD", request.environ)
 
     def test_fake_request_init_protobuf_start_resumable_write(self):
-        class MockContext(object):
-            pass
-
         key_bytes = b"\001\002\003\004\005\006\007\010"
         key_sh256_bytes = hashlib.sha256(key_bytes).digest()
         protobuf_request = storage_pb2.StartResumableWriteRequest(
@@ -102,14 +104,11 @@ class TestCommonUtils(unittest.TestCase):
                 encryption_key_bytes=key_bytes,
                 encryption_key_sha256_bytes=key_sh256_bytes,
             ),
-            common_request_params=storage_pb2.CommonRequestParams(
-                user_project="projects/123456",
-            ),
         )
 
-        request = testbench.common.FakeRequest.init_protobuf(
-            protobuf_request, MockContext()
-        )
+        context = self.mock_context()
+        context.invocation_metadata.return_value = {"x-goog-user-project": "123456"}
+        request = testbench.common.FakeRequest.init_protobuf(protobuf_request, context)
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
             "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
@@ -120,7 +119,7 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(request.headers, {**request.headers, **expected_headers})
         self.assertEqual(request.args, {"userProject": "123456"})
 
-        request.update_protobuf(protobuf_request.write_object_spec, MockContext())
+        request.update_protobuf(protobuf_request.write_object_spec, self.mock_context())
         expected_args = {
             "ifGenerationMatch": 1,
             "ifGenerationNotMatch": 2,
@@ -131,9 +130,6 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(request.args, {**request.args, **expected_args})
 
     def test_fake_request_init_protobuf_write_object(self):
-        class MockContext(object):
-            pass
-
         key_bytes = b"\001\002\003\004\005\006\007\010"
         key_sh256_bytes = hashlib.sha256(key_bytes).digest()
         protobuf_request = storage_pb2.WriteObjectRequest(
@@ -150,14 +146,14 @@ class TestCommonUtils(unittest.TestCase):
                 encryption_key_bytes=key_bytes,
                 encryption_key_sha256_bytes=key_sh256_bytes,
             ),
-            common_request_params=storage_pb2.CommonRequestParams(
-                user_project="projects/123456",
-            ),
         )
 
-        request = testbench.common.FakeRequest.init_protobuf(
-            protobuf_request, MockContext()
+        context = self.mock_context()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value={"x-goog-user-project": "123456"}
         )
+
+        request = testbench.common.FakeRequest.init_protobuf(protobuf_request, context)
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
             "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
@@ -168,7 +164,7 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(request.headers, {**request.headers, **expected_headers})
         self.assertEqual(request.args, {"userProject": "123456"})
 
-        request.update_protobuf(protobuf_request.write_object_spec, MockContext())
+        request.update_protobuf(protobuf_request.write_object_spec, self.mock_context())
         expected_args = {
             "ifGenerationMatch": 1,
             "ifGenerationNotMatch": 2,
@@ -179,9 +175,6 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(request.args, {**request.args, **expected_args})
 
     def test_fake_request_init_protobuf_read_object(self):
-        class MockContext(object):
-            pass
-
         key_bytes = b"\001\002\003\004\005\006\007\010"
         key_sh256_bytes = hashlib.sha256(key_bytes).digest()
         protobuf_request = storage_pb2.ReadObjectRequest(
@@ -197,14 +190,14 @@ class TestCommonUtils(unittest.TestCase):
                 encryption_key_bytes=key_bytes,
                 encryption_key_sha256_bytes=key_sh256_bytes,
             ),
-            common_request_params=storage_pb2.CommonRequestParams(
-                user_project="projects/123456",
-            ),
         )
 
-        request = testbench.common.FakeRequest.init_protobuf(
-            protobuf_request, MockContext()
+        context = self.mock_context()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value={"x-goog-user-project": "123456"}
         )
+
+        request = testbench.common.FakeRequest.init_protobuf(protobuf_request, context)
         expected_headers = {
             "x-goog-encryption-algorithm": "RSA256",
             "x-goog-encryption-key": base64.b64encode(key_bytes).decode("utf-8"),
@@ -223,16 +216,13 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(request.args, {**request.args, **expected_args})
 
     def test_fake_request_init_protobuf_read_object_simple(self):
-        class MockContext(object):
-            pass
-
         protobuf_request = storage_pb2.ReadObjectRequest(
             bucket="projects/_/buckets/bucket-name",
             object="object",
         )
 
         request = testbench.common.FakeRequest.init_protobuf(
-            protobuf_request, MockContext()
+            protobuf_request, self.mock_context()
         )
         self.assertIsNone(request.if_generation_match)
         self.assertIsNone(request.if_generation_not_match)
@@ -246,9 +236,6 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(p.encryption_key_sha256_bytes, b"")
 
     def test_fake_request_init_protobuf_write_object_simple(self):
-        class MockContext(object):
-            pass
-
         protobuf_request = storage_pb2.WriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
@@ -256,7 +243,7 @@ class TestCommonUtils(unittest.TestCase):
         )
 
         request = testbench.common.FakeRequest.init_protobuf(
-            protobuf_request, MockContext()
+            protobuf_request, self.mock_context()
         )
         self.assertIsNone(request.if_generation_match)
         self.assertIsNone(request.if_generation_not_match)
@@ -602,11 +589,11 @@ class TestCommonUtils(unittest.TestCase):
 
         preconditions = self.make_grpc_preconditions(if_generation_match=5)
         self.assertEqual(len(preconditions), 1)
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         self.assertTrue(preconditions[0](blob, 5, context))
         context.abort.assert_not_called()
 
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         self.assertFalse(preconditions[0](blob, 6, context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
@@ -614,11 +601,11 @@ class TestCommonUtils(unittest.TestCase):
 
         preconditions = self.make_grpc_preconditions(if_generation_match=0)
         self.assertEqual(len(preconditions), 1)
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         self.assertTrue(preconditions[0](blob, None, context))
         context.abort.assert_not_called()
 
-        context = unittest.mock.Mock()
+        context = self.mock_context()
         self.assertFalse(preconditions[0](blob, 6, context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
@@ -1036,10 +1023,7 @@ class TestCommonUtils(unittest.TestCase):
         self.assertNotEqual(input, testbench.common.corrupt_media(input))
 
     def test_extract_instruction_grpc(self):
-        class MockContext(object):
-            pass
-
-        context = MockContext()
+        context = self.mock_context()
         context.invocation_metadata = lambda: {
             "x-goog-emulator-instructions": "do-stuff"
         }.items()

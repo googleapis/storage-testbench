@@ -163,9 +163,9 @@ class FakeRequest(types.SimpleNamespace):
                 ),
             )
 
-        if hasattr(request, "common_request_params"):
-            self.common_request_params = request.common_request_params
-            project = self.common_request_params.user_project
+        metadata = context.invocation_metadata()
+        if "x-goog-user-project" in metadata:
+            project = metadata["x-goog-user-project"]
             if project.startswith("projects/"):
                 project = project[len("projects/") :]
             self.args["userProject"] = project
