@@ -103,7 +103,7 @@ class TestProto2Rest(unittest.TestCase):
             ),
             custom_time=testbench.common.rest_rfc3339_to_proto("2026-01-01T00:00:00Z"),
         )
-        rest = testbench.proto2rest.object_as_rest(object)
+        actual = testbench.proto2rest.object_as_rest(object)
         expected = {
             "kind": "storage#object",
             "name": "test-object-name",
@@ -160,8 +160,31 @@ class TestProto2Rest(unittest.TestCase):
             },
             "customTime": "2026-01-01T00:00:00Z",
         }
+        # This is a bit of a cheat, but so would be hardcoding the (computed) ETag values.
+        # And skipping the ETag comparisons is actually worse.
+        for e in expected["acl"]:
+            e["etag"] = testbench.proto2rest._etag_object_access_control(e)
+
         self.maxDiff = None
-        self.assertEqual(rest, expected)
+        self.assertEqual(actual, expected)
+
+    def test_object_access_control_as_rest(self):
+        input = storage_pb2.ObjectAccessControl(
+            entity="test-entity0", role="test-role0"
+        )
+        expected = {
+            "kind": "storage#objectAccessControl",
+            "bucket": "test-bucket-id",
+            "object": "test-object-name",
+            "generation": "123",
+            "entity": "test-entity0",
+            "role": "test-role0",
+        }
+        expected["etag"] = testbench.proto2rest._etag_object_access_control(expected)
+        actual = testbench.proto2rest.object_access_control_as_rest(
+            "test-bucket-id", "test-object-name", "123", input
+        )
+        self.assertEqual(actual, expected)
 
 
 if __name__ == "__main__":

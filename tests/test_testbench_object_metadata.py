@@ -163,16 +163,32 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
+        response = self.client.get("/storage/v1/b/bucket-name/o/zebra")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        rest = json.loads(response.data)
+        generation = rest.get("generation", "")
+
         insert_data = {"entity": "allAuthenticatedUsers", "role": "READER"}
         response = self.client.post(
             "/storage/v1/b/bucket-name/o/zebra/acl", data=json.dumps(insert_data)
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, msg=response.data)
         self.assertTrue(
             response.headers.get("content-type").startswith("application/json")
         )
         insert_rest = json.loads(response.data)
         self.assertEqual(insert_rest, {**insert_rest, **insert_data})
+
+        additional_fields = {
+            "kind": "storage#objectAccessControl",
+            "bucket": "bucket-name",
+            "object": "zebra",
+            "generation": generation,
+        }
+        self.assertEqual(insert_rest, {**insert_rest, **additional_fields})
 
         response = self.client.get(
             "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers"
@@ -182,7 +198,7 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
             response.headers.get("content-type").startswith("application/json")
         )
         get_rest = json.loads(response.data)
-        self.assertEqual(get_rest, insert_rest)
+        self.assertEqual(get_rest, {**get_rest, **additional_fields})
 
         response = self.client.patch(
             "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers",
@@ -194,6 +210,7 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         patch_rest = json.loads(response.data)
         self.assertEqual(patch_rest.get("role", None), "OWNER")
+        self.assertEqual(patch_rest, {**patch_rest, **additional_fields})
 
         update_data = patch_rest.copy()
         update_data["role"] = "READER"
@@ -207,6 +224,7 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         update_rest = json.loads(response.data)
         self.assertEqual(update_rest.get("role", None), "READER")
+        self.assertEqual(update_rest, {**update_rest, **additional_fields})
 
         response = self.client.get("/storage/v1/b/bucket-name/o/zebra/acl")
         self.assertEqual(response.status_code, 200)
@@ -217,6 +235,8 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         self.assertIn(
             "allAuthenticatedUsers", [a.get("entity") for a in list_rest.get("items")]
         )
+        for a in list_rest.get("items"):
+            self.assertEqual(a, {**a, **additional_fields})
 
         response = self.client.delete(
             "/storage/v1/b/bucket-name/o/zebra/acl/allAuthenticatedUsers"
