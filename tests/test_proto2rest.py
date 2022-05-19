@@ -52,6 +52,117 @@ class TestProto2Rest(unittest.TestCase):
         self.assertEqual(actual, {**actual, **expected})
         self.assertIn("etag", actual)
 
+    def test_object_as_rest(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        # These checksums can be obtained using `gsutil hash`
+        crc32c = "ImIEBA=="
+        md5 = "nhB9nTcrtoJr2B01QqQZ1g=="
+        object = storage_pb2.Object(
+            name="test-object-name",
+            bucket="test-bucket-id",
+            generation=123,
+            metageneration=234,
+            storage_class="regional",
+            size=34000,
+            content_encoding="test-content-encoding",
+            content_disposition="test-content-disposition",
+            cache_control="test-cache-control",
+            acl=[
+                storage_pb2.ObjectAccessControl(
+                    entity="test-entity0", role="test-role0"
+                ),
+                storage_pb2.ObjectAccessControl(
+                    entity="test-entity1", role="test-role1"
+                ),
+            ],
+            content_language="test-content-language",
+            delete_time=testbench.common.rest_rfc3339_to_proto("2020-01-01T00:00:00Z"),
+            content_type="octet-stream",
+            create_time=testbench.common.rest_rfc3339_to_proto("2022-01-01T00:00:00Z"),
+            component_count=456,
+            checksums=storage_pb2.ObjectChecksums(
+                crc32c=testbench.common.rest_crc32c_to_proto(crc32c),
+                md5_hash=testbench.common.rest_md5_to_proto(md5),
+            ),
+            update_time=testbench.common.rest_rfc3339_to_proto("2023-01-01T00:00:00Z"),
+            kms_key="test-kms-key",
+            update_storage_class_time=testbench.common.rest_rfc3339_to_proto(
+                "2024-01-01T00:00:00Z"
+            ),
+            temporary_hold=True,
+            retention_expire_time=testbench.common.rest_rfc3339_to_proto(
+                "2025-01-01T00:00:00Z"
+            ),
+            metadata={"label0": "value0"},
+            event_based_hold=True,
+            owner=storage_pb2.Owner(
+                entity="test-owner-entity", entity_id="test-owner-entity-id"
+            ),
+            customer_encryption=storage_pb2.CustomerEncryption(
+                encryption_algorithm="AES", key_sha256_bytes=b"123456"
+            ),
+            custom_time=testbench.common.rest_rfc3339_to_proto("2026-01-01T00:00:00Z"),
+        )
+        rest = testbench.proto2rest.object_as_rest(object)
+        expected = {
+            "kind": "storage#object",
+            "name": "test-object-name",
+            "bucket": "test-bucket-id",
+            "generation": "123",
+            "id": "test-bucket-id/o/test-object-name/123",
+            "metageneration": "234",
+            "storageClass": "regional",
+            "size": "34000",
+            "contentEncoding": "test-content-encoding",
+            "contentDisposition": "test-content-disposition",
+            "cacheControl": "test-cache-control",
+            "acl": [
+                {
+                    "kind": "storage#objectAccessControl",
+                    "bucket": "test-bucket-id",
+                    "object": "test-object-name",
+                    "generation": "123",
+                    "entity": "test-entity0",
+                    "role": "test-role0",
+                },
+                {
+                    "kind": "storage#objectAccessControl",
+                    "bucket": "test-bucket-id",
+                    "object": "test-object-name",
+                    "generation": "123",
+                    "entity": "test-entity1",
+                    "role": "test-role1",
+                },
+            ],
+            "contentLanguage": "test-content-language",
+            "timeDeleted": "2020-01-01T00:00:00Z",
+            "contentType": "octet-stream",
+            "timeCreated": "2022-01-01T00:00:00Z",
+            "componentCount": 456,
+            "crc32c": crc32c,
+            "md5Hash": md5,
+            "updated": "2023-01-01T00:00:00Z",
+            "kmsKeyName": "test-kms-key",
+            "timeStorageClassUpdated": "2024-01-01T00:00:00Z",
+            "temporaryHold": True,
+            "retentionExpirationTime": "2025-01-01T00:00:00Z",
+            "metadata": {
+                "label0": "value0",
+            },
+            "eventBasedHold": True,
+            "owner": {
+                "entity": "test-owner-entity",
+                "entityId": "test-owner-entity-id",
+            },
+            "customerEncryption": {
+                "encryptionAlgorithm": "AES",
+                "keySha256": "MTIzNDU2",  # base64.b64encode("123456")
+            },
+            "customTime": "2026-01-01T00:00:00Z",
+        }
+        self.maxDiff = None
+        self.assertEqual(rest, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

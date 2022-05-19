@@ -26,7 +26,9 @@ representationsin. For example, bucket names in protos are
 This module contains a number of helper functions to perform these transformations.
 """
 
+import base64
 import hashlib
+import struct
 
 from google.protobuf import json_format
 
@@ -175,6 +177,60 @@ def __postprocess_bucket_rest(data):
     return data
 
 
+def __postprocess_customer_encryption(metadata):
+    # There is no need to base64 encode the data, because json_format.MessageToDict() already does.
+    return testbench.common.rest_adjust(
+        metadata,
+        {"keySha256Bytes": lambda x: ("keySha256", x)},
+    )
+
+
+def __postprocess_object_rest(metadata):
+    """The protos for storage/v2 renamed some fields in ways that require some custom coding."""
+    # For some fields the storage/v2 name just needs to change slightly.
+    bucket_id = testbench.common.bucket_name_from_proto(metadata.get("bucket", None))
+    metadata = testbench.common.rest_adjust(
+        metadata,
+        {
+            "bucket": lambda x: ("bucket", bucket_id),
+            "createTime": lambda x: ("timeCreated", x),
+            "updateTime": lambda x: ("updated", x),
+            "kmsKey": lambda x: ("kmsKeyName", x),
+            "retentionExpireTime": lambda x: ("retentionExpirationTime", x),
+            "deleteTime": lambda x: ("timeDeleted", x),
+            "updateStorageClassTime": lambda x: ("timeStorageClassUpdated", x),
+            "customerEncryption": lambda x: (
+                "customerEncryption",
+                __postprocess_customer_encryption(x),
+            ),
+        },
+    )
+    metadata["kind"] = "storage#object"
+    metadata["id"] = "%s/o/%s/%s" % (
+        metadata["bucket"],
+        metadata["name"],
+        metadata["generation"],
+    )
+    # Checksums need special treatment
+    cs = metadata.pop("checksums", None)
+    if cs is not None:
+        if "crc32c" in cs:
+            metadata["crc32c"] = base64.b64encode(
+                struct.pack(">I", cs["crc32c"])
+            ).decode("utf-8")
+        if "md5Hash" in cs:
+            metadata["md5Hash"] = cs["md5Hash"]
+    # Finally the ACLs, if present, require additional fields
+    if "acl" in metadata:
+        for a in metadata["acl"]:
+            a["kind"] = "storage#objectAccessControl"
+            if bucket_id is not None:
+                a["bucket"] = bucket_id
+            a["object"] = metadata.get("name", None)
+            a["generation"] = metadata.get("generation", None)
+    return metadata
+
+
 def bucket_as_rest(bucket: storage_pb2.Bucket):
     metadata = json_format.MessageToDict(bucket)
     return __postprocess_bucket_rest(metadata)
@@ -183,3 +239,8 @@ def bucket_as_rest(bucket: storage_pb2.Bucket):
 def bucket_access_control_as_rest(bucket_id: str, acl: storage_pb2.BucketAccessControl):
     rest = json_format.MessageToDict(acl)
     return __postprocess_rest_bucket_acl(bucket_id, rest)
+
+
+def object_as_rest(object: storage_pb2.Object):
+    metadata = json_format.MessageToDict(object)
+    return __postprocess_object_rest(metadata)
