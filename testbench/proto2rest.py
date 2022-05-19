@@ -28,7 +28,6 @@ This module contains a number of helper functions to perform these transformatio
 
 import base64
 import hashlib
-from os import access
 import struct
 
 from google.protobuf import json_format
