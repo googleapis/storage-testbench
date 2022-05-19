@@ -52,6 +52,34 @@ class TestProto2Rest(unittest.TestCase):
         self.assertEqual(actual, {**actual, **expected})
         self.assertIn("etag", actual)
 
+    def test_default_object_access_control_as_rest(self):
+        acl = storage_pb2.ObjectAccessControl(
+            id="test-id",
+            entity="test-entity",
+            entity_id="test-entity-id",
+            role="test-role",
+            email="test-email",
+            domain="test-domain",
+            project_team=storage_pb2.ProjectTeam(
+                project_number="12345", team="test-team"
+            ),
+        )
+        actual = testbench.proto2rest.default_object_access_control_as_rest(
+            "test-bucket-id", acl
+        )
+        expected = {
+            "kind": "storage#objectAccessControl",
+            "id": "test-id",
+            "bucket": "test-bucket-id",
+            "entity": "test-entity",
+            "role": "test-role",
+            "email": "test-email",
+            "domain": "test-domain",
+            "projectTeam": {"projectNumber": "12345", "team": "test-team"},
+        }
+        self.assertEqual(actual, {**actual, **expected})
+        self.assertIn("etag", actual)
+
     def test_object_as_rest(self):
         media = b"The quick brown fox jumps over the lazy dog"
         # These checksums can be obtained using `gsutil hash`

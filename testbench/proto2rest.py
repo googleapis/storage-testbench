@@ -288,3 +288,10 @@ def object_access_control_as_rest(
 ):
     rest = json_format.MessageToDict(metadata)
     return __postprocess_object_access_control(bucket_id, object_id, generation, rest)
+
+
+def default_object_access_control_as_rest(
+    bucket_id: str, acl: storage_pb2.ObjectAccessControl
+):
+    rest = json_format.MessageToDict(acl)
+    return __postprocess_rest_default_object_acl(bucket_id, rest)

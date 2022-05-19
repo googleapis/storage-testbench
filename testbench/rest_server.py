@@ -337,11 +337,13 @@ def bucket_acl_delete(bucket_name, entity):
 @retry_test(method="storage.default_object_acl.list")
 def bucket_default_object_acl_list(bucket_name):
     bucket = db.get_bucket(bucket_name, None)
-    response = {"kind": "storage#objectAccessControls", "items": []}
-    for acl in bucket.metadata.default_object_acl:
-        acl_rest = json_format.MessageToDict(acl)
-        acl_rest["kind"] = "storage#objectAccessControl"
-        response["items"].append(acl_rest)
+    response = {
+        "kind": "storage#objectAccessControls",
+        "items": [
+            testbench.proto2rest.default_object_access_control_as_rest(bucket_name, acl)
+            for acl in bucket.metadata.default_object_acl
+        ],
+    }
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -351,8 +353,9 @@ def bucket_default_object_acl_list(bucket_name):
 def bucket_default_object_acl_insert(bucket_name):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.insert_default_object_acl(flask.request, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.default_object_access_control_as_rest(
+        bucket_name, acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -362,8 +365,9 @@ def bucket_default_object_acl_insert(bucket_name):
 def bucket_default_object_acl_get(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.get_default_object_acl(entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.default_object_access_control_as_rest(
+        bucket_name, acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -373,8 +377,9 @@ def bucket_default_object_acl_get(bucket_name, entity):
 def bucket_default_object_acl_update(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.update_default_object_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.default_object_access_control_as_rest(
+        bucket_name, acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -385,8 +390,9 @@ def bucket_default_object_acl_patch(bucket_name, entity):
     testbench.common.enforce_patch_override(flask.request)
     bucket = db.get_bucket(bucket_name, None)
     acl = bucket.patch_default_object_acl(flask.request, entity, None)
-    response = json_format.MessageToDict(acl)
-    response["kind"] = "storage#objectAccessControl"
+    response = testbench.proto2rest.default_object_access_control_as_rest(
+        bucket_name, acl
+    )
     fields = flask.request.args.get("fields", None)
     return testbench.common.filter_response_rest(response, None, fields)
 
@@ -396,7 +402,7 @@ def bucket_default_object_acl_patch(bucket_name, entity):
 def bucket_default_object_acl_delete(bucket_name, entity):
     bucket = db.get_bucket(bucket_name, None)
     bucket.delete_default_object_acl(entity, None)
-    return ""
+    return flask.make_response("")
 
 
 @gcs.route("/b/<bucket_name>/notificationConfigs")
