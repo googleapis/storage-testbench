@@ -14,10 +14,12 @@
 
 import base64
 from concurrent import futures
+import functools
 import datetime
 import json
 import re
-from warnings import catch_warnings
+import uuid
+import types
 
 import crc32c
 from google.iam.v1 import iam_policy_pb2
@@ -30,8 +32,87 @@ import gcs
 import testbench
 
 
+def _format(message):
+    text = text_format.MessageToString(
+        message, as_one_line=True, use_short_repeated_primitives=True
+    )
+    return text[0:255]
+
+
+def _format_input_generator(name, id, generator):
+    for value in generator:
+        print(
+            "%s: %s generator[%s] <- %s"
+            % (datetime.datetime.now(), name, id, _format(value))
+        )
+        yield value
+
+
+def _format_output_generator(name, id, generator):
+    for value in generator:
+        print(
+            "%s: %s generator[%s] -> %s"
+            % (datetime.datetime.now(), name, id, _format(value))
+        )
+        yield value
+
+
+def _logging_method_decorator(function):
+    """
+    Log the request and response from an RPC, returning the response.
+
+    Returning the response makes the code more succint at the call site, without
+    much loss of readability.
+
+    Note that some functions (streaming RPCs mostly), cannot log their inputs
+    or outputs as they are too large.
+    """
+
+    @functools.wraps(function)
+    def decorated(self, request, context):
+        if isinstance(request, (types.GeneratorType, list)):
+            id = uuid.uuid4().hex
+            input = "in[" + id + "]"
+            request = _format_input_generator(function.__name__, id, request)
+        else:
+            input = None if request is None else _format(request)
+        response = None
+        try:
+            response = function(self, request, context)
+            if isinstance(response, (types.GeneratorType, list)):
+                id = uuid.uuid4().hex
+                output = "out[" + id + "]"
+                response = _format_output_generator(function.__name__, id, response)
+            else:
+                output = None if response is None else _format(response)
+        except Exception as e:
+            output = "%s" % e
+            raise
+        finally:
+            print(
+                "%s: %s(%s) -> %s"
+                % (datetime.datetime.now(), function.__name__, input, output)
+            )
+        return response
+
+    return decorated
+
+
+def log_all_rpc_methods(klass):
+    """Decorate all the RPC-looking methods."""
+    for key in dir(klass):
+        if key.startswith("_"):
+            continue
+        value = getattr(klass, key)
+        if isinstance(value, types.FunctionType):
+            wrapped = _logging_method_decorator(value)
+            setattr(klass, key, wrapped)
+    return klass
+
+
 # Keep the methods in this class in the same order as the RPCs in storage.proto.
 # That makes it easier to find them later.
+@log_all_rpc_methods
 class StorageServicer(storage_pb2_grpc.StorageServicer):
     """Implements the google.storage.v2.Storage gRPC service."""
 
@@ -436,28 +517,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata
 
-    @staticmethod
-    def _format(message):
-        return text_format.MessageToString(
-            message, as_one_line=True, use_short_repeated_primitives=True
-        )
-
-    @staticmethod
-    def _log_rpc_passthrough(function, request, response):
-        """
-        Log the request and response from an RPC, returning the response.
-
-        Returning the response makes the code more succint at the call site, without
-        much loss of readability.
-
-        Note that some functions (streaming RPCs mostly), cannot log their inputs
-        or outputs as they are too large.
-        """
-        input = None if request is None else StorageServicer._format(request)
-        output = None if response is None else StorageServicer._format(response)
-        print("GRPC %s(%s) -> %s" % (function, input, output))
-        return response
-
     def WriteObject(self, request_iterator, context):
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             self.db, request_iterator, context
@@ -467,11 +526,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if not upload.complete:
             if not is_resumable:
                 return testbench.error.missing("finish_write in request", context)
-            return StorageServicer._log_rpc_passthrough(
-                "WriteObject",
-                None,
-                storage_pb2.WriteObjectResponse(persisted_size=len(upload.media)),
-            )
+            return storage_pb2.WriteObjectResponse(persisted_size=len(upload.media))
         blob, _ = gcs.object.Object.init(
             upload.request, upload.metadata, upload.media, upload.bucket, False, context
         )
@@ -482,9 +537,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context=context,
             preconditions=upload.preconditions,
         )
-        return StorageServicer._log_rpc_passthrough(
-            "WriteObject", None, storage_pb2.WriteObjectResponse(resource=blob.metadata)
-        )
+        return storage_pb2.WriteObjectResponse(resource=blob.metadata)
 
     def ListObjects(self, request, context):
         items, prefixes = self.db.list_object(request, request.parent, context)
@@ -563,25 +616,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
         upload = gcs.upload.Upload.init_resumable_grpc(request, bucket, context)
         self.db.insert_upload(upload)
-        return StorageServicer._log_rpc_passthrough(
-            "StartResumableWrite",
-            request,
-            storage_pb2.StartResumableWriteResponse(upload_id=upload.upload_id),
-        )
+        return storage_pb2.StartResumableWriteResponse(upload_id=upload.upload_id)
 
     def QueryWriteStatus(self, request, context):
         upload = self.db.get_upload(request.upload_id, context)
         if upload.complete:
-            return StorageServicer._log_rpc_passthrough(
-                "QueryWriteStatus",
-                request,
-                storage_pb2.QueryWriteStatusResponse(resource=upload.blob.metadata),
-            )
-        return StorageServicer._log_rpc_passthrough(
-            "QueryWriteStatus",
-            request,
-            storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media)),
-        )
+            return storage_pb2.QueryWriteStatusResponse(resource=upload.blob.metadata)
+        return storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media))
 
     def GetServiceAccount(self, request, context):
         if not request.project.startswith("projects/"):
