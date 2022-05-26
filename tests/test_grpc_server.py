@@ -875,14 +875,18 @@ class TestGrpc(unittest.TestCase):
                 cache_control="fancy cache",
                 acl=blob.metadata.acl,
             ),
-            update_mask=field_mask_pb2.FieldMask(
-                paths=["content_type", "metadata", "acl"]
-            ),
+            update_mask=field_mask_pb2.FieldMask(paths=["content_type", "metadata"]),
+            predefined_acl="publicRead",
         )
         response = self.grpc.UpdateObject(request, context)
+        predefined = [
+            testbench.acl.get_object_entity("OWNER", None),
+            "allUsers",
+        ]
         self.assertEqual("text/plain", response.content_type)
         self.assertEqual({"key": "value", "new-key": "new-value"}, response.metadata)
         self.assertEqual("", response.cache_control)
+        self.assertListEqual(predefined, [acl.entity for acl in response.acl])
         self.assertLess(metageneration, response.metageneration)
 
         # Verify the update is "persisted" as opposed to just changing the response
@@ -896,6 +900,7 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual("text/plain", get.content_type)
         self.assertEqual({"key": "value", "new-key": "new-value"}, get.metadata)
         self.assertEqual("", get.cache_control)
+        self.assertListEqual(predefined, [acl.entity for acl in get.acl])
 
     def test_update_object_invalid(self):
         media = b"How vexingly quick daft zebras jump!"
