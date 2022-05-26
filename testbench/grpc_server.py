@@ -510,6 +510,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if "metadata" in request.update_mask.paths:
             blob.metadata.metadata.clear()
             blob.metadata.metadata.update(request.object.metadata)
+        # Manually handle predefinedACL.
+        if request.predefined_acl is not None:
+            acls = testbench.acl.compute_predefined_object_acl(
+                request.object.bucket,
+                request.object.name,
+                request.object.generation,
+                request.predefined_acl,
+                context,
+            )
+            del blob.metadata.acl[:]
+            blob.metadata.acl.extend(acls)
         blob.metadata.metageneration += 1
         blob.metadata.update_time.FromDatetime(datetime.datetime.now())
         return blob.metadata

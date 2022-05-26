@@ -222,13 +222,13 @@ class Object:
         metadata = json_format.ParseDict(
             testbench.common.preprocess_object_metadata(data), storage_pb2.Object()
         )
-        self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
             self.bucket,
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_metadata(metadata, None)
 
     def patch(self, request, context):
         # Support for `Object: patch` over gRPC is not needed (and not implemented).
@@ -242,13 +242,13 @@ class Object:
             )
         )
         metadata = json_format.ParseDict(rest, storage_pb2.Object())
-        self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
             self.bucket,
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_metadata(metadata, None)
 
     # === ACL === #
 
