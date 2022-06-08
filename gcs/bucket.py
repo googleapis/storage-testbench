@@ -528,6 +528,7 @@ class Bucket:
             "id": "notification-%s" % uuid.uuid4().hex,
         }
         data = json.loads(notification_rest)
+        data = {testbench.common.to_snake_case(k): v for k, v in data.items()}
         for required_key in {"topic", "payload_format"}:
             value = data.pop(required_key, None)
             if value is not None:
