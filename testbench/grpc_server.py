@@ -80,7 +80,7 @@ def _logging_method_decorator(function):
         response = None
         try:
             response = function(self, request, context)
-            if isinstance(response, (types.GeneratorType, list)):
+            if isinstance(response, (types.GeneratorType, collections.Iterable)):
                 id = uuid.uuid4().hex
                 output = "out[" + id + "]"
                 response = _format_output_generator(function.__name__, id, response)
