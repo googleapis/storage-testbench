@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import base64
-import collections
+from collections.abc import Iterable
 from concurrent import futures
 import functools
 import datetime
@@ -71,7 +71,7 @@ def _logging_method_decorator(function):
 
     @functools.wraps(function)
     def decorated(self, request, context):
-        if isinstance(request, (types.GeneratorType, collections.Iterable)):
+        if isinstance(request, (types.GeneratorType, Iterable)):
             id = uuid.uuid4().hex
             input = "in[" + id + "]"
             request = _format_input_generator(function.__name__, id, request)
@@ -80,7 +80,7 @@ def _logging_method_decorator(function):
         response = None
         try:
             response = function(self, request, context)
-            if isinstance(response, (types.GeneratorType, collections.Iterable)):
+            if isinstance(response, (types.GeneratorType, Iterable)):
                 id = uuid.uuid4().hex
                 output = "out[" + id + "]"
                 response = _format_output_generator(function.__name__, id, response)
