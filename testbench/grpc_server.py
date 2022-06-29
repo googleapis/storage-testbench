@@ -512,7 +512,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             blob.metadata.metadata.clear()
             blob.metadata.metadata.update(request.object.metadata)
         # Manually handle predefinedACL.
-        if request.predefined_acl is not None:
+        if request.predefined_acl:
             acls = testbench.acl.compute_predefined_object_acl(
                 request.object.bucket,
                 request.object.name,
