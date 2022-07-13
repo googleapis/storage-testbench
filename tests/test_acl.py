@@ -22,6 +22,33 @@ import testbench
 
 
 class TestACL(unittest.TestCase):
+    def test_create_bucket_acl(self):
+        actual = testbench.acl.create_bucket_acl(
+            "bucket-name", "test-entity", "READER", context=None
+        )
+        self.assertEqual(actual.role, "READER")
+        self.assertEqual(actual.entity, "test-entity")
+        self.assertNotEqual(actual.id, "")
+        self.assertNotEqual(actual.etag, "")
+
+    def test_create_default_object_acl(self):
+        actual = testbench.acl.create_default_object_acl(
+            "bucket-name", "test-entity", "READER", context=None
+        )
+        self.assertEqual(actual.role, "READER")
+        self.assertEqual(actual.entity, "test-entity")
+        self.assertNotEqual(actual.id, "")
+        self.assertNotEqual(actual.etag, "")
+
+    def test_create_object_acl(self):
+        actual = testbench.acl.create_object_acl(
+            "bucket-name", "object-name", 123, "test-entity", "OWNER", context=None
+        )
+        self.assertEqual(actual.role, "OWNER")
+        self.assertEqual(actual.entity, "test-entity")
+        self.assertNotEqual(actual.id, "")
+        self.assertNotEqual(actual.etag, "")
+
     def test_get_canonical_entity(self):
         cases = {
             "allUsers": lambda x: self.assertEqual(x, "allUsers"),

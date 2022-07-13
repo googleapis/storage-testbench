@@ -75,6 +75,7 @@ class TestBucket(unittest.TestCase):
         self.assertEqual(bucket.metadata.name, "projects/_/buckets/bucket")
         self.assertEqual(bucket.metadata.bucket_id, "bucket")
         self.assertLess(0, bucket.metadata.metageneration)
+        self.assertNotEqual(bucket.metadata.etag, "")
 
     def test_init_validates_names(self):
         request = testbench.common.FakeRequest(

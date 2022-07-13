@@ -70,6 +70,10 @@ class Object:
         metadata.acl.extend(acls)
 
     @classmethod
+    def _metadata_etag(cls, metadata):
+        return hashlib.md5(("%d" % metadata.metageneration).encode("utf-8")).hexdigest()
+
+    @classmethod
     def init(cls, request, metadata, media, bucket, is_destination, context):
         instruction = testbench.common.extract_instruction(request, context)
         if instruction == "inject-upload-data-error":
@@ -78,6 +82,7 @@ class Object:
         metadata.bucket = bucket.name
         metadata.generation = int(timestamp.timestamp() * 1000)
         metadata.metageneration = 1
+        metadata.etag = cls._metadata_etag(metadata)
         metadata.size = len(media)
         actual_md5Hash = hashlib.md5(media).digest()
         actual_crc32c = crc32c.crc32c(media)
@@ -213,6 +218,7 @@ class Object:
             update_mask = field_mask_pb2.FieldMask(paths=Object.modifiable_fields)
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
+        self.metadata.etag = Object._metadata_etag(self.metadata)
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
     def update(self, request, context):
@@ -274,9 +280,8 @@ class Object:
         if index is not None:
             self.metadata.acl[index].CopyFrom(acl)
             return self.metadata.acl[index]
-        else:
-            self.metadata.acl.append(acl)
-            return acl
+        self.metadata.acl.append(acl)
+        return acl
 
     def get_acl(self, entity, context):
         index = self.__search_acl(entity, True, context)

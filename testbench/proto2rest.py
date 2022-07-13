@@ -117,37 +117,10 @@ def __postprocess_rest_lifecycle(lc):
     return lc
 
 
-def _etag_bucket_access_control(entry):
-    return hashlib.md5(
-        "#".join(
-            [
-                entry["bucket"],
-                entry["entity"],
-                entry["role"],
-            ]
-        ).encode("utf-8")
-    ).hexdigest()
-
-
-def _etag_object_access_control(entry):
-    return hashlib.md5(
-        "#".join(
-            [
-                entry["bucket"],
-                entry.get("object", ""),
-                entry.get("generation", ""),
-                entry["entity"],
-                entry["role"],
-            ]
-        ).encode("utf-8")
-    ).hexdigest()
-
-
 def __postprocess_rest_bucket_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#bucketAccessControl"
     copy["bucket"] = bucket_id
-    copy["etag"] = _etag_bucket_access_control(copy)
     return copy
 
 
@@ -155,7 +128,6 @@ def __postprocess_rest_default_object_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#objectAccessControl"
     copy["bucket"] = bucket_id
-    copy["etag"] = _etag_object_access_control(copy)
     return copy
 
 
@@ -192,7 +164,6 @@ def __postprocess_bucket_rest(data):
         },
     )
     data["kind"] = "storage#bucket"
-    data["etag"] = hashlib.md5(data["updated"].encode("utf-8")).hexdigest()
     # 0 is the default in the proto, and hidden by json_format.*
     if "metageneration" not in data:
         data["metageneration"] = 0
@@ -215,7 +186,6 @@ def __postprocess_object_access_control(
     copy["bucket"] = bucket_id
     copy["object"] = object_id
     copy["generation"] = generation
-    copy["etag"] = _etag_object_access_control(copy)
     return copy
 
 

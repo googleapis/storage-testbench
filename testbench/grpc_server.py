@@ -648,8 +648,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def _hmac_key_metadata_from_rest(self, rest):
         rest = rest.copy()
-        for field in ["etag", "kind"]:
-            rest.pop(field, None)
+        rest.pop("kind", None)
         rest["project"] = "projects/" + rest.pop("projectId")
         rest["create_time"] = rest.pop("timeCreated")
         rest["update_time"] = rest.pop("updated")
@@ -742,8 +741,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             )
         project_id = project_id[len("projects/") :]
         project = self.db.get_project(project_id)
+        payload = {"state": request.hmac_key.state}
+        if request.hmac_key.etag != '':
+            payload["etag"] = request.hmac_key.etag
         rest = project.update_hmac_key(
-            request.hmac_key.access_id, {"state": request.hmac_key.state}, context
+            request.hmac_key.access_id, payload, context
         )
         return self._hmac_key_metadata_from_rest(rest)
 

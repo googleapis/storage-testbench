@@ -1409,6 +1409,7 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(response.metadata.id, "")
         self.assertNotEqual(response.metadata.access_id, "")
         self.assertEqual(response.metadata.service_account_email, sa_email)
+        self.assertNotEqual(response.metadata.etag, "")
 
         context = unittest.mock.Mock()
         _ = self.grpc.CreateHmacKey(
@@ -1639,6 +1640,33 @@ class TestGrpc(unittest.TestCase):
         )
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_update_hmac_key_bad_etag(self):
+        sa_email = "test-sa@test-project-id.iam.gserviceaccount.com"
+        context = unittest.mock.Mock()
+        create = self.grpc.CreateHmacKey(
+            storage_pb2.CreateHmacKeyRequest(
+                project="projects/test-project-id",
+                service_account_email=sa_email,
+            ),
+            context,
+        )
+
+        metadata = storage_pb2.HmacKeyMetadata()
+        metadata.CopyFrom(create.metadata)
+        metadata.state = "INACTIVE"
+        metadata.etag = "test-only-invalid"
+
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateHmacKey(
+            storage_pb2.UpdateHmacKeyRequest(
+                hmac_key=metadata, update_mask=field_mask_pb2.FieldMask(paths=["state"])
+            ),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
     def test_run(self):

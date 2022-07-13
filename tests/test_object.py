@@ -46,6 +46,7 @@ class TestObject(unittest.TestCase):
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "object")
+        self.assertNotEqual(blob.metadata.etag, "")
         self.assertEqual(blob.media, b"12345678")
 
     def test_init_retention_period(self):
@@ -408,6 +409,7 @@ class TestObject(unittest.TestCase):
                     "x_testbench_no_md5": "true",
                 },
                 "metageneration": "1",
+                "etag": blob.metadata.etag,
                 "retentionExpirationTime": "2022-01-01T00:00:00Z",
                 "size": "9",
                 "storageClass": "regional",
@@ -551,6 +553,7 @@ class TestObject(unittest.TestCase):
                     "x_testbench_upload": "multipart",
                 },
                 "metageneration": "1",
+                "etag": blob.metadata.etag,
                 "retentionExpirationTime": "2022-01-01T00:00:00Z",
                 "size": "9",
                 "storageClass": "regional",
