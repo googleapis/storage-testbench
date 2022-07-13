@@ -742,11 +742,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         project_id = project_id[len("projects/") :]
         project = self.db.get_project(project_id)
         payload = {"state": request.hmac_key.state}
-        if request.hmac_key.etag != '':
+        if request.hmac_key.etag != "":
             payload["etag"] = request.hmac_key.etag
-        rest = project.update_hmac_key(
-            request.hmac_key.access_id, payload, context
-        )
+        rest = project.update_hmac_key(request.hmac_key.access_id, payload, context)
         return self._hmac_key_metadata_from_rest(rest)
 
 
