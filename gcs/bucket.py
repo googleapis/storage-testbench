@@ -46,6 +46,7 @@ class Bucket:
         "location_type",
         "iam_config",
         "rpo",
+        "customPlacementConfig",
     }
 
     def __init__(self, metadata, notifications, iam_policy):
