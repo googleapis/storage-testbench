@@ -239,6 +239,10 @@ class Bucket:
     # === INITIALIZATION === #
 
     @classmethod
+    def _metadata_etag(cls, metadata):
+        return hashlib.md5(("%d" % metadata.metageneration).encode("utf-8")).hexdigest()
+
+    @classmethod
     def _init_defaults(cls, metadata, context):
         time_created = datetime.datetime.now()
         if metadata.rpo is None or metadata.rpo == "":
@@ -246,7 +250,6 @@ class Bucket:
         if metadata.storage_class is None or metadata.storage_class == "":
             metadata.storage_class = "STANDARD"
         metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
-        metadata.metageneration = 1
         metadata.create_time.FromDatetime(time_created)
         metadata.update_time.FromDatetime(time_created)
         metadata.metageneration = 1
@@ -254,6 +257,7 @@ class Bucket:
         metadata.owner.entity_id = hashlib.md5(
             metadata.owner.entity.encode("utf-8")
         ).hexdigest()
+        metadata.etag = cls._metadata_etag(metadata)
 
     @classmethod
     def init(cls, request, context):
@@ -393,6 +397,7 @@ class Bucket:
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
+        self.metadata.etag = Bucket._metadata_etag(self.metadata)
 
     def update(self, request, context):
         # Support for `Bucket: update` over gRPC is not needed (and not implemented).
@@ -447,9 +452,8 @@ class Bucket:
         if index is not None:
             self.metadata.acl[index].CopyFrom(acl)
             return self.metadata.acl[index]
-        else:
-            self.metadata.acl.append(acl)
-            return acl
+        self.metadata.acl.append(acl)
+        return acl
 
     def get_acl(self, entity, context):
         index = self.__search_acl(entity, True, context)

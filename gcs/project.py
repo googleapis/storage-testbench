@@ -93,13 +93,13 @@ class ServiceAccount(object):
         # by constructions our keys always have a `metadata`` field
         return key.get("metadata")
 
-    def _check_etag(self, key_resource, etag, where):
+    def _check_etag(self, key_resource, etag, where, context):
         """Verify that ETag values match the current ETag."""
         expected = key_resource.get("etag")
         if etag is None or etag == expected:
             return
         testbench.error.mismatch(
-            "ETag for `HmacKeys: update` in %s" % where, expected, etag, None
+            "ETag for `HmacKeys: update` in %s" % where, expected, etag, context
         )
 
     def update_key(self, key_id, payload, context):
@@ -110,10 +110,10 @@ class ServiceAccount(object):
         metadata = key.get("metadata")
         # by constructions our keys always have a `metadata`` field
         assert metadata is not None
+        self._check_etag(metadata, payload.get("etag"), "payload", context)
         if context is None:
-            self._check_etag(metadata, payload.get("etag"), "payload")
             self._check_etag(
-                metadata, flask.request.headers.get("if-match-etag"), "header"
+                metadata, flask.request.headers.get("if-match-etag"), "header", context
             )
 
         state = payload.get("state")

@@ -35,6 +35,7 @@ class TestProto2Rest(unittest.TestCase):
             project_team=storage_pb2.ProjectTeam(
                 project_number="12345", team="test-team"
             ),
+            etag="test-only-etag",
         )
         actual = testbench.proto2rest.bucket_access_control_as_rest(
             "test-bucket-id", acl
@@ -48,9 +49,9 @@ class TestProto2Rest(unittest.TestCase):
             "email": "test-email",
             "domain": "test-domain",
             "projectTeam": {"projectNumber": "12345", "team": "test-team"},
+            "etag": "test-only-etag",
         }
         self.assertEqual(actual, {**actual, **expected})
-        self.assertIn("etag", actual)
 
     def test_default_object_access_control_as_rest(self):
         acl = storage_pb2.ObjectAccessControl(
@@ -63,6 +64,7 @@ class TestProto2Rest(unittest.TestCase):
             project_team=storage_pb2.ProjectTeam(
                 project_number="12345", team="test-team"
             ),
+            etag="test-only-etag",
         )
         actual = testbench.proto2rest.default_object_access_control_as_rest(
             "test-bucket-id", acl
@@ -76,9 +78,9 @@ class TestProto2Rest(unittest.TestCase):
             "email": "test-email",
             "domain": "test-domain",
             "projectTeam": {"projectNumber": "12345", "team": "test-team"},
+            "etag": "test-only-etag",
         }
         self.assertEqual(actual, {**actual, **expected})
-        self.assertIn("etag", actual)
 
     def test_object_as_rest(self):
         media = b"The quick brown fox jumps over the lazy dog"
@@ -90,6 +92,7 @@ class TestProto2Rest(unittest.TestCase):
             bucket="test-bucket-id",
             generation=123,
             metageneration=234,
+            etag="test-only-etag-234",
             storage_class="regional",
             size=34000,
             content_encoding="test-content-encoding",
@@ -97,10 +100,10 @@ class TestProto2Rest(unittest.TestCase):
             cache_control="test-cache-control",
             acl=[
                 storage_pb2.ObjectAccessControl(
-                    entity="test-entity0", role="test-role0"
+                    entity="test-entity0", role="test-role0", etag="test-only-etag0"
                 ),
                 storage_pb2.ObjectAccessControl(
-                    entity="test-entity1", role="test-role1"
+                    entity="test-entity1", role="test-role1", etag="test-only-etag1"
                 ),
             ],
             content_language="test-content-language",
@@ -139,6 +142,7 @@ class TestProto2Rest(unittest.TestCase):
             "generation": "123",
             "id": "test-bucket-id/o/test-object-name/123",
             "metageneration": "234",
+            "etag": "test-only-etag-234",
             "storageClass": "regional",
             "size": "34000",
             "contentEncoding": "test-content-encoding",
@@ -152,6 +156,7 @@ class TestProto2Rest(unittest.TestCase):
                     "generation": "123",
                     "entity": "test-entity0",
                     "role": "test-role0",
+                    "etag": "test-only-etag0",
                 },
                 {
                     "kind": "storage#objectAccessControl",
@@ -160,6 +165,7 @@ class TestProto2Rest(unittest.TestCase):
                     "generation": "123",
                     "entity": "test-entity1",
                     "role": "test-role1",
+                    "etag": "test-only-etag1",
                 },
             ],
             "contentLanguage": "test-content-language",
@@ -188,17 +194,13 @@ class TestProto2Rest(unittest.TestCase):
             },
             "customTime": "2026-01-01T00:00:00Z",
         }
-        # This is a bit of a cheat, but so would be hardcoding the (computed) ETag values.
-        # And skipping the ETag comparisons is actually worse.
-        for e in expected["acl"]:
-            e["etag"] = testbench.proto2rest._etag_object_access_control(e)
 
         self.maxDiff = None
         self.assertEqual(actual, expected)
 
     def test_object_access_control_as_rest(self):
         input = storage_pb2.ObjectAccessControl(
-            entity="test-entity0", role="test-role0"
+            entity="test-entity0", role="test-role0", etag="test-only-etag0"
         )
         expected = {
             "kind": "storage#objectAccessControl",
@@ -207,8 +209,8 @@ class TestProto2Rest(unittest.TestCase):
             "generation": "123",
             "entity": "test-entity0",
             "role": "test-role0",
+            "etag": "test-only-etag0",
         }
-        expected["etag"] = testbench.proto2rest._etag_object_access_control(expected)
         actual = testbench.proto2rest.object_access_control_as_rest(
             "test-bucket-id", "test-object-name", "123", input
         )
