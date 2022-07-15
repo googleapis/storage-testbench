@@ -751,6 +751,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 def run(port, database):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     storage_pb2_grpc.add_StorageServicer_to_server(StorageServicer(database), server)
-    port = server.add_insecure_port("localhost:%d" % port)
+    port = server.add_insecure_port("0.0.0.0:%d" % port)
     server.start()
     return port, server
