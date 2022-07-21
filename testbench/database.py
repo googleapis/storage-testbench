@@ -340,8 +340,9 @@ class Database:
 
     def delete_upload(self, upload_id, context):
         with self._uploads_lock:
-            self.get_upload(upload_id, context)
-            del self._uploads[upload_id]
+            upload = self.get_upload(upload_id, context)
+            if upload is not None:
+                del self._uploads[upload_id]
 
     # === REWRITE === #
 

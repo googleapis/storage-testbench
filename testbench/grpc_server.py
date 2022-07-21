@@ -422,6 +422,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return empty_pb2.Empty()
 
+    def CancelResumableWrite(self, request, context):
+        self.db.delete_upload(request.upload_id, context)
+        return storage_pb2.CancelResumableWriteResponse()
+
     def GetObject(self, request, context):
         blob = self.db.get_object(
             request.bucket,
