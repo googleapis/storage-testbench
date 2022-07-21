@@ -800,6 +800,36 @@ class TestGrpc(unittest.TestCase):
         names = {o.name for o in items}
         self.assertNotIn("object-name", names)
 
+    def test_cancel_resumable_write_not_found(self):
+        context = unittest.mock.Mock()
+        _ = self.grpc.CancelResumableWrite(
+            storage_pb2.CancelResumableWriteRequest(upload_id="test-only-invalid"),
+            context,
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_cancel_resumable_write(self):
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context=self.mock_context(),
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        context = unittest.mock.Mock()
+        _ = self.grpc.CancelResumableWrite(
+            storage_pb2.CancelResumableWriteRequest(upload_id=start.upload_id),
+            context,
+        )
+        context.abort.assert_not_called()
+
     def test_get_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(
