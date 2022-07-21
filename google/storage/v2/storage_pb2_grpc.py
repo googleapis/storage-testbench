@@ -113,6 +113,11 @@ class StorageStub(object):
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteObjectRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.CancelResumableWrite = channel.unary_unary(
+                '/google.storage.v2.Storage/CancelResumableWrite',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteResponse.FromString,
+                )
         self.GetObject = channel.unary_unary(
                 '/google.storage.v2.Storage/GetObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetObjectRequest.SerializeToString,
@@ -245,21 +250,21 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetIamPolicy(self, request, context):
-        """Gets the IAM policy for a specified bucket.
+        """Gets the IAM policy for a specified bucket or object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SetIamPolicy(self, request, context):
-        """Updates an IAM policy for the specified bucket.
+        """Updates an IAM policy for the specified bucket or object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def TestIamPermissions(self, request, context):
-        """Tests a set of permissions on the given bucket to see which, if
+        """Tests a set of permissions on the given bucket or object to see which, if
         any, are held by the caller.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -314,8 +319,14 @@ class StorageServicer(object):
 
     def DeleteObject(self, request, context):
         """Deletes an object and its metadata. Deletions are permanent if versioning
-        is not enabled for the bucket, or if the `generation` parameter
-        is used.
+        is not enabled for the bucket, or if the `generation` parameter is used.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CancelResumableWrite(self, request, context):
+        """Cancels an in-progress resumable upload.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -563,6 +574,11 @@ def add_StorageServicer_to_server(servicer, server):
                     servicer.DeleteObject,
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteObjectRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'CancelResumableWrite': grpc.unary_unary_rpc_method_handler(
+                    servicer.CancelResumableWrite,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteResponse.SerializeToString,
             ),
             'GetObject': grpc.unary_unary_rpc_method_handler(
                     servicer.GetObject,
@@ -917,6 +933,23 @@ class Storage(object):
         return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteObject',
             google_dot_storage_dot_v2_dot_storage__pb2.DeleteObjectRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CancelResumableWrite(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CancelResumableWrite',
+            google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
