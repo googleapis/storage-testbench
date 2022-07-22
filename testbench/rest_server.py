@@ -182,6 +182,11 @@ gcs.debug = False
 gcs.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
+@gcs.before_request
+def handle_gzip_compressed_request():
+    return testbench.common.handle_gzip_request(flask.request)
+
+
 # === BUCKET === #
 
 

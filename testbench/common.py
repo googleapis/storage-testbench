@@ -16,6 +16,8 @@
 
 import base64
 from functools import wraps
+import gzip
+import io
 import json
 import random
 import re
@@ -799,6 +801,13 @@ def gen_retry_test_decorator(db):
         return decorator
 
     return retry_test
+
+
+def handle_gzip_request(request):
+    """Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests."""
+    if request.headers.get("Content-Encoding", "") == "gzip":
+        request.data = gzip.decompress(request.data)
+        request.environ["wsgi.input"] = io.BytesIO(request.data)
 
 
 def rest_crc32c_to_proto(crc32c):
