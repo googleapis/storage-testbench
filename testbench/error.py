@@ -65,7 +65,7 @@ def csek(context, rest_code=400, grpc_code=grpc.StatusCode.INVALID_ARGUMENT):
     """A detailed error generated when CSEK key validation fails."""
     msg = "Missing a SHA256 hash of the encryption key, or it is not"
     msg += " base64 encoded, or it does not match the encryption key."
-    link = "https://cloud.google.com/storage/docs/encryption#customer-supplied_encryption_keys"
+    link = "https://cloud.google.com/storage/docs/encryption/customer-supplied-keys"
     error_msg = json.dumps(
         {
             "error": {
