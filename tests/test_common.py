@@ -1207,20 +1207,39 @@ class TestCommonUtils(unittest.TestCase):
         )
 
     def test_handle_gzip_request(self):
-        # Test gzip decompresses request payload when Content-Encoding: gzip is present
+        # Test gzip decompresses request payload when Content-Encoding: gzip is present.
         payload = b'{"name": "bucket-name"}'
         compressed = gzip.compress(payload)
         request = testbench.common.FakeRequest(
             headers={"Content-Encoding": "gzip"},
+            args={},
             data=compressed,
             environ={},
         )
         testbench.common.handle_gzip_request(request)
         self.assertEqual(request.data, payload)
 
-        # Test no ops when Content-Encoding: gzip is not present
+        # Test no decompression when object's metadata includes Content-Encoding: gzip,
+        # so that data can be stored in compressed form if applicable (PR#322).
+        media = "How vexingly quick daft zebras jump!"
+        compressed = gzip.compress(media.encode("utf-8"))
+        request = testbench.common.FakeRequest(
+            headers={"Content-Encoding": "gzip"},
+            args={
+                "name": "test_blob",
+                "uploadType": "media",
+                "contentEncoding": "gzip",
+            },
+            data=compressed,
+            environ={},
+        )
+        testbench.common.handle_gzip_request(request)
+        self.assertEqual(request.data, compressed)
+
+        # Test no decompression when Content-Encoding: gzip is not present.
         request = testbench.common.FakeRequest(
             headers={},
+            args={},
             data=payload,
             environ={},
         )

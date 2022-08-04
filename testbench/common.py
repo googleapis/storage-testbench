@@ -804,8 +804,14 @@ def gen_retry_test_decorator(db):
 
 
 def handle_gzip_request(request):
-    """Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests."""
-    if request.headers.get("Content-Encoding", "") == "gzip":
+    """
+    Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests.
+    No decompressions for media uploads when object's metadata includes Content-Encoding: gzip.
+    """
+    if (
+        request.headers.get("Content-Encoding", None) == "gzip"
+        and request.args.get("contentEncoding", None) != "gzip"
+    ):
         request.data = gzip.decompress(request.data)
         request.environ["wsgi.input"] = io.BytesIO(request.data)
 

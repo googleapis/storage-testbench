@@ -893,6 +893,11 @@ upload.debug = False
 upload.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
+@upload.before_request
+def handle_gzip_compressed_request():
+    return testbench.common.handle_gzip_request(flask.request)
+
+
 @upload.route("/b/<bucket_name>/o", methods=["POST"])
 @retry_test(method="storage.objects.insert")
 def object_insert(bucket_name):
