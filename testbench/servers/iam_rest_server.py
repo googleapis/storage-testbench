@@ -28,6 +28,11 @@ _iam.debug = False
 _iam.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
+@_iam.before_request
+def handle_gzip_compressed_request():
+    return testbench.common.handle_gzip_request(flask.request)
+
+
 @_iam.route("/projects/-/serviceAccounts/<service_account>:signBlob", methods=["POST"])
 def sign_blob(service_account):
     """Implement the `projects.serviceAccounts.signBlob` API."""

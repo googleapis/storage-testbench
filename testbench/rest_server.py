@@ -182,6 +182,11 @@ gcs.debug = False
 gcs.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
+@gcs.before_request
+def handle_gzip_compressed_request():
+    return testbench.common.handle_gzip_request(flask.request)
+
+
 # === BUCKET === #
 
 
@@ -886,6 +891,11 @@ UPLOAD_HANDLER_PATH = "/upload/storage/v1"
 upload = flask.Flask(__name__)
 upload.debug = False
 upload.register_error_handler(Exception, testbench.error.RestException.handler)
+
+
+@upload.before_request
+def handle_gzip_compressed_request():
+    return testbench.common.handle_gzip_request(flask.request)
 
 
 @upload.route("/b/<bucket_name>/o", methods=["POST"])

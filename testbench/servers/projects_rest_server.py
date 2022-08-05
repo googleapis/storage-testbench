@@ -30,6 +30,10 @@ def get_projects_app(db):
     projects.debug = False
     projects.register_error_handler(Exception, testbench.error.RestException.handler)
 
+    @projects.before_request
+    def handle_gzip_compressed_request():
+        return testbench.common.handle_gzip_request(flask.request)
+
     @projects.route("/<project_id>/serviceAccount")
     @retry_test("storage.serviceaccount.get")
     def projects_get(project_id):
