@@ -681,7 +681,7 @@ class TestObject(unittest.TestCase):
                 )
             )
             response = blob.rest_media(request)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 206)
             self.assertEqual(response.data, expected)
             self.assertIn("content-range", response.headers)
             content_range = response.headers["content-range"]

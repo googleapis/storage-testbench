@@ -372,6 +372,7 @@ class Object:
             if self._decompress_on_download(request)
             else self.media
         )
+        range_header = request.headers.get("range")
         begin, end, length, response_payload = self._download_range(
             request, response_payload
         )
@@ -488,4 +489,9 @@ class Object:
         headers["x-goog-generation"] = self.metadata.generation
         headers["x-goog-metageneration"] = self.metadata.metageneration
         headers["x-goog-storage-class"] = self.metadata.storage_class
+
+        # Return status code 206 if a valid range request header is included.
+        if range_header and not self._decompress_on_download(request):
+            return flask.Response(streamer(), status=206, headers=headers)
+
         return flask.Response(streamer(), status=200, headers=headers)
