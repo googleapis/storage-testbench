@@ -376,6 +376,10 @@ class Object:
         begin, end, length, response_payload = self._download_range(
             request, response_payload
         )
+        # Return 416 if the requested range cannot be satisfied.
+        if range_header is not None and begin >= length:
+            testbench.error.range_not_satisfiable()
+
         headers = {}
         content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
 
