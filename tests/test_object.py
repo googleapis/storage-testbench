@@ -681,7 +681,7 @@ class TestObject(unittest.TestCase):
                 )
             )
             response = blob.rest_media(request)
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 206)
             self.assertEqual(response.data, expected)
             self.assertIn("content-range", response.headers)
             content_range = response.headers["content-range"]
@@ -689,6 +689,17 @@ class TestObject(unittest.TestCase):
                 content_range.endswith("/%d" % len(blob.media)),
                 msg="unexpected content-range header: " + content_range,
             )
+        # Test raises 416 if request range cannot be satisfied.
+        request = Request(
+            create_environ(
+                base_url="http://localhost:8080",
+                headers={"range": "bytes=36-"},
+                data=json.dumps({}),
+            )
+        )
+        with self.assertRaises(testbench.error.RestException) as rest:
+            response = blob.rest_media(request)
+        self.assertEqual(rest.exception.code, 416)
 
     def test_rest_media_instructions(self):
         boundary, payload = format_multipart_upload(

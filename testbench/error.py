@@ -139,3 +139,15 @@ def already_exists(context=None):
         grpc_code=grpc.StatusCode.ALREADY_EXISTS,
         context=context,
     )
+
+
+def range_not_satisfiable(
+    context=None, rest_code=416, grpc_code=grpc.StatusCode.OUT_OF_RANGE
+):
+    """Error returned when request range is not satisfiable."""
+    generic(
+        _simple_json_error("request range not satisfiable"),
+        rest_code,
+        grpc_code,
+        context,
+    )
