@@ -171,7 +171,11 @@ def start_grpc():
     global db
     if grpc_port == 0:
         port = flask.request.args.get("port", "0")
-        grpc_port, grpc_service = testbench.grpc_server.run(int(port), db)
+        echo_metadata = flask.request.args.get("echo-metadata", False)
+        grpc_port, grpc_service = testbench.grpc_server.run(
+                                    int(port),
+                                    db, 
+                                    echo_metadata=echo_metadata)
     return str(grpc_port)
 
 
