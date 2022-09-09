@@ -152,6 +152,21 @@ class TestTestbenchObjectUpload(unittest.TestCase):
         self.assertEqual(response.status_code, 308)
         self.assertIn("range", response.headers)
 
+        # Upload another chunk using a POST request with upload_id
+        chunk = self._create_valid_chunk()
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes {beg:d}-{last:d}/*".format(
+                    beg=2 * UPLOAD_QUANTUM - 1, last=3 * UPLOAD_QUANTUM - 1
+                )
+            },
+            data=chunk,
+        )
+        self.assertEqual(response.status_code, 308)
+        self.assertIn("range", response.headers)
+
         response = self.client.delete(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
