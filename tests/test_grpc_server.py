@@ -1720,6 +1720,19 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(start.upload_id, "")
         server.stop(grace=0)
 
+    def test_echo_metadata(self):
+        port, server = testbench.grpc_server.run(0, self.db, echo_metadata=True)
+        self.assertNotEqual(port, 0)
+        self.assertIsNotNone(server)
+
+        stub = storage_pb2_grpc.StorageStub(
+            grpc.insecure_channel("localhost:%d" % port)
+        )
+        request = storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name")
+        response, call = stub.GetBucket.with_call(request, metadata=(("hdr1", "foo"),))
+        self.assertIn(("x-req-hdr1", "foo"), call.initial_metadata())
+        server.stop(grace=0)
+
 
 if __name__ == "__main__":
     unittest.main()
