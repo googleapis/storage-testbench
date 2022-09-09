@@ -1729,8 +1729,8 @@ class TestGrpc(unittest.TestCase):
             grpc.insecure_channel("localhost:%d" % port)
         )
         request = storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name")
-        response, call = stub.GetBucket.with_call(request, metadata=(('hdr1', 'foo'),))
-        self.assertIn(('x-req-hdr1', 'foo'), call.initial_metadata())
+        response, call = stub.GetBucket.with_call(request, metadata=(("hdr1", "foo"),))
+        self.assertIn(("x-req-hdr1", "foo"), call.initial_metadata())
         server.stop(grace=0)
 
 

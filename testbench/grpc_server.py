@@ -98,6 +98,7 @@ def _logging_method_decorator(function):
 
     return decorated
 
+
 def _metadata_echo_decorator(function):
     """
     Send back the invocation metadata as initial metadata, if metadata echo is
@@ -108,7 +109,9 @@ def _metadata_echo_decorator(function):
     def decorated(self, request, context):
         if self.echo_metadata:
             req_metadata = context.invocation_metadata()
-            resp_metadata = list(map(lambda md: ('x-req-'+md[0], md[1]), req_metadata))
+            resp_metadata = list(
+                map(lambda md: ("x-req-" + md[0], md[1]), req_metadata)
+            )
             context.send_initial_metadata(resp_metadata)
         return function(self, request, context)
 
@@ -773,8 +776,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 def run(port, database, echo_metadata=False):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     storage_pb2_grpc.add_StorageServicer_to_server(
-        StorageServicer(database, echo_metadata),
-        server)
+        StorageServicer(database, echo_metadata), server
+    )
     port = server.add_insecure_port("0.0.0.0:%d" % port)
     server.start()
     return port, server
