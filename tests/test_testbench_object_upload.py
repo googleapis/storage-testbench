@@ -152,6 +152,15 @@ class TestTestbenchObjectUpload(unittest.TestCase):
         self.assertEqual(response.status_code, 308)
         self.assertIn("range", response.headers)
 
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "X-Guploader-No-308": "yes",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
         response = self.client.delete(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
