@@ -266,7 +266,7 @@ class TestHolder(unittest.TestCase):
             self.assertEqual("bytes=0-42", status.headers.get("Range", None))
             # Simulate a chunk upload that requests 200 status code instead of 308
             upload.media = "How vexingly quick daft zebras jump"
-            status = upload.resumable_status_rest(no_308=True)
+            status = upload.resumable_status_rest(override_308=True)
             self.assertEqual(status.status_code, 200)
             self.assertIn("X-Http-Status-Code-Override", status.headers)
 
