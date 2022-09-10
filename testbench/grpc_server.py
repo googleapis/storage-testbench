@@ -99,27 +99,48 @@ def _logging_method_decorator(function):
     return decorated
 
 
-def log_all_rpc_methods(klass):
+def _metadata_echo_decorator(function):
+    """
+    Send back the invocation metadata as initial metadata, if metadata echo is
+    enabled.
+    """
+
+    @functools.wraps(function)
+    def decorated(self, request, context):
+        if self.echo_metadata:
+            req_metadata = context.invocation_metadata()
+            resp_metadata = list(
+                map(lambda md: ("x-req-" + md[0], md[1]), req_metadata)
+            )
+            context.send_initial_metadata(resp_metadata)
+        return function(self, request, context)
+
+    return decorated
+
+
+def decorate_all_rpc_methods(klass):
     """Decorate all the RPC-looking methods."""
     for key in dir(klass):
         if key.startswith("_"):
             continue
         value = getattr(klass, key)
         if isinstance(value, types.FunctionType):
-            wrapped = _logging_method_decorator(value)
+            wrapped = _metadata_echo_decorator(value)
+            wrapped = _logging_method_decorator(wrapped)
             setattr(klass, key, wrapped)
     return klass
 
 
 # Keep the methods in this class in the same order as the RPCs in storage.proto.
 # That makes it easier to find them later.
-@log_all_rpc_methods
+@decorate_all_rpc_methods
 class StorageServicer(storage_pb2_grpc.StorageServicer):
     """Implements the google.storage.v2.Storage gRPC service."""
 
-    def __init__(self, db):
+    def __init__(self, db, echo_metadata=False):
         self.db = db
         self.db.insert_test_bucket()
+        self.echo_metadata = echo_metadata
 
     def DeleteBucket(self, request, context):
         self.db.delete_bucket(
@@ -752,9 +773,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return self._hmac_key_metadata_from_rest(rest)
 
 
-def run(port, database):
+def run(port, database, echo_metadata=False):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
-    storage_pb2_grpc.add_StorageServicer_to_server(StorageServicer(database), server)
+    storage_pb2_grpc.add_StorageServicer_to_server(
+        StorageServicer(database, echo_metadata), server
+    )
     port = server.add_insecure_port("0.0.0.0:%d" % port)
     server.start()
     return port, server

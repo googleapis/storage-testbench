@@ -171,7 +171,10 @@ def start_grpc():
     global db
     if grpc_port == 0:
         port = flask.request.args.get("port", "0")
-        grpc_port, grpc_service = testbench.grpc_server.run(int(port), db)
+        echo_metadata = flask.request.args.get("echo-metadata", False)
+        grpc_port, grpc_service = testbench.grpc_server.run(
+            int(port), db, echo_metadata=echo_metadata
+        )
     return str(grpc_port)
 
 
@@ -901,9 +904,15 @@ def handle_gzip_compressed_request():
 @upload.route("/b/<bucket_name>/o", methods=["POST"])
 @retry_test(method="storage.objects.insert")
 def object_insert(bucket_name):
+    # GCS supports "POST" calls for uploading data with an upload_id
+    request = flask.request
+    upload_id = request.args.get("upload_id")
+    if upload_id is not None:
+        return resumable_upload_chunk(bucket_name)
+
     db.insert_test_bucket()
     bucket = db.get_bucket(bucket_name, None).metadata
-    upload_type = flask.request.args.get("uploadType")
+    upload_type = request.args.get("uploadType")
     if upload_type is None:
         testbench.error.missing("uploadType", None)
     elif upload_type not in {"multipart", "media", "resumable"}:
