@@ -241,13 +241,13 @@ class Upload(types.SimpleNamespace):
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
         return upload, is_resumable
 
-    def resumable_status_rest(self, no_308=False):
+    def resumable_status_rest(self, override_308=False):
         response = flask.make_response()
         if len(self.media) > 1 and not self.complete:
             response.headers["Range"] = "bytes=0-%d" % (len(self.media) - 1)
         response.status_code = 308
 
-        if no_308:
+        if override_308:
             response.headers["X-Http-Status-Code-Override"] = "308"
             response.status_code = 200
         return response

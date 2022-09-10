@@ -901,15 +901,9 @@ def handle_gzip_compressed_request():
 @upload.route("/b/<bucket_name>/o", methods=["POST"])
 @retry_test(method="storage.objects.insert")
 def object_insert(bucket_name):
-    # GCS supports "POST" calls for uploading data with an upload_id
-    request = flask.request
-    upload_id = request.args.get("upload_id")
-    if upload_id is not None:
-        return resumable_upload_chunk(bucket_name)
-
     db.insert_test_bucket()
     bucket = db.get_bucket(bucket_name, None).metadata
-    upload_type = request.args.get("uploadType")
+    upload_type = flask.request.args.get("uploadType")
     if upload_type is None:
         testbench.error.missing("uploadType", None)
     elif upload_type not in {"multipart", "media", "resumable"}:
@@ -1052,8 +1046,8 @@ def resumable_upload_chunk(bucket_name):
         # If request header "X-GUploader-No-308: yes" is included, instead of returning 308
         # Resume Incomplete, return 200 with a response header X-HTTP-Status-Code-Override: 308
         # See more at https://g3doc.corp.google.com/cloud/storage/g3doc/user/scotty/faq.md?cl=head
-        no_308 = request.headers.get("X-Guploader-No-308") == "yes"
-        return upload.resumable_status_rest(no_308=no_308)
+        override_308 = request.headers.get("X-Guploader-No-308") == "yes"
+        return upload.resumable_status_rest(override_308=override_308)
 
 
 @upload.route("/b/<bucket_name>/o", methods=["DELETE"])
