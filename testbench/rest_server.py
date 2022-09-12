@@ -1052,7 +1052,11 @@ def resumable_upload_chunk(bucket_name):
             blob.rest_metadata(), projection, fields
         )
     else:
-        return upload.resumable_status_rest()
+        # If request header "X-GUploader-No-308: yes" is included, instead of returning 308
+        # Resume Incomplete, return 200 with a response header X-HTTP-Status-Code-Override: 308
+        # See more at https://g3doc.corp.google.com/cloud/storage/g3doc/user/scotty/faq.md?cl=head
+        override_308 = request.headers.get("X-Guploader-No-308") == "yes"
+        return upload.resumable_status_rest(override_308=override_308)
 
 
 @upload.route("/b/<bucket_name>/o", methods=["DELETE"])

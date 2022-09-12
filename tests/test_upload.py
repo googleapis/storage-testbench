@@ -264,6 +264,11 @@ class TestHolder(unittest.TestCase):
             self.assertEqual(status.status_code, 308)
             self.assertIn("Range", status.headers)
             self.assertEqual("bytes=0-42", status.headers.get("Range", None))
+            # Simulate a chunk upload that requests 200 status code instead of 308
+            upload.media = "How vexingly quick daft zebras jump"
+            status = upload.resumable_status_rest(override_308=True)
+            self.assertEqual(status.status_code, 200)
+            self.assertIn("X-Http-Status-Code-Override", status.headers)
 
     def test_init_object_write_grpc_non_resumable(self):
         line = b"The quick brown fox jumps over the lazy dog\n"
