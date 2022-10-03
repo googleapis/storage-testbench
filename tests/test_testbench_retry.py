@@ -301,7 +301,7 @@ class TestTestbenchRetry(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"uploadType": "resumable", "name": "256kobject"},
             headers={
-                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-upload-content-length": "%d" % (2 * len(chunk)),
                 "x-retry-test-id": id,
             },
         )
@@ -314,7 +314,7 @@ class TestTestbenchRetry(unittest.TestCase):
             location,
             headers={
                 "content-range": "bytes 0-{last:d}/*".format(last=len(chunk) - 1),
-                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-upload-content-length": "%d" % (2 * len(chunk)),
                 "x-retry-test-id": id,
             },
             data=chunk,

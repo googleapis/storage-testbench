@@ -240,7 +240,7 @@ class TestTestbenchObjectUpload(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"uploadType": "resumable", "name": "zebra"},
             content_type="application/json",
-            headers={"x-upload-content-length": "%d" % 2 * len(chunk)},
+            headers={"x-upload-content-length": "%d" % (2 * len(chunk))},
             data=json.dumps({"name": "zebra", "metadata": {"key0": "label0"}}),
         )
         self.assertEqual(response.status_code, 200)
@@ -257,7 +257,7 @@ class TestTestbenchObjectUpload(unittest.TestCase):
             query_string={"upload_id": upload_id},
             headers={
                 "content-range": "bytes 0-{last:d}/*".format(last=len(chunk) - 1),
-                "x-upload-content-length": "%d" % 2 * len(chunk),
+                "x-upload-content-length": "%d" % (2 * len(chunk)),
             },
             data=chunk,
         )
