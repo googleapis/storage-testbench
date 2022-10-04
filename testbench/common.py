@@ -34,6 +34,7 @@ import scalpl
 
 from google.storage.v2 import storage_pb2
 import testbench
+from uvicorn_socket import getsocket
 
 re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")
 retry_return_error_code = re.compile(r"return-([0-9]+)$")
@@ -673,9 +674,10 @@ def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_s
                     raise testbench.error.RestException(
                         "Injected 'broken stream' fault", 500
                     )
-
-        return flask.Response(streamer(), headers=_extract_headers(data))
-
+        flask_resp = flask.Response(streamer(), headers=_extract_headers(data))
+        # trying to read data so that streamer function is execited immediately and exception is thrown right now, if any
+        flask_resp_data = flask_resp.data
+        return flask_resp
     return response_handler
 
 
@@ -724,7 +726,7 @@ def handle_retry_test_instruction(database, request, method):
         items = list(retry_connection_matches.groups())
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
-            fd = request.environ.get("gunicorn.socket", None)
+            fd = getsocket()
             if fd is not None:
                 fd.setsockopt(
                     socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
@@ -739,7 +741,7 @@ def handle_retry_test_instruction(database, request, method):
                 "Injected 'connection reset by peer' fault", 500
             )
         elif items[0] == "broken-stream":
-            conn = request.environ.get("gunicorn.socket", None)
+            conn= getsocket()
             return __get_streamer_response_fn(database, method, conn, test_id)
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
@@ -747,7 +749,7 @@ def handle_retry_test_instruction(database, request, method):
     if broken_stream_after_bytes and method == "storage.objects.get":
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
-        conn = request.environ.get("gunicorn.socket", None)
+        conn = getsocket()
         return __get_streamer_response_fn(
             database, method, conn, test_id, limit=after_bytes
         )
@@ -795,11 +797,8 @@ def gen_retry_test_decorator(db):
                     db, flask.request, method
                 )
                 return response_handler(func(*args, **kwargs))
-
             return wrapper
-
         return decorator
-
     return retry_test
 
 

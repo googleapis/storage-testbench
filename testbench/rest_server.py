@@ -21,6 +21,7 @@ import flask
 from google.protobuf import json_format
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from asgiref.wsgi import WsgiToAsgi
 
 from google.storage.v2 import storage_pb2
 import gcs as gcs_type
@@ -1089,6 +1090,8 @@ server.wsgi_app = DispatcherMiddleware(
         IAM_HANDLER_PATH: iam_app,
     },
 )
+
+server = WsgiToAsgi(server)
 
 
 def _run():

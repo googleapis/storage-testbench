@@ -27,15 +27,12 @@ import requests
 
 class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
-        self.gunicorn = subprocess.Popen(
+        self.uvicorn = subprocess.Popen(
             [
-                "gunicorn",
-                "--bind=localhost:0",
-                "--worker-class=sync",
-                "--threads=2",
-                "--reload",
-                "--access-logfile=-",
-                "testbench:run()",
+                "python3",
+                "run_uvicorn.py",
+                "localhost",
+                "0",
             ],
             stderr=subprocess.PIPE,
             stdout=None,
@@ -46,17 +43,17 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
         start = time.time()
         # Wait for the message declaring this process is running
         while self.port is None and time.time() - start < 120:
-            line = self.gunicorn.stderr.readline()
-            if "Listening at: http://" in line:
-                m = re.compile("Listening at:.*:([0-9]+) ").search(line)
+            line = self.uvicorn.stderr.readline()
+            if "Uvicorn running on http://" in line:
+                m = re.compile("Uvicorn running on.*:([0-9]+) ").search(line)
                 if m is not None:
                     self.port = m[1]
         self.assertIsNotNone(self.port)
 
     def tearDown(self):
-        self.gunicorn.stderr.close()
-        self.gunicorn.kill()
-        self.gunicorn.wait(30)
+        self.uvicorn.stderr.close()
+        self.uvicorn.kill()
+        self.uvicorn.wait(30)
 
     def test_repeated_reset_connection_faults(self):
         endpoint = "http://localhost:" + self.port
@@ -108,11 +105,11 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
 
         # Verify we get the expected error when sending several requests
         for _ in range(0, 10):
-            with self.assertRaises(requests.exceptions.RequestException) as ex:
-                response = requests.get(
-                    endpoint + "/storage/v1/b?project=test-project-unused",
-                    headers={"x-retry-test-id": id},
-                )
+             with self.assertRaises(requests.RequestException) as ex:
+                 response = requests.get(
+                     endpoint + "/storage/v1/b?project=test-project-unused",
+                     headers={"x-retry-test-id": id},
+                 )
 
         # Verify the testbench remains usable.
         response = requests.get(endpoint + "/storage/v1/b?project=test-project-unused")
@@ -142,16 +139,16 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
 
         # Verify we get the expected error (in this case the connection is closed) when sending several requests
         for _ in range(0, 4):
-            with self.assertRaises(requests.exceptions.RequestException) as ex:
-                response = requests.get(
-                    endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media",
-                    stream=True,
-                    headers={"x-goog-testbench-instructions": "return-broken-stream"},
-                )
-                self.assertLess(
-                    len(response.content), int(response.headers.get("content-length"))
-                )
-                self.assertNotEqual(response.status_code, 200)
+             with self.assertRaises(requests.exceptions.RequestException) as ex:
+                 response = requests.get(
+                     endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media",
+                     stream=True,
+                     headers={"x-goog-testbench-instructions": "return-broken-stream"},
+                 )
+                 self.assertLess(
+                     len(response.content), int(response.headers.get("content-length"))
+                 )
+                 self.assertNotEqual(response.status_code, 200)
 
         # Verify the testbench remains usable.
         response = requests.get(

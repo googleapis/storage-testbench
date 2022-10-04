@@ -80,7 +80,7 @@ It is useful as well to test features that are not yet deployed to production: y
 To start the testbench, run this command from a terminal:
 
 ```bash
-gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --reload --access-logfile - "testbench:run()"
+python3 run_uvicorn.py localhost 9000
 ```
 
 > ⚠️ Ensure that the virtual environment you created to install the dependencies is active.

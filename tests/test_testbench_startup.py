@@ -30,15 +30,12 @@ from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 class TestTestbenchStartup(unittest.TestCase):
     def setUp(self):
-        self.gunicorn = subprocess.Popen(
+        self.uvicorn = subprocess.Popen(
             [
-                "gunicorn",
-                "--bind=localhost:0",
-                "--worker-class=sync",
-                "--threads=2",
-                "--reload",
-                "--access-logfile=-",
-                "testbench:run()",
+                "python3",
+                "run_uvicorn.py",
+                "localhost",
+                "0",
             ],
             stderr=subprocess.PIPE,
             stdout=None,
@@ -59,36 +56,36 @@ class TestTestbenchStartup(unittest.TestCase):
         )
 
     def tearDown(self):
-        processes = [self.gunicorn, self.plain]
+        processes = [self.uvicorn, self.plain]
         for p in processes:
             p.stderr.close()
             p.kill()
             p.wait(30)
 
-    def wait_gunicorn(self):
+    def wait_uvicorn(self):
         started = False
         port = None
         start = time.time()
         # Wait for the message declaring this process is running
         while not started and time.time() - start < 120:
-            line = self.gunicorn.stderr.readline()
-            if "Listening at: http://" in line:
-                m = re.compile("Listening at:.*:([0-9]+) ").search(line)
+            line = self.uvicorn.stderr.readline()
+            if "Uvicorn running on http://" in line:
+                m = re.compile("Uvicorn running on.*:([0-9]+) ").search(line)
                 if m is not None:
                     started = True
                     port = m[1]
         self.assertTrue(started)
         return port
 
-    def test_startup_gunicorn(self):
-        port = self.wait_gunicorn()
+    def test_startup_uvicorn(self):
+        port = self.wait_uvicorn()
         self.assertIsNotNone(port)
         response = requests.get("http://localhost:" + port)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "OK")
 
-    def test_startup_gunicorn_grpc(self):
-        port = self.wait_gunicorn()
+    def test_startup_uvicorn_grpc(self):
+        port = self.wait_uvicorn()
         self.assertIsNotNone(port)
         response = requests.post(
             "http://localhost:%s/storage/v1/b?project=test-only" % port,
@@ -120,8 +117,8 @@ class TestTestbenchStartup(unittest.TestCase):
         # Wait for the message declaring this process is running
         while not started and time.time() - start < 120:
             line = self.plain.stderr.readline()
-            if "Running on " in line:
-                m = re.compile("Running on .*:([0-9]+)").search(line)
+            if "Running on" in line:
+                m = re.compile("Running on.*:([0-9]+)").search(line)
                 if m is not None:
                     started = True
                     port = m[1]

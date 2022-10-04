@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM python:3.10@sha256:3e15ea73ac5c1f9408d8dc9eeb8297ece8e727f3004129a829519230c7de720c
 
-EXPOSE 9000
-WORKDIR /opt/storage-testbench
+socket = None
 
-COPY . /opt/storage-testbench/
+def setsocket(sock):
+    global socket
+    socket = sock
 
-RUN python3 -m pip install -e .
 
-CMD ["python3", \
-    "run_uvicorn.py", \
-    "0.0.0.0", \
-    "9000"]
+def getsocket():
+    global socket
+    return socket
