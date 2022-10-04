@@ -31,6 +31,16 @@ class TestACL(unittest.TestCase):
         self.assertNotEqual(actual.id, "")
         self.assertNotEqual(actual.etag, "")
 
+    def test_create_bucket_with_alt(self):
+        actual = testbench.acl.create_bucket_acl(
+            "bucket-name", "project-owners-project-id", "OWNER", context=None
+        )
+        self.assertEqual(actual.entity_alt, "project-owners-project-id")
+        self.assertEqual(actual.role, "OWNER")
+        self.assertEqual(actual.entity, testbench.acl.get_project_entity("owners", None))
+        self.assertNotEqual(actual.id, "")
+        self.assertNotEqual(actual.etag, "")
+
     def test_create_default_object_acl(self):
         actual = testbench.acl.create_default_object_acl(
             "bucket-name", "test-entity", "READER", context=None
@@ -46,6 +56,16 @@ class TestACL(unittest.TestCase):
         )
         self.assertEqual(actual.role, "OWNER")
         self.assertEqual(actual.entity, "test-entity")
+        self.assertNotEqual(actual.id, "")
+        self.assertNotEqual(actual.etag, "")
+
+    def test_create_object_with_alt(self):
+        actual = testbench.acl.create_object_acl(
+            "bucket-name", "object-name", 123, "project-owners-project-id", "OWNER", context=None
+        )
+        self.assertEqual(actual.entity_alt, "project-owners-project-id")
+        self.assertEqual(actual.role, "OWNER")
+        self.assertEqual(actual.entity, testbench.acl.get_project_entity("owners", None))
         self.assertNotEqual(actual.id, "")
         self.assertNotEqual(actual.etag, "")
 

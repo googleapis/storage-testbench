@@ -28,6 +28,7 @@ class TestProto2Rest(unittest.TestCase):
         acl = storage_pb2.BucketAccessControl(
             id="test-id",
             entity="test-entity",
+            entity_alt="test-entity-alt",
             entity_id="test-entity-id",
             role="test-role",
             email="test-email",
@@ -57,6 +58,7 @@ class TestProto2Rest(unittest.TestCase):
         acl = storage_pb2.ObjectAccessControl(
             id="test-id",
             entity="test-entity",
+            entity_alt="test-entity-alt",
             entity_id="test-entity-id",
             role="test-role",
             email="test-email",
@@ -100,10 +102,16 @@ class TestProto2Rest(unittest.TestCase):
             cache_control="test-cache-control",
             acl=[
                 storage_pb2.ObjectAccessControl(
-                    entity="test-entity0", role="test-role0", etag="test-only-etag0"
+                    entity="test-entity0",
+                    entity_alt="test-entity0-alt",
+                    role="test-role0",
+                    etag="test-only-etag0",
                 ),
                 storage_pb2.ObjectAccessControl(
-                    entity="test-entity1", role="test-role1", etag="test-only-etag1"
+                    entity="test-entity1",
+                    entity_alt="test-entity1-alt",
+                    role="test-role1",
+                    etag="test-only-etag1",
                 ),
             ],
             content_language="test-content-language",
@@ -200,7 +208,10 @@ class TestProto2Rest(unittest.TestCase):
 
     def test_object_access_control_as_rest(self):
         input = storage_pb2.ObjectAccessControl(
-            entity="test-entity0", role="test-role0", etag="test-only-etag0"
+            entity="test-entity0",
+            entity_alt="test-entity0-alt",
+            role="test-role0",
+            etag="test-only-etag0",
         )
         expected = {
             "kind": "storage#objectAccessControl",

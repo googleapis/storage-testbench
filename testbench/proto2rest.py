@@ -121,6 +121,7 @@ def __postprocess_rest_bucket_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#bucketAccessControl"
     copy["bucket"] = bucket_id
+    copy.pop("entityAlt", None)
     return copy
 
 
@@ -128,6 +129,7 @@ def __postprocess_rest_default_object_acl(bucket_id, acl):
     copy = acl.copy()
     copy["kind"] = "storage#objectAccessControl"
     copy["bucket"] = bucket_id
+    copy.pop("entityAlt", None)
     return copy
 
 
@@ -186,6 +188,7 @@ def __postprocess_object_access_control(
     copy["bucket"] = bucket_id
     copy["object"] = object_id
     copy["generation"] = generation
+    copy.pop("entityAlt", None)
     return copy
 
 
