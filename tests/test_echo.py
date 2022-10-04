@@ -26,7 +26,7 @@ from testbench import rest_server
 
 class TestEcho(unittest.TestCase):
     def setUp(self):
-        self.client = rest_server.server.test_client()
+        self.client = rest_server.server.wsgi_application.test_client()
 
     def test_delete(self):
         expected_args = {"arg1": "value1", "arg2": "value2"}

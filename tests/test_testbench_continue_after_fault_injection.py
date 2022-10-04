@@ -27,15 +27,13 @@ import requests
 
 class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
-        self.gunicorn = subprocess.Popen(
+        self.uvicorn = subprocess.Popen(
             [
-                "gunicorn",
-                "--bind=localhost:0",
-                "--worker-class=sync",
-                "--threads=2",
+                "uvicorn",
+                "testbench:run",
+                "--host=localhost",
                 "--reload",
-                "--access-logfile=-",
-                "testbench:run()",
+                "--access-log",
             ],
             stderr=subprocess.PIPE,
             stdout=None,
@@ -46,17 +44,17 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
         start = time.time()
         # Wait for the message declaring this process is running
         while self.port is None and time.time() - start < 120:
-            line = self.gunicorn.stderr.readline()
-            if "Listening at: http://" in line:
-                m = re.compile("Listening at:.*:([0-9]+) ").search(line)
+            line = self.uvicorn.stderr.readline()
+            if "Uvicorn running on http://" in line:
+                m = re.compile("Uvicorn running on.*:([0-9]+) ").search(line)
                 if m is not None:
                     self.port = m[1]
         self.assertIsNotNone(self.port)
 
     def tearDown(self):
-        self.gunicorn.stderr.close()
-        self.gunicorn.kill()
-        self.gunicorn.wait(30)
+        self.uvicorn.stderr.close()
+        self.uvicorn.kill()
+        self.uvicorn.wait(30)
 
     def test_repeated_reset_connection_faults(self):
         endpoint = "http://localhost:" + self.port

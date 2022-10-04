@@ -51,5 +51,7 @@ setuptools.setup(
         "scalpl==0.4.2",
         "crc32c==2.3",
         "gunicorn==20.1.0",
+        "uvicorn==0.18.3",
+        "asgiref==3.3.4",
     ],
 )

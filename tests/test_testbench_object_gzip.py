@@ -32,11 +32,15 @@ UPLOAD_QUANTUM = 256 * 1024
 class TestTestbenchObjectGzip(unittest.TestCase):
     def setUp(self):
         rest_server.db.clear()
-        rest_server.server.config["PREFERRED_URL_SCHEME"] = "https"
-        rest_server.server.config["SERVER_NAME"] = "storage.googleapis.com"
+        rest_server.server.wsgi_application.config["PREFERRED_URL_SCHEME"] = "https"
+        rest_server.server.wsgi_application.config[
+            "SERVER_NAME"
+        ] = "storage.googleapis.com"
         rest_server.root.config["PREFERRED_URL_SCHEME"] = "https"
         rest_server.root.config["SERVER_NAME"] = "storage.googleapis.com"
-        self.client = rest_server.server.test_client(allow_subdomain_redirects=True)
+        self.client = rest_server.server.wsgi_application.test_client(
+            allow_subdomain_redirects=True
+        )
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

@@ -26,7 +26,7 @@ from testbench import rest_server
 class TestTestbenchBucket(unittest.TestCase):
     def setUp(self):
         rest_server.db.clear()
-        self.client = rest_server.server.test_client()
+        self.client = rest_server.server.wsgi_application.test_client()
         # Avoid magic buckets in the test
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
 

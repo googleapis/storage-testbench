@@ -20,9 +20,7 @@ COPY . /opt/storage-testbench/
 
 RUN python3 -m pip install -e .
 
-CMD ["gunicorn", \
-      "--bind", "0.0.0.0:9000", \
-      "--worker-class", "sync", \
-      "--threads", "10", \
-      "--access-logfile", "-", \
-      "testbench:run()"]
+CMD ["uvicorn", \
+      "testbench:run", \
+      "--host", "0.0.0.0", "--port", "9000", \
+      "--access-log"]
