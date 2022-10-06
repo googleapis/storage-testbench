@@ -93,45 +93,56 @@ def get_object_entity(role, context):
 def create_bucket_acl(
     bucket_name: str, entity: str, role: str, context
 ) -> storage_pb2.BucketAccessControl:
-    entity = get_canonical_entity(entity)
+    canonical = get_canonical_entity(entity)
     if role not in ["OWNER", "WRITER", "READER"]:
         testbench.error.invalid("Role %s for bucket acl" % role, context)
-    id = hashlib.md5("#".join([bucket_name, entity, role]).encode("utf-8")).hexdigest()
-    etag = hashlib.md5("#".join([entity, role]).encode("utf-8")).hexdigest()
+    id = hashlib.md5(
+        "#".join([bucket_name, canonical, role]).encode("utf-8")
+    ).hexdigest()
+    etag = hashlib.md5("#".join([canonical, role]).encode("utf-8")).hexdigest()
     acl = storage_pb2.BucketAccessControl(
         role=role,
         id=id,
         etag=etag,
-        entity=entity,
-        entity_id=hashlib.md5(entity.encode("utf-8")).hexdigest(),
-        email=__extract_email(entity),
-        domain=__extract_domain(entity),
+        entity=canonical,
+        entity_id=hashlib.md5(canonical.encode("utf-8")).hexdigest(),
+        email=__extract_email(canonical),
+        domain=__extract_domain(canonical),
         project_team={
             "project_number": PROJECT_NUMBER,
-            "team": __extract_team(entity),
+            "team": __extract_team(canonical),
         },
     )
+    if canonical != entity:
+        acl.entity_alt = entity
     return acl
 
 
 def create_default_object_acl(
     bucket_name: str, entity: str, role: str, context
 ) -> storage_pb2.ObjectAccessControl:
-    entity = get_canonical_entity(entity)
+    canonical = get_canonical_entity(entity)
     if role not in ["OWNER", "READER"]:
         testbench.error.invalid("Role %s for object acl" % role, context)
-    id = hashlib.md5("#".join([bucket_name, entity, role]).encode("utf-8")).hexdigest()
-    etag = hashlib.md5("#".join([entity, role]).encode("utf-8")).hexdigest()
+    id = hashlib.md5(
+        "#".join([bucket_name, canonical, role]).encode("utf-8")
+    ).hexdigest()
+    etag = hashlib.md5("#".join([canonical, role]).encode("utf-8")).hexdigest()
     acl = storage_pb2.ObjectAccessControl(
         role=role,
-        entity=entity,
+        entity=canonical,
         id=id,
         etag=etag,
-        entity_id=hashlib.md5(entity.encode("utf-8")).hexdigest(),
-        email=__extract_email(entity),
-        domain=__extract_domain(entity),
-        project_team={"project_number": PROJECT_NUMBER, "team": __extract_team(entity)},
+        entity_id=hashlib.md5(canonical.encode("utf-8")).hexdigest(),
+        email=__extract_email(canonical),
+        domain=__extract_domain(canonical),
+        project_team={
+            "project_number": PROJECT_NUMBER,
+            "team": __extract_team(canonical),
+        },
     )
+    if canonical != entity:
+        acl.entity_alt = entity
     return acl
 
 
@@ -152,7 +163,6 @@ def create_object_acl_from_default_object_acl(
 def create_object_acl(
     bucket_name: str, object_name: str, generation: int, entity: str, role: str, context
 ) -> storage_pb2.ObjectAccessControl:
-    entity = get_canonical_entity(entity)
     default_object_acl = create_default_object_acl(bucket_name, entity, role, context)
     acl = create_object_acl_from_default_object_acl(
         object_name, generation, default_object_acl, context
