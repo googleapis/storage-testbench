@@ -31,6 +31,7 @@ import testbench
 class Bucket:
     modifiable_fields = {
         "acl",
+        "autoclass",
         "default_object_acl",
         "lifecycle",
         "cors",
@@ -243,7 +244,7 @@ class Bucket:
         return hashlib.md5(("%d" % metadata.metageneration).encode("utf-8")).hexdigest()
 
     @classmethod
-    def _init_defaults(cls, metadata, context):
+    def _init_defaults(cls, metadata: storage_pb2.Bucket, context):
         time_created = datetime.datetime.now()
         if metadata.rpo is None or metadata.rpo == "":
             metadata.rpo = "DEFAULT"
@@ -252,6 +253,8 @@ class Bucket:
         metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
         metadata.create_time.FromDatetime(time_created)
         metadata.update_time.FromDatetime(time_created)
+        if metadata.autoclass.enabled:
+            metadata.autoclass.toggle_time.FromDatetime(time_created)
         metadata.metageneration = 1
         metadata.owner.entity = testbench.acl.get_project_entity("owners", context)
         metadata.owner.entity_id = hashlib.md5(
@@ -395,8 +398,11 @@ class Bucket:
         if update_mask is None:
             update_mask = field_mask_pb2.FieldMask(paths=Bucket.modifiable_fields)
         update_mask.MergeMessage(source, self.metadata, True, True)
+        now = datetime.datetime.now()
+        if "autoclass" in update_mask.paths:
+            self.metadata.autoclass.toggle_time.FromDatetime(now)
         self.metadata.metageneration += 1
-        self.metadata.update_time.FromDatetime(datetime.datetime.now())
+        self.metadata.update_time.FromDatetime(now)
         self.metadata.etag = Bucket._metadata_etag(self.metadata)
 
     def update(self, request, context):

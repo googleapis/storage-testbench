@@ -292,6 +292,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if "acl" in request.update_mask.paths:
             del bucket.metadata.acl[:]
             bucket.metadata.acl.extend(request.bucket.acl)
+        now = datetime.datetime.now()
+        if "autoclass" in request.update_mask.paths:
+            bucket.metadata.autoclass.toggle_time.FromDatetime(now)
         if "default_object_acl" in request.update_mask.paths:
             del bucket.metadata.default_object_acl[:]
             bucket.metadata.default_object_acl.extend(request.bucket.default_object_acl)
@@ -299,7 +302,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             bucket.metadata.labels.clear()
             bucket.metadata.labels.update(request.bucket.labels)
         bucket.metadata.metageneration += 1
-        bucket.metadata.update_time.FromDatetime(datetime.datetime.now())
+        bucket.metadata.update_time.FromDatetime(now)
         return bucket.metadata
 
     def _notification_from_rest(self, rest, bucket_name):
