@@ -309,6 +309,36 @@ class TestBucket(unittest.TestCase):
         bucket.update(request, None)
         self.assertEqual(bucket.metadata.labels["method"], "rest_update")
 
+    def test_patch_autoclass_rest(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "autoclass": {"enabled": True},
+                }
+            ),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(bucket.metadata.autoclass.enabled, True)
+        self.assertEqual(
+            bucket.metadata.autoclass.toggle_time, bucket.metadata.create_time
+        )
+
+        request = testbench.common.FakeRequest(
+            args={"bucket": "bucket"},
+            data=json.dumps(
+                {
+                    "autoclass": {"enabled": False},
+                }
+            ),
+        )
+        bucket.patch(request, None)
+        self.assertEqual(bucket.metadata.autoclass.enabled, False)
+        self.assertEqual(
+            bucket.metadata.autoclass.toggle_time, bucket.metadata.update_time
+        )
+
     def test_notification(self):
         metadata = {
             "name": "test-bucket-name",

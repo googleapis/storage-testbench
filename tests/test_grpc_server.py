@@ -484,6 +484,28 @@ class TestGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
+    def test_update_bucket_autoclass(self):
+        context = unittest.mock.Mock()
+        get = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        metageneration = get.metageneration
+
+        # Change the autoclass.
+        context = unittest.mock.Mock()
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/bucket-name",
+                autoclass=storage_pb2.Bucket.Autoclass(enabled=True),
+            ),
+            update_mask=field_mask_pb2.FieldMask(paths=["autoclass"]),
+        )
+        response = self.grpc.UpdateBucket(request, context)
+        self.assertEqual("projects/_/buckets/bucket-name", response.name)
+        self.assertEqual(True, response.autoclass.enabled)
+        self.assertEqual(response.update_time, response.autoclass.toggle_time)
+        self.assertLess(metageneration, response.metageneration)
+
     def test_delete_notification(self):
         context = unittest.mock.Mock()
         create = self.grpc.CreateNotification(
