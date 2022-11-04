@@ -23,4 +23,4 @@ from . import (
     rest_server,
 )
 
-run = rest_server._run
+run = rest_server._run()
