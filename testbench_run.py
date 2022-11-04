@@ -1,4 +1,4 @@
-# Copyright 2021 Google LLC
+# Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM python:3.11@sha256:fc809ada71c087cec7e2d2244bcb9fba137638978a669f2aaf6267db43e89fdf
 
-EXPOSE 9000
-WORKDIR /opt/storage-testbench
+import sys
+import testbench_waitress
+import testbench
+import logging
 
-COPY . /opt/storage-testbench/
+logger = logging.getLogger("waitress")
+logger.setLevel(logging.INFO)
 
-RUN python3 -m pip install -e .
+if len(sys.argv) == 3:
+    sock_host = sys.argv[1]
+    sock_port = int(sys.argv[2])
+    sys.argv.clear()
 
-CMD ["python3", \
-      "testbench_run.py", \
-      "0.0.0.0", \
-      "9000"]
+    testbench_waitress.serve(testbench.run, host=sock_host, port=sock_port, threads=10)
+
+else:
+    print("Please also provide <hostname> and <port>.")
