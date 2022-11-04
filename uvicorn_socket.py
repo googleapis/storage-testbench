@@ -22,3 +22,24 @@ def setsocket(sock):
 def getsocket():
     global socket
     return socket
+
+###################################################
+
+# import socket
+# from asgiref.wsgi import WsgiToAsgi, WsgiToAsgiInstance
+
+# class decorated_WsgiToAsgiInstance(WsgiToAsgiInstance):
+#     def build_environ(self, scope, body):
+#         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$Hello Brother!")
+#         filtered_conn = psutil.net_connections() #filter(lambda conn: conn.raddr and conn.raddr.ip == '::1' and conn.raddr.port == 9000, psutil.net_connections())
+#         conn_list=list(filtered_conn)
+#         count=len(conn_list)
+#         lc=conn_list[count-1]
+#         print(lc)
+#         p=psutil.Process(lc.pid)
+#         print(p)
+#         return super().build_environ(scope, body)
+
+# class decorated_WsgiToAsgi(WsgiToAsgi):
+#     async def __call__(self, scope, receive, send):
+#         await decorated_WsgiToAsgiInstance(self.wsgi_application)(scope, receive, send)
