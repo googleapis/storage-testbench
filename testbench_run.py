@@ -20,12 +20,17 @@ import logging
 logger = logging.getLogger("waitress")
 logger.setLevel(logging.INFO)
 
-if len(sys.argv) == 3:
+if len(sys.argv) == 4:
     sock_host = sys.argv[1]
     sock_port = int(sys.argv[2])
+    num_of_threads = int(sys.argv[3])
     sys.argv.clear()
 
-    testbench_waitress.serve(testbench.run, host=sock_host, port=sock_port, threads=10)
+    testbench_waitress.serve(
+        testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
+    )
 
 else:
-    print("Please also provide <hostname> and <port>.")
+    print(
+        "Invalid number of arguments. Please provide 'testbench_run.py <hostname> <port> <number of threads>'."
+    )
