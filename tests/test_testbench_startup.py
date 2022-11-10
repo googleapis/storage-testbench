@@ -31,12 +31,7 @@ from google.storage.v2 import storage_pb2, storage_pb2_grpc
 class TestTestbenchStartup(unittest.TestCase):
     def setUp(self):
         self.waitress = subprocess.Popen(
-            [
-                "python3",
-                "testbench_run.py",
-                "localhost",
-                "0",
-            ],
+            ["python3", "testbench_run.py", "localhost", "0", "10"],
             stderr=subprocess.PIPE,
             stdout=None,
             stdin=None,
