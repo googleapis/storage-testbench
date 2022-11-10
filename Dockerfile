@@ -23,4 +23,5 @@ RUN python3 -m pip install -e .
 CMD ["python3", \
       "testbench_run.py", \
       "0.0.0.0", \
-      "9000"]
+      "9000", \
+      "10"]
