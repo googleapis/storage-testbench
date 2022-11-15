@@ -27,10 +27,15 @@ if len(sys.argv) == 4:
     sys.argv.clear()
 
     testbench_waitress.serve(
-        testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
+        testbench.run(),
+        host=sock_host,
+        port=sock_port,
+        threads=num_of_threads,
+        backlog=4096,
+        connection_limit=1000,
     )
 
 else:
     print(
-        "Invalid number of arguments. Please provide 'testbench_run.py <hostname> <port> <number of threads>'."
+        "Invalid number of arguments. Please provide \n <hostname> \n <port> \n <number of threads greater than 10, pass 0 for default value 10>."
     )
