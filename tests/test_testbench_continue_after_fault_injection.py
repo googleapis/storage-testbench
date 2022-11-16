@@ -28,7 +28,7 @@ import requests
 class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
         self.waitress = subprocess.Popen(
-            ["python3", "testbench_run.py", "localhost", "0", "10"],
+            ["python3", "testbench_run.py", "localhost", "0", "5"],
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )

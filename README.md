@@ -80,7 +80,7 @@ It is useful as well to test features that are not yet deployed to production: y
 To start the testbench, run this command from a terminal:
 
 ```bash
-python3 testbench_run.py localhost 9000 10
+python3 testbench_run.py localhost 9000 5
 ```
 
 > ⚠️ Ensure that the virtual environment you created to install the dependencies is active.

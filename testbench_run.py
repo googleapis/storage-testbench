@@ -23,7 +23,7 @@ logger.setLevel(logging.INFO)
 if len(sys.argv) == 4:
     sock_host = sys.argv[1]
     sock_port = int(sys.argv[2])
-    num_of_threads = int(sys.argv[3])
+    num_of_threads = int(sys.argv[3]) + 10
     sys.argv.clear()
 
     testbench_waitress.serve(
@@ -32,5 +32,5 @@ if len(sys.argv) == 4:
 
 else:
     print(
-        "Invalid number of arguments. Please provide 'testbench_run.py <hostname> <port> <number of threads>'."
+        "Invalid number of arguments. Please provide \n <hostname> \n <port> \n <number of threads greater than 10, pass 0 for default value 10>."
     )
