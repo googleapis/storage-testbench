@@ -20,10 +20,8 @@ COPY . /opt/storage-testbench/
 
 RUN python3 -m pip install -e .
 
-ENTRYPOINT ["python3", \
+CMD ["python3", \
       "testbench_run.py", \
       "0.0.0.0", \
-      "9000"]
-
-#Default number of threads greater than 10
-CMD [ "0" ] 
+      "9000", \
+      "10"]

@@ -23,11 +23,16 @@ logger.setLevel(logging.INFO)
 if len(sys.argv) == 4:
     sock_host = sys.argv[1]
     sock_port = int(sys.argv[2])
-    num_of_threads = int(sys.argv[3]) + 10
+    num_of_threads = int(sys.argv[3])
     sys.argv.clear()
 
     testbench_waitress.serve(
-        testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
+        testbench.run(),
+        host=sock_host,
+        port=sock_port,
+        threads=num_of_threads,
+        backlog=4096,
+        connection_limit=1000,
     )
 
 else:
