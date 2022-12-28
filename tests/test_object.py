@@ -670,7 +670,7 @@ class TestObject(unittest.TestCase):
         cases = {
             "bytes=4-9": (b"vexing", "4-9"),
             "bytes=12-": (b" quick daft zebras jump!", "12-35"),
-            "bytes=-5": (b"jump!", "0-35"),
+            "bytes=-5": (b"jump!", "31-35"),
         }
         for range, expected in cases.items():
             expected_data, expected_range = expected

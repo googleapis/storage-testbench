@@ -363,6 +363,7 @@ class Object:
             m = re.match("bytes=-([0-9]+)$", range_header)
             if m:
                 last = int(m.group(1))
+                begin = end - last
                 response_payload = response_payload[-last:]
         return begin, end, length, response_payload
 
