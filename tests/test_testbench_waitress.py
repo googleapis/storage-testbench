@@ -24,9 +24,13 @@ from werkzeug.wrappers import Request
 from google.storage.v2 import storage_pb2
 
 import testbench_waitress
+import testbench
 
 
 class TestTestbenchWaitress(unittest.TestCase):
     def test_testbench_HTTPChannel_should_have_testbench_WSGITask_task_class(self):
-        test = 1
-        self.assertEquals(1, test)
+        testbench_waitress.serve(
+            testbench.run(), host="0.0.0.0", port=0, threads=5
+        )
+        test =1
+        self.assertEquals(1,test)
