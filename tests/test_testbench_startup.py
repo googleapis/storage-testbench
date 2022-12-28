@@ -24,14 +24,20 @@ import unittest
 
 import grpc
 import requests
+import platform
 
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 
 class TestTestbenchStartup(unittest.TestCase):
     def setUp(self):
-        self.waitress = subprocess.Popen(
-            ["python3", "testbench_run.py", "localhost", "0", "10"],
+        # Declare default python command for non-windows os.
+        python_command = "python3"
+        # If the tests are running on windows, change the python command for windows.
+        if platform.system().lower() == "windows":
+            python_command = "py"
+        self.testbench_server = subprocess.Popen(
+            [python_command, "testbench_run.py", "localhost", "0", "10"],
             stderr=subprocess.PIPE,
             stdout=None,
             stdin=None,
@@ -39,7 +45,7 @@ class TestTestbenchStartup(unittest.TestCase):
         )
         self.plain = subprocess.Popen(
             [
-                "python3",
+                python_command,
                 "-m",
                 "testbench",
                 "--port=0",
@@ -51,36 +57,45 @@ class TestTestbenchStartup(unittest.TestCase):
         )
 
     def tearDown(self):
-        processes = [self.waitress, self.plain]
+        processes = [self.testbench_server, self.plain]
         for p in processes:
             p.stderr.close()
             p.kill()
             p.wait(30)
 
-    def wait_waitress(self):
+    def wait_testbench_server(self):
         started = False
         port = None
         start = time.time()
+
+        # Declare default server start message and regex pattern for gunicorn
+        server_start_message = "Listening at: http://"
+        server_regex_pattern = "Listening at:.*:([0-9]+) "
+        # If the tests are running on windows, change server start message and regex pattern for waitress
+        if platform.system().lower() == "windows":
+            server_start_message = "INFO:waitress:Serving on http://"
+            server_regex_pattern = "INFO:waitress:Serving on.*:([0-9]+)"
+
         # Wait for the message declaring this process is running
         while not started and time.time() - start < 120:
-            line = self.waitress.stderr.readline()
-            if "INFO:waitress:Serving on http://" in line:
-                m = re.compile("INFO:waitress:Serving on.*:([0-9]+)").search(line)
+            line = self.testbench_server.stderr.readline()
+            if server_start_message in line:
+                m = re.compile(server_regex_pattern).search(line)
                 if m is not None:
                     started = True
                     port = m[1]
         self.assertTrue(started)
         return port
 
-    def test_startup_waitress(self):
-        port = self.wait_waitress()
+    def test_startup_server(self):
+        port = self.wait_testbench_server()
         self.assertIsNotNone(port)
         response = requests.get("http://localhost:" + port)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "OK")
 
-    def test_startup_waitress_grpc(self):
-        port = self.wait_waitress()
+    def test_startup_server_grpc(self):
+        port = self.wait_testbench_server()
         self.assertIsNotNone(port)
         response = requests.post(
             "http://localhost:%s/storage/v1/b?project=test-only" % port,

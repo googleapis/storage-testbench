@@ -21,14 +21,25 @@ import re
 import subprocess
 import time
 import unittest
+import platform
 
 import requests
 
 
 class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
     def setUp(self):
-        self.waitress = subprocess.Popen(
-            ["python3", "testbench_run.py", "localhost", "0", "10"],
+        # Declare default server start message and regex pattern for gunicorn and python command for non-windows os.
+        server_start_message = "Listening at: http://"
+        server_regex_pattern = "Listening at:.*:([0-9]+) "
+        python_command = "python3"
+        # If the tests are running on windows, change server start message and regex pattern for waitress and python command for windows.
+        if platform.system().lower() == "windows":
+            server_start_message = "INFO:waitress:Serving on http://"
+            server_regex_pattern = "INFO:waitress:Serving on.*:([0-9]+)"
+            python_command = "py"
+
+        self.testbench_server = subprocess.Popen(
+            [python_command, "testbench_run.py", "localhost", "0", "10"],
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
@@ -36,17 +47,17 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
         start = time.time()
         # Wait for the message declaring this process is running
         while self.port is None and time.time() - start < 120:
-            line = self.waitress.stderr.readline()
-            if "INFO:waitress:Serving on http://" in line:
-                m = re.compile("INFO:waitress:Serving on.*:([0-9]+)").search(line)
+            line = self.testbench_server.stderr.readline()
+            if server_start_message in line:
+                m = re.compile(server_regex_pattern).search(line)
                 if m is not None:
                     self.port = m[1]
         self.assertIsNotNone(self.port)
 
     def tearDown(self):
-        self.waitress.stderr.close()
-        self.waitress.kill()
-        self.waitress.wait(30)
+        self.testbench_server.stderr.close()
+        self.testbench_server.kill()
+        self.testbench_server.wait(30)
 
     def test_repeated_reset_connection_faults(self):
         endpoint = "http://localhost:" + self.port

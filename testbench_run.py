@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import sys
+import platform
 import testbench_waitress
 import testbench
 import logging
+import subprocess
 
 logger = logging.getLogger("waitress")
 logger.setLevel(logging.INFO)
@@ -26,9 +28,22 @@ if len(sys.argv) == 4:
     num_of_threads = int(sys.argv[3])
     sys.argv.clear()
 
-    testbench_waitress.serve(
-        testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
-    )
+    if platform.system().lower() == "windows":
+        testbench_waitress.serve(
+            testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
+        )
+    else:
+        subprocess.run(
+            [
+                "gunicorn",
+                f"--bind={sock_host}:{sock_port}",
+                "--worker-class=sync",
+                f"--threads={num_of_threads}",
+                "--reload",
+                "--access-logfile=-",
+                "testbench:run()",
+            ]
+        )
 
 else:
     print(
