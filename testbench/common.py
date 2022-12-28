@@ -650,7 +650,7 @@ def _extract_headers(response):
     return dict()
 
 
-def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_size=4):
+def __get_streamer_response_fn(database, method, sock_or_channel, test_id, limit=4, chunk_size=4):
     def response_handler(data):
         def streamer():
             d = _extract_data(data)
@@ -663,8 +663,8 @@ def __get_streamer_response_fn(database, method, conn, test_id, limit=4, chunk_s
                     yield d[r:chunk_end]
                 if bytes_yield >= limit:
                     database.dequeue_next_instruction(test_id, method)
-                    if conn is not None:
-                        conn.close()
+                    if sock_or_channel is not None:
+                        sock_or_channel.close()
                     # This exception is raised to abort the flow control. The
                     # connection has already been closed, causing the client to
                     # receive a "broken stream" or "connection reset by peer" error.
@@ -728,14 +728,21 @@ def handle_retry_test_instruction(database, request, method):
         items = list(retry_connection_matches.groups())
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
+            fd=None
+            channel=None
             if running_on_windows:
-                fd = request.environ.get("waitress.channel", None)
+                channel = request.environ.get("waitress.channel", None)
+                if channel is not None:
+                    channel.socket.setsockopt(
+                       socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+                    )
+                channel.close()
             else:
                 fd = request.environ.get("gunicorn.socket", None)
-            if fd is not None:
-                fd.setsockopt(
-                    socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
-                )
+                if fd is not None:
+                    fd.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+                    )
                 fd.close()
             # This exception is raised to abort the flow control. The connection
             # has already been closed, causing the client to receive a "connection
@@ -747,10 +754,10 @@ def handle_retry_test_instruction(database, request, method):
             )
         elif items[0] == "broken-stream":
             if running_on_windows:
-                conn = request.environ.get("waitress.channel", None)
+                sock_or_channel = request.environ.get("waitress.channel", None)
             else:
-                conn = request.environ.get("gunicorn.socket", None)
-            return __get_streamer_response_fn(database, method, conn, test_id)
+                sock_or_channel = request.environ.get("gunicorn.socket", None)
+            return __get_streamer_response_fn(database, method, sock_or_channel, test_id)
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
@@ -758,11 +765,11 @@ def handle_retry_test_instruction(database, request, method):
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
         if running_on_windows:
-            conn = request.environ.get("waitress.channel", None)
+            sock_or_channel = request.environ.get("waitress.channel", None)
         else:
-            conn = request.environ.get("gunicorn.socket", None)
+            sock_or_channel = request.environ.get("gunicorn.socket", None)
         return __get_streamer_response_fn(
-            database, method, conn, test_id, limit=after_bytes
+            database, method, sock_or_channel, test_id, limit=after_bytes
         )
     error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
         next_instruction

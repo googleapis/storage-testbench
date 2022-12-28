@@ -14,10 +14,11 @@
 
 import sys
 import platform
-import testbench_waitress
+import waitress
 import testbench
 import logging
 import subprocess
+from testbench_waitress import testbench_create_server
 
 logger = logging.getLogger("waitress")
 logger.setLevel(logging.INFO)
@@ -29,8 +30,8 @@ if len(sys.argv) == 4:
     sys.argv.clear()
 
     if platform.system().lower() == "windows":
-        testbench_waitress.serve(
-            testbench.run(), host=sock_host, port=sock_port, threads=num_of_threads
+        waitress.serve(
+            testbench.run(), _server=testbench_create_server, host=sock_host, port=sock_port, threads=num_of_threads
         )
     else:
         subprocess.run(
