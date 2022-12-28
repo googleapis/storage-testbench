@@ -668,11 +668,12 @@ class TestObject(unittest.TestCase):
         self.assertIn("x-goog-storage-class", response.headers)
 
         cases = {
-            "bytes=4-9": b"vexing",
-            "bytes=12-": b" quick daft zebras jump!",
-            "bytes=-5": b"jump!",
+            "bytes=4-9": (b"vexing", "4-9"),
+            "bytes=12-": (b" quick daft zebras jump!", "12-35"),
+            "bytes=-5": (b"jump!", "0-35"),
         }
         for range, expected in cases.items():
+            expected_data, expected_range = expected
             request = Request(
                 create_environ(
                     base_url="http://localhost:8080",
@@ -682,11 +683,12 @@ class TestObject(unittest.TestCase):
             )
             response = blob.rest_media(request)
             self.assertEqual(response.status_code, 206)
-            self.assertEqual(response.data, expected)
+            self.assertEqual(response.data, expected_data)
             self.assertIn("content-range", response.headers)
             content_range = response.headers["content-range"]
-            self.assertTrue(
-                content_range.endswith("/%d" % len(blob.media)),
+            self.assertEqual(
+                content_range,
+                "bytes %s/%d" % (expected_range, len(blob.media)),
                 msg="unexpected content-range header: " + content_range,
             )
         # Test raises 416 if request range cannot be satisfied.
