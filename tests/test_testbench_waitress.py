@@ -35,19 +35,16 @@ import testbench_waitress
 
 class TestTestbenchWaitress(unittest.TestCase):
     def test_testbench_HTTPChannel_should_have_testbench_WSGITask_task_class(self):
-        testbenchHTTPChannel = testbench_waitress.testbench_HTTPChannel()
+
+        mock_sock = unittest.mock.Mock()
+        mock_sock.getsockopt = unittest.mock.Mock(return_value=None)
+
+        mock_adj= unittest.mock.Mock()
+        mock_adj.outbuf_overflow= unittest.mock.Mock(return_value=1)
+
+        testbenchHTTPChannel = testbench_waitress.testbench_HTTPChannel(None, mock_sock, None, mock_adj)
         self.assertIsInstance(
             testbenchHTTPChannel.task_class,
             testbench_waitress.testbench_WSGITask,
             "testbench_HTTPChannel does not have testbench_WSGITask task_class",
-        )
-
-    def test_testbench_TcpWSGIServer_should_have_testbench_HTTPChannel_channel_class(
-        self,
-    ):
-        testbenchTcpWSGIServer = testbench_waitress.testbench_TcpWSGIServer()
-        self.assertIsInstance(
-            testbenchTcpWSGIServer.channel_class,
-            testbench_waitress.testbench_HTTPChannel,
-            "testbench_TcpWSGIServer does not have HTTPChannel channel_class",
         )
