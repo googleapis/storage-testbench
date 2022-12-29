@@ -18,7 +18,7 @@
 
 import sys
 
-#sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
+sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
 
 import unittest
 import unittest.mock
@@ -49,7 +49,7 @@ class TestTestbenchWaitress(unittest.TestCase):
         map = {}
 
         self.inst = testbench_create_server(
-            application,
+            application=application,
             host=host,
             port=port,
             map=map,
@@ -60,10 +60,10 @@ class TestTestbenchWaitress(unittest.TestCase):
         return self.inst
 
 
-    #def test_serve(self):
-        #inst = self._makeOne(self ,_start=True)
-        # self.assertEqual(inst.accepting, True)
-        # self.assertEqual(inst.socket.listened, 1024)
+    def test_serve(self):
+        inst = self._makeOne(self ,_start=True)
+        self.assertEqual(inst.accepting, True)
+        self.assertEqual(inst.socket.listened, 1024)
 
 
 class DummyTaskDispatcher:
@@ -123,3 +123,6 @@ class DummySock(socket.socket):
 
     def close(self):
         pass
+
+if __name__ == "__main__":
+    unittest.main()
