@@ -355,7 +355,7 @@ class Object:
             if m:
                 begin = int(m.group(1))
                 end = int(m.group(2)) + 1
-                response_payload = response_payload[begin : end]
+                response_payload = response_payload[begin:end]
             m = re.match("bytes=([0-9]+)-$", range_header)
             if m:
                 begin = int(m.group(1))
