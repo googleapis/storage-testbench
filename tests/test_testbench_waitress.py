@@ -23,8 +23,6 @@ sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
 import unittest
 import unittest.mock
 import socket
-import waitress
-from testbench_waitress import testbench_WSGITask, testbench_HTTPChannel, testbench_create_server
 
 dummy_app = object()
 
@@ -42,7 +40,7 @@ class TestTestbenchWaitress(unittest.TestCase):
         _sock=None,
         _server=None,
     ):
-        from waitress.server import create_server
+        from testbench_waitress import testbench_create_server
 
         sock = DummySock()
         task_dispatcher = DummyTaskDispatcher()
