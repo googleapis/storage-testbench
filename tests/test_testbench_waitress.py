@@ -22,84 +22,104 @@ sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
 
 import unittest
 import unittest.mock
-from testbench_waitress import testbench_WSGITask, testbench_HTTPChannel
+import socket
+import waitress
+from testbench_waitress import testbench_WSGITask, testbench_HTTPChannel, testbench_create_server
 
+dummy_app = object()
 
 class TestTestbenchWaitress(unittest.TestCase):
-    def test_get_environment_values(self):
 
-        inst = testbench_WSGITask(DummyChannel(), DummyRequest())
-        request = DummyRequest()
-        # request.headers = {
-        #     "CONTENT_TYPE": "abc",
-        #     "CONTENT_LENGTH": "10",
-        #     "X_FOO": "BAR",
-        #     "CONNECTION": "close",
-        # }
-        # request.query = "abc"
-        inst.request = request
-        environ = inst.get_environment()
+    def _makeOne(
+        self,
+        application=dummy_app,
+        host="127.0.0.1",
+        port=0,
+        _dispatcher=None,
+        adj=None,
+        map=None,
+        _start=True,
+        _sock=None,
+        _server=None,
+    ):
+        from waitress.server import create_server
 
-        channel = environ["waitress.channel"]
+        sock = DummySock()
+        task_dispatcher = DummyTaskDispatcher()
+        map = {}
 
-        #self.assertIsNotNone(self, channel, "test message")
-        # self.assertEquals(self, channel.__class__.__name__, "DummyChannel" ,)
+        self.inst = testbench_create_server(
+            application,
+            host=host,
+            port=port,
+            map=map,
+            _dispatcher=task_dispatcher,
+            _start=_start,
+            _sock=sock,
+        )
+        return self.inst
 
 
-class DummyRequest:
+    def test_serve(self):
+        inst = self._makeOne(self ,_start=True)
+        # self.assertEqual(inst.accepting, True)
+        # self.assertEqual(inst.socket.listened, 1024)
 
-    version = "1.0"
-    command = "GET"
-    path = "/"
-    request_uri = "/"
-    query = ""
-    url_scheme = "http"
-    expect_continue = False
-    headers_finished = False
 
+class DummyTaskDispatcher:
     def __init__(self):
-        self.headers = {}
+        self.tasks = []
 
-    def get_body_stream(self):
-        return "stream"
+    def add_task(self, task):
+        self.tasks.append(task)
 
+    def shutdown(self):
+        self.was_shutdown = True
 
-class DummyAdj:
-    log_socket_errors = True
-    ident = "waitress"
-    host = "127.0.0.1"
-    port = 80
-    url_prefix = ""
+class DummySock(socket.socket):
+    accepted = False
+    blocking = False
+    family = socket.AF_INET
+    type = socket.SOCK_STREAM
+    proto = 0
 
+    def __init__(self, toraise=None, acceptresult=(None, None)):
+        self.toraise = toraise
+        self.acceptresult = acceptresult
+        self.bound = None
+        self.opts = []
+        self.bind_called = False
 
-class DummyServer:
-    server_name = "localhost"
-    effective_port = 80
+    def bind(self, addr):
+        self.bind_called = True
+        self.bound = addr
 
-    def __init__(self):
-        self.adj = DummyAdj()
+    def accept(self):
+        if self.toraise:
+            raise self.toraise
+        self.accepted = True
+        return self.acceptresult
 
+    def setblocking(self, x):
+        self.blocking = True
 
-class DummyChannel:
-    closed_when_done = False
-    adj = DummyAdj()
-    creation_time = 0
-    addr = ("127.0.0.1", 39830)
+    def fileno(self):
+        return 10
 
-    def check_client_disconnected(self):
-        # For now, until we have tests handling this feature
-        return False
+    def getpeername(self):
+        return "127.0.0.1"
 
-    def __init__(self, server=None):
-        if server is None:
-            server = DummyServer()
-        self.server = server
-        self.written = b""
-        self.otherdata = []
+    def setsockopt(self, *arg):
+        self.opts.append(arg)
 
-    def write_soon(self, data):
-        if isinstance(data, bytes):
-            self.written += data
-        else:
-            self.otherdata.append(data)
-        return len(data)
+    def getsockopt(self, *arg):
+        return 1
+
+    def listen(self, num):
+        self.listened = num
+
+    def getsockname(self):
+        return self.bound
+
+    def close(self):
+        pass
