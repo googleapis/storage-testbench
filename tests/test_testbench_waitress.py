@@ -60,8 +60,8 @@ class TestTestbenchWaitress(unittest.TestCase):
         return self.inst
 
 
-    def test_serve(self):
-        inst = self._makeOne(self ,_start=True)
+    #def test_serve(self):
+        #inst = self._makeOne(self ,_start=True)
         # self.assertEqual(inst.accepting, True)
         # self.assertEqual(inst.socket.listened, 1024)
 
