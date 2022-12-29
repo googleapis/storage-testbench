@@ -736,14 +736,14 @@ def handle_retry_test_instruction(database, request, method):
                     channel.socket.setsockopt(
                        socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
                     )
-                channel.close()
+                    channel.close()
             else:
                 fd = request.environ.get("gunicorn.socket", None)
                 if fd is not None:
                     fd.setsockopt(
                         socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
                     )
-                fd.close()
+                    fd.close()
             # This exception is raised to abort the flow control. The connection
             # has already been closed, causing the client to receive a "connection
             # reset by peer" (or a similar error). The exception is useful in
