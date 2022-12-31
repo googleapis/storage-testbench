@@ -25,19 +25,20 @@ import unittest.mock
 import socket
 from testbench_waitress import testbench_create_server
 
+dummy_app=object()
+
 class TestTestbenchWaitress(unittest.TestCase):
-
-
 
     def test_serve(self):
         server_instance = testbench_create_server(
-            application=object(),
+            application=dummy_app,
             host="127.0.0.1",
             port=0,
             map= {},
             _dispatcher=DummyTaskDispatcher(),
             _start=True,
             _sock=DummySock(),
+            clear_untrusted_proxy_headers=False,
         )
 
         print(server_instance.__class__.__name__)
@@ -46,12 +47,13 @@ class TestTestbenchWaitress(unittest.TestCase):
 
     def test_serve_multi(self):
         server_instance = testbench_create_server(
-            application=object(),
+            application=dummy_app,
             listen="127.0.0.1:0 127.0.0.1:0",
             map= {},
             _dispatcher=DummyTaskDispatcher(),
             _start=True,
             _sock=DummySock(),
+            clear_untrusted_proxy_headers=False,
         )
         self.assertEqual(server_instance.__class__.__name__, "MultiSocketServer")
 
