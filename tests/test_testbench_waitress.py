@@ -23,46 +23,37 @@ sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
 import unittest
 import unittest.mock
 import socket
-
-dummy_app = object()
+from testbench_waitress import testbench_create_server
 
 class TestTestbenchWaitress(unittest.TestCase):
 
-    def _makeOne(
-        self,
-        application=dummy_app,
-        host="127.0.0.1",
-        port=0,
-        _dispatcher=None,
-        adj=None,
-        map=None,
-        _start=True,
-        _sock=None,
-        _server=None,
-    ):
-        from testbench_waitress import testbench_create_server
-
-        sock = DummySock()
-        task_dispatcher = DummyTaskDispatcher()
-        map = {}
-
-        self.inst = testbench_create_server(
-            application=application,
-            host=host,
-            port=port,
-            map=map,
-            _dispatcher=task_dispatcher,
-            _start=_start,
-            _sock=sock,
-        )
-        return self.inst
 
 
     def test_serve(self):
-        inst = self._makeOne(self ,_start=True)
-        self.assertEqual(inst.accepting, True)
-        self.assertEqual(inst.socket.listened, 1024)
+        server_instance = testbench_create_server(
+            application=object(),
+            host="127.0.0.1",
+            port=0,
+            map= {},
+            _dispatcher=DummyTaskDispatcher(),
+            _start=True,
+            _sock=DummySock(),
+        )
 
+        print(server_instance.__class__.__name__)
+        self.assertEqual(server_instance.accepting, True)
+        self.assertEqual(server_instance.socket.listened, 1024)
+
+    def test_serve_multi(self):
+        server_instance = testbench_create_server(
+            application=object(),
+            listen="127.0.0.1:0 127.0.0.1:0",
+            map= {},
+            _dispatcher=DummyTaskDispatcher(),
+            _start=True,
+            _sock=DummySock(),
+        )
+        self.assertEqual(server_instance.__class__.__name__, "MultiSocketServer")
 
 class DummyTaskDispatcher:
     def __init__(self):
