@@ -23,13 +23,14 @@ sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
 import unittest
 import unittest.mock
 import socket
-from testbench_waitress import testbench_create_server
 
 dummy_app=object()
 
 class TestTestbenchWaitress(unittest.TestCase):
 
     def test_serve(self):
+        from testbench_waitress import testbench_create_server
+
         server_instance = testbench_create_server(
             application=dummy_app,
             host="127.0.0.1",
@@ -46,6 +47,8 @@ class TestTestbenchWaitress(unittest.TestCase):
         self.assertEqual(server_instance.socket.listened, 1024)
 
     def test_serve_multi(self):
+        from testbench_waitress import testbench_create_server
+        
         server_instance = testbench_create_server(
             application=dummy_app,
             listen="127.0.0.1:0 127.0.0.1:0",
