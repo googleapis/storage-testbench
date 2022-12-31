@@ -48,10 +48,17 @@ class TestTestbenchWaitress(unittest.TestCase):
 
     def test_serve_multi(self):
         from testbench_waitress import testbench_create_server
-        
+
+        sockets = [
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+        ]
+        sockets[0].bind(("127.0.0.1", 0))
+        sockets[1].bind(("127.0.0.1", 0))
+
         server_instance = testbench_create_server(
             application=dummy_app,
-            listen="127.0.0.1:0 127.0.0.1:0",
+            sockets=sockets,
             map= {},
             _dispatcher=DummyTaskDispatcher(),
             _start=True,
