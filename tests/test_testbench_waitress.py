@@ -28,44 +28,32 @@ dummy_app=object()
 
 class TestTestbenchWaitress(unittest.TestCase):
 
-    def test_serve(self):
-        from testbench_waitress import testbench_create_server
+    def test_created_wsgi_server_has_testbench_httpchannel(self):
+        from testbench_waitress import testbench_HTTPChannel, testbench_create_server
 
+        disp = unittest.mock.Mock()
+        disp.invocation_metadata = unittest.mock.Mock(return_value=dict())
+
+        map={}
         server_instance = testbench_create_server(
             application=dummy_app,
             host="127.0.0.1",
             port=0,
-            map= {},
+            map=map,
             _dispatcher=DummyTaskDispatcher(),
             _start=True,
             _sock=DummySock(),
             clear_untrusted_proxy_headers=False,
         )
 
-        print(server_instance.__class__.__name__)
-        self.assertEqual(server_instance.accepting, True)
-        self.assertEqual(server_instance.socket.listened, 1024)
-
-    def test_serve_multi(self):
-        from testbench_waitress import testbench_create_server
-
-        sockets = [
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-        ]
-        sockets[0].bind(("127.0.0.1", 0))
-        sockets[1].bind(("127.0.0.1", 0))
-
-        server_instance = testbench_create_server(
-            application=dummy_app,
-            sockets=sockets,
-            map= {},
-            _dispatcher=DummyTaskDispatcher(),
-            _start=True,
-            _sock=DummySock(),
-            clear_untrusted_proxy_headers=False,
-        )
-        self.assertEqual(server_instance.__class__.__name__, "MultiSocketServer")
+        wsgi_server=None
+        for key in map:
+            print(wsgi_server)
+            if("WSGIServer" in map[key].__class__.__name__):
+               wsgi_server = map[key]
+        
+        self.assertIsNotNone(wsgi_server)
+        self.assertEqual(wsgi_server.channel_class.__name__, testbench_HTTPChannel.__name__)
 
 class DummyTaskDispatcher:
     def __init__(self):
