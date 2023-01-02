@@ -24,25 +24,19 @@ import unittest
 import unittest.mock
 import socket
 
-dummy_app=object()
+dummy_test_object=object()
 
 class TestTestbenchWaitress(unittest.TestCase):
 
     def test_created_wsgi_server_has_testbench_httpchannel(self):
-        from testbench_waitress import testbench_HTTPChannel, testbench_create_server
-
-        disp = unittest.mock.Mock()
-        disp.invocation_metadata = unittest.mock.Mock(return_value=dict())
+        from testbench_waitress import testbench_create_server
 
         map={}
         server_instance = testbench_create_server(
-            application=dummy_app,
+            application=dummy_test_object,
             host="127.0.0.1",
             port=0,
             map=map,
-            _dispatcher=DummyTaskDispatcher(),
-            _start=True,
-            _sock=DummySock(),
             clear_untrusted_proxy_headers=False,
         )
 
@@ -53,65 +47,22 @@ class TestTestbenchWaitress(unittest.TestCase):
                wsgi_server = map[key]
         
         self.assertIsNotNone(wsgi_server)
-        self.assertEqual(wsgi_server.channel_class.__name__, testbench_HTTPChannel.__name__)
+        self.assertEqual(wsgi_server.channel_class.__name__, "testbench_HTTPChannel")
+        self.assertEqual(wsgi_server.channel_class.task_class.__name__,"testbench_WSGITask")
 
-class DummyTaskDispatcher:
-    def __init__(self):
-        self.tasks = []
+    def test_testbench_WSGITask_adds_waitress_channel_in_environment_values(self):
+        from testbench_waitress import testbench_WSGITask
 
-    def add_task(self, task):
-        self.tasks.append(task)
+        wsgiTaskInstance = testbench_WSGITask(dummy_test_object, DummyRequest())
+        wsgiTaskInstance.environ= {}
+        environ = wsgiTaskInstance.get_environment()
 
-    def shutdown(self):
-        self.was_shutdown = True
+        waitress_channel= environ.get("waitress.channel", None)
 
-class DummySock(socket.socket):
-    accepted = False
-    blocking = False
-    family = socket.AF_INET
-    type = socket.SOCK_STREAM
-    proto = 0
+        self.assertIsNotNone(waitress_channel)
 
-    def __init__(self, toraise=None, acceptresult=(None, None)):
-        self.toraise = toraise
-        self.acceptresult = acceptresult
-        self.bound = None
-        self.opts = []
-        self.bind_called = False
-
-    def bind(self, addr):
-        self.bind_called = True
-        self.bound = addr
-
-    def accept(self):
-        if self.toraise:
-            raise self.toraise
-        self.accepted = True
-        return self.acceptresult
-
-    def setblocking(self, x):
-        self.blocking = True
-
-    def fileno(self):
-        return 10
-
-    def getpeername(self):
-        return "127.0.0.1"
-
-    def setsockopt(self, *arg):
-        self.opts.append(arg)
-
-    def getsockopt(self, *arg):
-        return 1
-
-    def listen(self, num):
-        self.listened = num
-
-    def getsockname(self):
-        return self.bound
-
-    def close(self):
-        pass
+class DummyRequest:
+    version = "1.0"
 
 if __name__ == "__main__":
     unittest.main()
