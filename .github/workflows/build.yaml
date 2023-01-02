@@ -39,17 +39,19 @@ jobs:
           verbose: true
   windows-tests:
     runs-on: windows-latest
-    python-version: 3.11
-    name: Unit Tests On Winddows with Python ${{ python-version }}
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    name: Unit Tests On Winddows with Python ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python ${{ python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Install Dependencies
         run: |
-          py -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install flake8 pytest pytest-cov
           pip install -e .
       - name: Run Unit Tests with Coverage
