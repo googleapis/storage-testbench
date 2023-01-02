@@ -16,19 +16,12 @@
 
 """Unit test for testbench_waitress"""
 
-import sys
-
-sys.path.append("C:\\Users\\anuraags\\gcp\\storage-testbench")
-
 import unittest
-import unittest.mock
-import socket
-
 dummy_test_object=object()
 
 class TestTestbenchWaitress(unittest.TestCase):
 
-    def test_created_wsgi_server_has_testbench_httpchannel(self):
+    def test_created_wsgi_server_should_have_testbench_httpchannel(self):
         from testbench_waitress import testbench_create_server
 
         map={}
@@ -50,7 +43,7 @@ class TestTestbenchWaitress(unittest.TestCase):
         self.assertEqual(wsgi_server.channel_class.__name__, "testbench_HTTPChannel")
         self.assertEqual(wsgi_server.channel_class.task_class.__name__,"testbench_WSGITask")
 
-    def test_testbench_WSGITask_adds_waitress_channel_in_environment_values(self):
+    def test_testbench_WSGITask_should_add_waitress_channel_in_environment_values(self):
         from testbench_waitress import testbench_WSGITask
 
         wsgiTaskInstance = testbench_WSGITask(dummy_test_object, DummyRequest())
