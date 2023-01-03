@@ -41,7 +41,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.12.0a3"]
+        python-version: ["3.11"]
     name: Unit Tests On Windows Python ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v3
