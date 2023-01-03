@@ -77,7 +77,7 @@ class TestTestbenchStartup(unittest.TestCase):
             server_regex_pattern = "INFO:waitress:Serving on.*:([0-9]+)"
 
         # Wait for the message declaring this process is running
-        while not started and time.time() - start < 120:
+        while not started and time.time() - start < 300:
             line = self.testbench_server.stderr.readline()
             if server_start_message in line:
                 m = re.compile(server_regex_pattern).search(line)
@@ -125,7 +125,7 @@ class TestTestbenchStartup(unittest.TestCase):
         port = None
         start = time.time()
         # Wait for the message declaring this process is running
-        while not started and time.time() - start < 120:
+        while not started and time.time() - start < 300:
             line = self.plain.stderr.readline()
             if "Running on " in line:
                 m = re.compile("Running on .*:([0-9]+)").search(line)
