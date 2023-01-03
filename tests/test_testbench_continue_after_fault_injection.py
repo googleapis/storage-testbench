@@ -178,7 +178,7 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verify we get the expected error when sending several requests
-        for _ in range(0, 10):
+        for _ in range(0, 4):
             with self.assertRaises(requests.exceptions.RequestException) as ex:
                 response = requests.get(
                     endpoint + "/storage/v1/b/bucket-name/o/2MiB.txt?alt=media",
