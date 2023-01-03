@@ -36,7 +36,7 @@ class TestTestbenchStartup(unittest.TestCase):
         # If the tests are running on windows, change the python command for windows.
         if platform.system().lower() == "windows":
             python_command = "py"
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$ "+python_command+" $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$4")
+        self.assertEqual(python_command,"dummy python commend")
         self.testbench_server = subprocess.Popen(
             [python_command, "testbench_run.py", "localhost", "0", "10"],
             stderr=subprocess.PIPE,
