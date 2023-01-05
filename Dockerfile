@@ -20,9 +20,8 @@ COPY . /opt/storage-testbench/
 
 RUN python3 -m pip install -e .
 
-CMD ["gunicorn", \
-      "--bind", "0.0.0.0:9000", \
-      "--worker-class", "sync", \
-      "--threads", "10", \
-      "--access-logfile", "-", \
-      "testbench:run()"]
+CMD ["python3", \
+      "testbench_run.py", \
+      "0.0.0.0", \
+      "9000", \
+      "10"]
