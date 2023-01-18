@@ -368,7 +368,6 @@ class Object:
         return begin, end, length, response_payload
 
     def rest_media(self, request, delay=time.sleep):
-        print(self.metadata)
         is_decompressive_transcode = self._decompress_on_download(request)
         response_payload = (
             gzip.decompress(self.media)
