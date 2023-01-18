@@ -370,9 +370,7 @@ class Object:
     def rest_media(self, request, delay=time.sleep):
         is_decompressive_transcode = self._decompress_on_download(request)
         response_payload = (
-            gzip.decompress(self.media)
-            if is_decompressive_transcode
-            else self.media
+            gzip.decompress(self.media) if is_decompressive_transcode else self.media
         )
         range_header = request.headers.get("range")
         begin, end, length, response_payload = self._download_range(
