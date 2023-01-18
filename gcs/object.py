@@ -368,10 +368,9 @@ class Object:
         return begin, end, length, response_payload
 
     def rest_media(self, request, delay=time.sleep):
+        is_decompressive_transcode = self._decompress_on_download(request)
         response_payload = (
-            gzip.decompress(self.media)
-            if self._decompress_on_download(request)
-            else self.media
+            gzip.decompress(self.media) if is_decompressive_transcode else self.media
         )
         range_header = request.headers.get("range")
         begin, end, length, response_payload = self._download_range(
@@ -488,15 +487,34 @@ class Object:
                 yield response_payload
 
         headers["Content-Range"] = content_range
-        if self._decompress_on_download(request):
+        if is_decompressive_transcode:
             headers["x-guploader-response-body-transformations"] = "gunzipped"
         headers["x-goog-hash"] = self.x_goog_hash_header()
         headers["x-goog-generation"] = self.metadata.generation
         headers["x-goog-metageneration"] = self.metadata.metageneration
         headers["x-goog-storage-class"] = self.metadata.storage_class
 
+        if self.metadata.content_type:
+            headers["Content-Type"] = self.metadata.content_type
+        else:
+            # GCS json defaults to application/octet-stream if the object
+            # doesn't specify its content-type
+            headers["Content-Type"] = "application/octet-stream"
+
+        headers["x-goog-stored-content-length"] = self.metadata.size
+
+        if self.metadata.content_encoding:
+            headers["x-goog-stored-content-encoding"] = self.metadata.content_encoding
+            # https://cloud.google.com/storage/docs/transcoding#decompressive_transcoding
+            # if we are NOT applying "decompressive transcoding" we can add this header
+            if not is_decompressive_transcode:
+                headers["Content-Encoding"] = self.metadata.content_encoding
+
+        if self.metadata.content_disposition:
+            headers["Content-Disposition"] = self.metadata.content_disposition
+
         # Return status code 206 if a valid range request header is included.
-        if range_header and not self._decompress_on_download(request):
+        if range_header and not is_decompressive_transcode:
             return flask.Response(streamer(), status=206, headers=headers)
 
         return flask.Response(streamer(), status=200, headers=headers)
