@@ -495,6 +495,20 @@ class Object:
         headers["x-goog-metageneration"] = self.metadata.metageneration
         headers["x-goog-storage-class"] = self.metadata.storage_class
 
+        if self.metadata.content_type:
+            headers["Content-Type"] = self.metadata.content_type
+        else:
+            # GCS json defaults to application/octet-stream if the object
+            # doesn't specify its content-type
+            headers["Content-Type"] = "application/octet-stream"
+
+        if self.metadata.content_encoding:
+            headers["Content-Encoding"] = self.metadata.content_encoding
+            headers["x-goog-stored-content-encoding"] = self.metadata.content_encoding
+
+        if self.metadata.content_disposition:
+            headers["Content-Disposition"] = self.metadata.content_disposition
+
         # Return status code 206 if a valid range request header is included.
         if range_header and not self._decompress_on_download(request):
             return flask.Response(streamer(), status=206, headers=headers)
