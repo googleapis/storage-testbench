@@ -51,5 +51,6 @@ setuptools.setup(
         "scalpl==0.4.2",
         "crc32c==2.3",
         "gunicorn==20.1.0",
+        "waitress==2.1.2",
     ],
 )
