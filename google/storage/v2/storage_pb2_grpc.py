@@ -83,25 +83,25 @@ class StorageStub(object):
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
                 )
-        self.DeleteNotification = channel.unary_unary(
-                '/google.storage.v2.Storage/DeleteNotification',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationRequest.SerializeToString,
+        self.DeleteNotificationConfig = channel.unary_unary(
+                '/google.storage.v2.Storage/DeleteNotificationConfig',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.GetNotification = channel.unary_unary(
-                '/google.storage.v2.Storage/GetNotification',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Notification.FromString,
+        self.GetNotificationConfig = channel.unary_unary(
+                '/google.storage.v2.Storage/GetNotificationConfig',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
                 )
-        self.CreateNotification = channel.unary_unary(
-                '/google.storage.v2.Storage/CreateNotification',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Notification.FromString,
+        self.CreateNotificationConfig = channel.unary_unary(
+                '/google.storage.v2.Storage/CreateNotificationConfig',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
                 )
-        self.ListNotifications = channel.unary_unary(
-                '/google.storage.v2.Storage/ListNotifications',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsResponse.FromString,
+        self.ListNotificationConfigs = channel.unary_unary(
+                '/google.storage.v2.Storage/ListNotificationConfigs',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
                 )
         self.ComposeObject = channel.unary_unary(
                 '/google.storage.v2.Storage/ComposeObject',
@@ -251,6 +251,9 @@ class StorageServicer(object):
 
     def GetIamPolicy(self, request, context):
         """Gets the IAM policy for a specified bucket or object.
+        The `resource` field in the request should be
+        projects/_/buckets/<bucket_name> for a bucket or
+        projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -258,6 +261,9 @@ class StorageServicer(object):
 
     def SetIamPolicy(self, request, context):
         """Updates an IAM policy for the specified bucket or object.
+        The `resource` field in the request should be
+        projects/_/buckets/<bucket_name> for a bucket or
+        projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -266,6 +272,9 @@ class StorageServicer(object):
     def TestIamPermissions(self, request, context):
         """Tests a set of permissions on the given bucket or object to see which, if
         any, are held by the caller.
+        The `resource` field in the request should be
+        projects/_/buckets/<bucket_name> for a bucket or
+        projects/_/buckets/<bucket_name>/objects/<object_name> for an object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -278,32 +287,32 @@ class StorageServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def DeleteNotification(self, request, context):
-        """Permanently deletes a notification subscription.
+    def DeleteNotificationConfig(self, request, context):
+        """Permanently deletes a NotificationConfig.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetNotification(self, request, context):
-        """View a notification config.
+    def GetNotificationConfig(self, request, context):
+        """View a NotificationConfig.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def CreateNotification(self, request, context):
-        """Creates a notification subscription for a given bucket.
-        These notifications, when triggered, publish messages to the specified
-        Pub/Sub topics.
-        See https://cloud.google.com/storage/docs/pubsub-notifications.
+    def CreateNotificationConfig(self, request, context):
+        """Creates a NotificationConfig for a given bucket.
+        These NotificationConfigs, when triggered, publish messages to the
+        specified Pub/Sub topics. See
+        https://cloud.google.com/storage/docs/pubsub-notifications.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def ListNotifications(self, request, context):
-        """Retrieves a list of notification subscriptions for a given bucket.
+    def ListNotificationConfigs(self, request, context):
+        """Retrieves a list of NotificationConfigs for a given bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -394,8 +403,9 @@ class StorageServicer(object):
         returned `persisted_size`; in this case, the service will skip data at
         offsets that were already persisted (without checking that it matches
         the previously written data), and write only the data starting from the
-        persisted offset. This behavior can make client-side handling simpler
-        in some cases.
+        persisted offset. Even though the data isn't written, it may still
+        incur a performance cost over resuming at the correct write offset.
+        This behavior can make client-side handling simpler in some cases.
 
         The service will not view the object as complete until the client has
         sent a `WriteObjectRequest` with `finish_write` set to `true`. Sending any
@@ -545,25 +555,25 @@ def add_StorageServicer_to_server(servicer, server):
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.FromString,
                     response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.SerializeToString,
             ),
-            'DeleteNotification': grpc.unary_unary_rpc_method_handler(
-                    servicer.DeleteNotification,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationRequest.FromString,
+            'DeleteNotificationConfig': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteNotificationConfig,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
-            'GetNotification': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetNotification,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.Notification.SerializeToString,
+            'GetNotificationConfig': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNotificationConfig,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.SerializeToString,
             ),
-            'CreateNotification': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateNotification,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.Notification.SerializeToString,
+            'CreateNotificationConfig': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateNotificationConfig,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.SerializeToString,
             ),
-            'ListNotifications': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListNotifications,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsResponse.SerializeToString,
+            'ListNotificationConfigs': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListNotificationConfigs,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.SerializeToString,
             ),
             'ComposeObject': grpc.unary_unary_rpc_method_handler(
                     servicer.ComposeObject,
@@ -835,7 +845,7 @@ class Storage(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def DeleteNotification(request,
+    def DeleteNotificationConfig(request,
             target,
             options=(),
             channel_credentials=None,
@@ -845,14 +855,14 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteNotification',
-            google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationRequest.SerializeToString,
+        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteNotificationConfig',
+            google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetNotification(request,
+    def GetNotificationConfig(request,
             target,
             options=(),
             channel_credentials=None,
@@ -862,14 +872,14 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetNotification',
-            google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.Notification.FromString,
+        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetNotificationConfig',
+            google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def CreateNotification(request,
+    def CreateNotificationConfig(request,
             target,
             options=(),
             channel_credentials=None,
@@ -879,14 +889,14 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CreateNotification',
-            google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.Notification.FromString,
+        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CreateNotificationConfig',
+            google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def ListNotifications(request,
+    def ListNotificationConfigs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -896,9 +906,9 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListNotifications',
-            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationsResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListNotificationConfigs',
+            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
