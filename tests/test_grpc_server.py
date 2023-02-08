@@ -508,10 +508,10 @@ class TestGrpc(unittest.TestCase):
 
     def test_delete_notification(self):
         context = unittest.mock.Mock()
-        create = self.grpc.CreateNotification(
-            storage_pb2.CreateNotificationRequest(
+        create = self.grpc.CreateNotificationConfig(
+            storage_pb2.CreateNotificationConfigRequest(
                 parent="projects/_/buckets/bucket-name",
-                notification=storage_pb2.Notification(
+                notification_config=storage_pb2.NotificationConfig(
                     topic="//pubsub.googleapis.com/projects/test-project-id/topics/test-topic",
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
@@ -527,8 +527,8 @@ class TestGrpc(unittest.TestCase):
         )
 
         context = unittest.mock.Mock()
-        _ = self.grpc.DeleteNotification(
-            storage_pb2.GetNotificationRequest(name=create.name), context
+        _ = self.grpc.DeleteNotificationConfig(
+            storage_pb2.GetNotificationConfigRequest(name=create.name), context
         )
         context.abort.assert_not_called()
 
@@ -537,8 +537,8 @@ class TestGrpc(unittest.TestCase):
         context.abort = unittest.mock.MagicMock()
         context.abort.side_effect = grpc.RpcError()
         with self.assertRaises(grpc.RpcError):
-            _ = self.grpc.GetNotification(
-                storage_pb2.GetNotificationRequest(name=create.name), context
+            _ = self.grpc.GetNotificationConfig(
+                storage_pb2.GetNotificationConfigRequest(name=create.name), context
             )
         context.abort.assert_called_once_with(
             grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
@@ -546,8 +546,8 @@ class TestGrpc(unittest.TestCase):
 
     def test_delete_notification_malformed(self):
         context = unittest.mock.Mock()
-        _ = self.grpc.DeleteNotification(
-            storage_pb2.GetNotificationRequest(name=""), context
+        _ = self.grpc.DeleteNotificationConfig(
+            storage_pb2.GetNotificationConfigRequest(name=""), context
         )
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
@@ -558,10 +558,10 @@ class TestGrpc(unittest.TestCase):
         topic_name = (
             "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
         )
-        response = self.grpc.CreateNotification(
-            storage_pb2.CreateNotificationRequest(
+        response = self.grpc.CreateNotificationConfig(
+            storage_pb2.CreateNotificationConfigRequest(
                 parent="projects/_/buckets/bucket-name",
-                notification=storage_pb2.Notification(
+                notification_config=storage_pb2.NotificationConfig(
                     topic=topic_name,
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
@@ -577,16 +577,18 @@ class TestGrpc(unittest.TestCase):
         )
 
         context = unittest.mock.Mock()
-        get = self.grpc.GetNotification(
-            storage_pb2.GetNotificationRequest(name=response.name), context
+        get = self.grpc.GetNotificationConfig(
+            storage_pb2.GetNotificationConfigRequest(name=response.name), context
         )
         self.assertEqual(get, response)
         self.assertEqual(get.topic, topic_name)
 
     def test_get_notification_malformed(self):
         context = unittest.mock.Mock()
-        _ = self.grpc.GetNotification(
-            storage_pb2.GetNotificationRequest(name="projects/_/buckets/bucket-name/"),
+        _ = self.grpc.GetNotificationConfig(
+            storage_pb2.GetNotificationConfigRequest(
+                name="projects/_/buckets/bucket-name/"
+            ),
             context,
         )
         context.abort.assert_called_once_with(
@@ -598,10 +600,10 @@ class TestGrpc(unittest.TestCase):
             "//pubsub.googleapis.com/projects/test-project-id/topics/test-topic"
         )
         context = unittest.mock.Mock()
-        response = self.grpc.CreateNotification(
-            storage_pb2.CreateNotificationRequest(
+        response = self.grpc.CreateNotificationConfig(
+            storage_pb2.CreateNotificationConfigRequest(
                 parent="projects/_/buckets/bucket-name",
-                notification=storage_pb2.Notification(
+                notification_config=storage_pb2.NotificationConfig(
                     topic=topic_name,
                     custom_attributes={"key": "value"},
                     payload_format="JSON_API_V1",
@@ -634,10 +636,10 @@ class TestGrpc(unittest.TestCase):
             context.abort = unittest.mock.MagicMock()
             context.abort.side_effect = grpc.RpcError()
             with self.assertRaises(grpc.RpcError):
-                _ = self.grpc.CreateNotification(
-                    storage_pb2.CreateNotificationRequest(
+                _ = self.grpc.CreateNotificationConfig(
+                    storage_pb2.CreateNotificationConfigRequest(
                         parent="projects/_/buckets/bucket-name",
-                        notification=storage_pb2.Notification(
+                        notification_config=storage_pb2.NotificationConfig(
                             topic=topic, payload_format="JSON_API_V1"
                         ),
                     ),
@@ -655,10 +657,10 @@ class TestGrpc(unittest.TestCase):
         ]
         for topic in topics:
             context = unittest.mock.Mock()
-            response = self.grpc.CreateNotification(
-                storage_pb2.CreateNotificationRequest(
+            response = self.grpc.CreateNotificationConfig(
+                storage_pb2.CreateNotificationConfigRequest(
                     parent="projects/_/buckets/bucket-name",
-                    notification=storage_pb2.Notification(
+                    notification_config=storage_pb2.NotificationConfig(
                         topic=topic,
                         custom_attributes={"key": "value"},
                         payload_format="JSON_API_V1",
@@ -669,13 +671,13 @@ class TestGrpc(unittest.TestCase):
             expected.add(response.name)
 
         context = unittest.mock.Mock()
-        response = self.grpc.ListNotifications(
-            storage_pb2.ListNotificationsRequest(
+        response = self.grpc.ListNotificationConfigs(
+            storage_pb2.ListNotificationConfigsRequest(
                 parent="projects/_/buckets/bucket-name"
             ),
             context,
         )
-        names = {n.name for n in response.notifications}
+        names = {n.name for n in response.notification_configs}
         self.assertEqual(names, expected)
 
     def test_compose_object(self):
