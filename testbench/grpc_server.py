@@ -311,13 +311,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest.pop("kind")
         rest["name"] = bucket_name + "/notificationConfigs/" + rest.pop("id")
         rest["topic"] = "//pubsub.googleapis.com/" + rest["topic"]
-        return json_format.ParseDict(rest, storage_pb2.Notification())
+        return json_format.ParseDict(rest, storage_pb2.NotificationConfig())
 
     def _decompose_notification_name(self, notification_name, context):
         loc = notification_name.find("/notificationConfigs/")
         if loc == -1:
             testbench.error.invalid(
-                "GetNotification() malformed notification name [%s]"
+                "GetNotificationConfig() malformed notification name [%s]"
                 % notification_name,
                 context,
             )
@@ -326,7 +326,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         notification_id = notification_name[loc + len("/notificationConfigs/") :]
         return (bucket_name, notification_id)
 
-    def DeleteNotification(self, request, context):
+    def DeleteNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
         )
@@ -336,7 +336,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket.delete_notification(notification_id, context)
         return empty_pb2.Empty()
 
-    def GetNotification(self, request, context):
+    def GetNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
         )
@@ -346,27 +346,27 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = bucket.get_notification(notification_id, context)
         return self._notification_from_rest(rest, bucket_name)
 
-    def CreateNotification(self, request, context):
+    def CreateNotificationConfig(self, request, context):
         pattern = "^//pubsub.googleapis.com/projects/[^/]+/topics/[^/]+$"
-        if re.match(pattern, request.notification.topic) is None:
+        if re.match(pattern, request.notification_config.topic) is None:
             return testbench.error.invalid(
                 "topic names must be in"
                 + " //pubsub.googleapis.com/projects/{project-identifier}/topics/{my-topic}"
-                + " format, got=%s" % request.notification.topic,
+                + " format, got=%s" % request.notification_config.topic,
                 context,
             )
         bucket = self.db.get_bucket(request.parent, context)
-        notification = json_format.MessageToDict(request.notification)
+        notification = json_format.MessageToDict(request.notification_config)
         # Convert topic names to REST format
         notification["topic"] = notification["topic"][len("//pubsub.googleapis.com/") :]
         rest = bucket.insert_notification(json.dumps(notification), context)
         return self._notification_from_rest(rest, request.parent)
 
-    def ListNotifications(self, request, context):
+    def ListNotificationConfigs(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         items = bucket.list_notifications(context).get("items", [])
-        return storage_pb2.ListNotificationsResponse(
-            notifications=[
+        return storage_pb2.ListNotificationConfigsResponse(
+            notification_configs=[
                 self._notification_from_rest(r, request.parent) for r in items
             ]
         )
