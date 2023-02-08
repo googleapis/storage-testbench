@@ -1,3 +1,3 @@
 ignore:
-  - "google/iam/v1/**/*"
-  - "google/storage/v2/**/*"
+  - "google/iam"
+  - "google/storage"
