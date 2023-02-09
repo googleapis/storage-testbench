@@ -27,7 +27,7 @@ This module contains a number of helper functions to perform these transformatio
 """
 
 import base64
-import hashlib
+import datetime
 import struct
 
 from google.protobuf import json_format
@@ -132,6 +132,25 @@ def __postprocess_rest_default_object_acl(bucket_id, acl):
     return copy
 
 
+def __postprocess_rest_retention_policy_duration(data: str):
+    # The string is in the canonical JSON representation for proto durations,
+    # that is: "%{seconds + nanos/1'000'000'000}s", we are just going to
+    # ignore the nanos and return this as a string.
+    return str(int(data.removesuffix("s")))
+
+
+def __postprocess_rest_retention_policy(data):
+    return testbench.common.rest_adjust(
+        data,
+        {
+            "retentionDuration": lambda x: (
+                "retentionPeriod",
+                __postprocess_rest_retention_policy_duration(x),
+            )
+        },
+    )
+
+
 def __postprocess_bucket_rest(data):
     bucket_id = testbench.common.bucket_name_from_proto(data["name"])
     data = testbench.common.rest_adjust(
@@ -161,6 +180,10 @@ def __postprocess_bucket_rest(data):
             "defaultObjectAcl": lambda x: (
                 "defaultObjectAcl",
                 [__postprocess_rest_default_object_acl(bucket_id, a) for a in x],
+            ),
+            "retentionPolicy": lambda x: (
+                "retentionPolicy",
+                __postprocess_rest_retention_policy(x),
             ),
         },
     )

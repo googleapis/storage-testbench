@@ -172,6 +172,25 @@ class Bucket:
         return copy
 
     @classmethod
+    def __preprocess_rest_retention_period(cls, rp):
+        # The JSON representation for a proto duration is a string in basically
+        # this format "%{seconds + nanos/1'000'000'000.0}s", the 'nanos' are
+        # always zero.
+        return f"{rp}s"
+
+    @classmethod
+    def __preprocess_rest_retention_policy(cls, rp):
+        return testbench.common.rest_adjust(
+            rp,
+            {
+                "retentionPeriod": lambda x: (
+                    "retentionDuration",
+                    Bucket.__preprocess_rest_retention_period(x),
+                ),
+            },
+        )
+
+    @classmethod
     def __preprocess_rest(cls, rest):
         rest = testbench.common.rest_adjust(
             rest,
@@ -194,6 +213,10 @@ class Bucket:
                 "lifecycle": lambda x: (
                     "lifecycle",
                     Bucket.__preprocess_rest_lifecyle(x),
+                ),
+                "retentionPolicy": lambda x: (
+                    "retentionPolicy",
+                    Bucket.__preprocess_rest_retention_policy(x),
                 ),
             },
         )

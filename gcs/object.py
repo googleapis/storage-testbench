@@ -100,7 +100,7 @@ class Object:
         metadata.update_time.FromDatetime(timestamp)
         if bucket.HasField("retention_policy"):
             retention_expiration_time = timestamp + datetime.timedelta(
-                0, bucket.retention_policy.retention_period
+                seconds=bucket.retention_policy.retention_duration.seconds
             )
             metadata.retention_expire_time.FromDatetime(retention_expiration_time)
         metadata.owner.entity = testbench.acl.get_object_entity("OWNER", context)
