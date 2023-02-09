@@ -71,10 +71,16 @@ class Bucket:
             testbench.error.invalid("Bucket name %s" % bucket_name, context)
 
     @classmethod
-    def __validate_grpc_project_name(cls, project_name, context):
-        valid = re.match("^projects/[^/]+$", project_name) is not None
+    def __validate_grpc_project_names(cls, parent_name, project_name, context):
+        if parent_name != "" and project_name != "":
+            testbench.error.invalid(
+                "Project name provided in both parent and bucket.project fields",
+                context,
+            )
+        name = parent_name if parent_name != "" else project_name
+        valid = re.match("^projects/[^/]+$", name) is not None
         if not valid:
-            testbench.error.invalid("Project name %s" % project_name, context)
+            testbench.error.invalid("Project name %s" % name, context)
 
     @classmethod
     def __preprocess_rest_ubla(cls, ubla):
@@ -316,7 +322,9 @@ class Bucket:
         cls.__validate_json_bucket_name(
             testbench.common.bucket_name_from_proto(request.bucket_id), context
         )
-        cls.__validate_grpc_project_name(request.parent, context)
+        cls.__validate_grpc_project_names(
+            request.parent, request.bucket.project, context
+        )
         metadata = request.bucket
         cls._init_defaults(metadata, context)
         metadata.bucket_id = request.bucket_id

@@ -39,12 +39,54 @@ class TestBucketGrpc(unittest.TestCase):
         context = unittest.mock.Mock()
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
         self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
+        self.assertTrue(
+            bucket.metadata.project.startswith("projects/"), msg=bucket.metadata.project
+        )
         self.assertEqual(bucket.metadata.bucket_id, "test-bucket-name")
         self.assertEqual(bucket.metadata.storage_class, "REGIONAL")
         self.assertLess(0, bucket.metadata.metageneration)
 
         rest = bucket.rest()
         self.assertNotEqual(int(rest.get("projectNumber")), 0)
+
+    def test_init_grpc_with_project(self):
+        request = storage_pb2.CreateBucketRequest(
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                storage_class="REGIONAL",
+                project="projects/test-project",
+            ),
+        )
+        context = unittest.mock.Mock()
+        bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
+        self.assertTrue(
+            bucket.metadata.project.startswith("projects/"), msg=bucket.metadata.project
+        )
+        self.assertEqual(bucket.metadata.bucket_id, "test-bucket-name")
+        self.assertEqual(bucket.metadata.storage_class, "REGIONAL")
+        self.assertLess(0, bucket.metadata.metageneration)
+
+        rest = bucket.rest()
+        self.assertNotEqual(int(rest.get("projectNumber")), 0)
+
+    def test_init_grpc_too_many_projects(self):
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                storage_class="REGIONAL",
+                project="projects/different-project",
+            ),
+        )
+        context = unittest.mock.Mock()
+        context = unittest.mock.Mock()
+        context.abort.side_effect = TestBucketGrpc._raise_grpc_error
+        with self.assertRaises(Exception) as _:
+            _, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
 
     def test_init_validates_names(self):
         request = storage_pb2.CreateBucketRequest(
@@ -80,7 +122,7 @@ class TestBucketGrpc(unittest.TestCase):
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
 
-    def test_init_validates_project(self):
+    def test_init_validates_parent(self):
         invalid_projects = ["projects/", "pr/test-project", "projects/foo/bar/baz"]
         for project in invalid_projects:
             request = storage_pb2.CreateBucketRequest(
@@ -91,6 +133,21 @@ class TestBucketGrpc(unittest.TestCase):
             context = unittest.mock.Mock()
             context.abort.side_effect = TestBucketGrpc._raise_grpc_error
             with self.assertRaises(Exception, msg="project <%s>" % project) as _:
+                _, _ = gcs.bucket.Bucket.init_grpc(request, context)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+    def test_init_validates_project(self):
+        invalid_projects = ["projects/", "pr/test-project", "projects/foo/bar/baz"]
+        for name in invalid_projects:
+            request = storage_pb2.CreateBucketRequest(
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(project=name),
+            )
+            context = unittest.mock.Mock()
+            context.abort.side_effect = TestBucketGrpc._raise_grpc_error
+            with self.assertRaises(Exception, msg="project <%s>" % name) as _:
                 _, _ = gcs.bucket.Bucket.init_grpc(request, context)
             context.abort.assert_called_once_with(
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
