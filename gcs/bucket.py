@@ -316,7 +316,15 @@ class Bucket:
         cls.__validate_json_bucket_name(
             testbench.common.bucket_name_from_proto(request.bucket_id), context
         )
-        cls.__validate_grpc_project_name(request.parent, context)
+        if request.parent == "projects/_":
+            cls.__validate_grpc_project_name(request.bucket.project, context)
+        else:
+            cls.__validate_grpc_project_name(request.parent, context)
+            if request.bucket.project != "":
+                testbench.error.invalid(
+                    "CreateBucketRequest with invalid combination of `parent` and `bucket.project` fields",
+                    context,
+                )
         metadata = request.bucket
         cls._init_defaults(metadata, context)
         metadata.bucket_id = request.bucket_id
