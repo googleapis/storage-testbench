@@ -277,7 +277,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             if path == "labels":
                 replace_labels = True
             elif path.startswith("labels."):
-                key = path.removeprefix("labels.")
+                key = path[len("labels.") :]
                 value = request.bucket.labels.get(key, None)
                 if value is None:
                     removed_label_keys.add(key)
@@ -535,7 +535,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             if path == "metadata":
                 replace_metadata = True
             elif path.startswith("metadata."):
-                key = path.removeprefix("metadata.")
+                key = path[len("metadata.") :]
                 value = request.object.metadata.get(key, None)
                 if value is None:
                     removed_metadata_keys.add(key)
