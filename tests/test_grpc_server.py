@@ -506,6 +506,39 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(response.update_time, response.autoclass.toggle_time)
         self.assertLess(metageneration, response.metageneration)
 
+    def test_update_bucket_labels(self):
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(labels={"k0": "v0", "k1": "v1", "k2": "v2"}),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateBucket(request, context)
+        self.assertEqual(response.labels, {"k0": "v0", "k1": "v1", "k2": "v2"})
+
+        # Change the value of a label, remove one label, leave one label unchanged,
+        # and insert a new label
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/test-bucket-name",
+                labels={"k0": "new-v0", "k3": "v3"},
+            ),
+            update_mask=field_mask_pb2.FieldMask(
+                paths=["labels.k0", "labels.k1", "labels.k3"]
+            ),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateBucket(request, context)
+        self.assertEqual(response.labels, {"k0": "new-v0", "k2": "v2", "k3": "v3"})
+
+        # Finally verify the changes are persisted
+        context = unittest.mock.Mock()
+        get = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/test-bucket-name"),
+            context,
+        )
+        self.assertEqual(get.labels, {"k0": "new-v0", "k2": "v2", "k3": "v3"})
+
     def test_delete_notification(self):
         context = unittest.mock.Mock()
         create = self.grpc.CreateNotificationConfig(
@@ -938,7 +971,7 @@ class TestGrpc(unittest.TestCase):
             "allUsers",
         ]
         self.assertEqual("text/plain", response.content_type)
-        self.assertEqual({"key": "value", "new-key": "new-value"}, response.metadata)
+        self.assertEqual(response.metadata, {"key": "value", "new-key": "new-value"})
         self.assertEqual("", response.cache_control)
         self.assertListEqual(predefined, [acl.entity for acl in response.acl])
         self.assertLess(metageneration, response.metageneration)
@@ -995,6 +1028,44 @@ class TestGrpc(unittest.TestCase):
             context.abort.assert_called_once_with(
                 grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
             )
+
+    def test_update_object_metadata(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"},
+            data=media,
+            headers={},
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        blob.metadata.metadata.update({"k0": "v0", "k1": "v1", "k2": "v2"})
+        # Change the value of a label, remove one label, leave one label unchanged,
+        # and insert a new label
+        request = storage_pb2.UpdateObjectRequest(
+            object=storage_pb2.Object(
+                bucket="projects/_/buckets/bucket-name",
+                name="object-name",
+                metadata={"k0": "new-v0", "k3": "v3"},
+            ),
+            update_mask=field_mask_pb2.FieldMask(
+                paths=["metadata.k0", "metadata.k1", "metadata.k3"]
+            ),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateObject(request, context)
+        expected = {"k0": "new-v0", "k2": "v2", "k3": "v3"}
+        self.assertEqual(response.metadata, {**response.metadata, **expected})
+
+        # Finally verify the changes are persisted
+        context = unittest.mock.Mock()
+        response = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual(response.metadata, {**response.metadata, **expected})
 
     def test_object_write(self):
         QUANTUM = 256 * 1024
