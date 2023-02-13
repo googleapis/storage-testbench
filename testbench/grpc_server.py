@@ -541,7 +541,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     removed_metadata_keys.add(key)
                 else:
                     updated_metadata[key] = value
-            elif path == "acl" or path == "default_object_acl":
+            elif path == "acl":
                 pass
             else:
                 safe_paths.add(path)

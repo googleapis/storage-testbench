@@ -539,6 +539,47 @@ class TestGrpc(unittest.TestCase):
         )
         self.assertEqual(get.labels, {"k0": "new-v0", "k2": "v2", "k3": "v3"})
 
+    def test_update_bucket_acls(self):
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateBucket(request, context)
+        context.abort.assert_not_called()
+
+        # Change the value of a label, remove one label, leave one label unchanged,
+        # and insert a new label
+        new_acl = list(response.acl)
+        new_acl.append(
+            storage_pb2.BucketAccessControl(
+                entity="serviceAccount:fake-sa@fake-project.example.com",
+                role="READER",
+            )
+        )
+        new_default_object_acl = list(response.default_object_acl)
+        new_default_object_acl.append(
+            storage_pb2.ObjectAccessControl(
+                entity="allAuthenticatedUsers",
+                role="READER",
+            )
+        )
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/test-bucket-name",
+                acl=list(new_acl),
+                default_object_acl=list(new_default_object_acl),
+            ),
+            if_metageneration_match=response.metageneration,
+            update_mask=field_mask_pb2.FieldMask(paths=["acl", "default_object_acl"]),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateBucket(request, context)
+        context.abort.assert_not_called()
+        self.assertEqual(response.acl, new_acl)
+        self.assertEqual(response.default_object_acl, new_default_object_acl)
+
     def test_delete_notification(self):
         context = unittest.mock.Mock()
         create = self.grpc.CreateNotificationConfig(
@@ -1066,6 +1107,37 @@ class TestGrpc(unittest.TestCase):
             context,
         )
         self.assertEqual(response.metadata, {**response.metadata, **expected})
+
+    def test_update_object_acl(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"},
+            data=media,
+            headers={},
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        # Change the value of a label, remove one label, leave one label unchanged,
+        # and insert a new label
+        new_acl = list(blob.metadata.acl)
+        new_acl.append(
+            storage_pb2.ObjectAccessControl(
+                entity="allAuthenticatedUsers", role="READER"
+            )
+        )
+        request = storage_pb2.UpdateObjectRequest(
+            object=storage_pb2.Object(
+                bucket="projects/_/buckets/bucket-name",
+                name="object-name",
+                acl=list(new_acl),
+            ),
+            update_mask=field_mask_pb2.FieldMask(paths=["acl"]),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateObject(request, context)
+        context.abort.assert_not_called()
+        self.assertEqual(new_acl, response.acl)
 
     def test_object_write(self):
         QUANTUM = 256 * 1024
