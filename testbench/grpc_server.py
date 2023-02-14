@@ -268,10 +268,31 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
-        if not request.update_mask.IsValidForDescriptor(storage_pb2.Bucket.DESCRIPTOR):
+        # TODO(#270) - cleanup the manual steps
+        safe_paths = set()
+        updated_labels = dict()
+        removed_label_keys = set()
+        replace_labels = False
+        for path in request.update_mask.paths:
+            if path == "labels":
+                replace_labels = True
+            elif path.startswith("labels."):
+                key = path[len("labels.") :]
+                value = request.bucket.labels.get(key, None)
+                if value is None:
+                    removed_label_keys.add(key)
+                else:
+                    updated_labels[key] = value
+            elif path == "acl" or path == "default_object_acl":
+                pass
+            else:
+                safe_paths.add(path)
+        # Build a mask ignoring the manually updated fields
+        mask = field_mask_pb2.FieldMask()
+        mask.paths[:] = list(safe_paths)
+        if not mask.IsValidForDescriptor(storage_pb2.Bucket.DESCRIPTOR):
             return testbench.error.invalid(
-                "UpdateBucket() invalid field for Bucket [%s]"
-                % ",".join(intersection.paths),
+                "UpdateBucket() invalid field for Bucket [%s]" % ",".join(mask.paths),
                 context,
             )
         bucket = self.db.get_bucket(
@@ -279,16 +300,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context,
             preconditions=testbench.common.make_grpc_bucket_preconditions(request),
         )
-        # TODO(#270) - cleanup the manual steps
-        paths = set(request.update_mask.paths)
-        safe_paths = paths.copy()
-        safe_paths.discard("acl")
-        safe_paths.discard("default_object_acl")
-        safe_paths.discard("labels")
-        mask = field_mask_pb2.FieldMask()
-        mask.paths[:] = list(safe_paths)
         mask.MergeMessage(request.bucket, bucket.metadata)
-        # Manually replace the repeated fields.
         if "acl" in request.update_mask.paths:
             del bucket.metadata.acl[:]
             bucket.metadata.acl.extend(request.bucket.acl)
@@ -298,9 +310,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if "default_object_acl" in request.update_mask.paths:
             del bucket.metadata.default_object_acl[:]
             bucket.metadata.default_object_acl.extend(request.bucket.default_object_acl)
-        if "labels" in request.update_mask.paths:
+        if replace_labels:
             bucket.metadata.labels.clear()
             bucket.metadata.labels.update(request.bucket.labels)
+        else:
+            bucket.metadata.labels.update(updated_labels)
+            for k in removed_label_keys:
+                bucket.metadata.labels.pop(k, None)
         bucket.metadata.metageneration += 1
         bucket.metadata.update_time.FromDatetime(now)
         return bucket.metadata
@@ -510,10 +526,32 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 % ",".join(intersection.paths),
                 context,
             )
-        if not request.update_mask.IsValidForDescriptor(storage_pb2.Object.DESCRIPTOR):
+        # TODO(#270) - cleanup the manual steps
+        safe_paths = set()
+        updated_metadata = dict()
+        removed_metadata_keys = set()
+        replace_metadata = False
+        for path in request.update_mask.paths:
+            if path == "metadata":
+                replace_metadata = True
+            elif path.startswith("metadata."):
+                key = path[len("metadata.") :]
+                value = request.object.metadata.get(key, None)
+                if value is None:
+                    removed_metadata_keys.add(key)
+                else:
+                    updated_metadata[key] = value
+            elif path == "acl":
+                pass
+            else:
+                safe_paths.add(path)
+        # Build a mask ignoring the manually updated fields
+        mask = field_mask_pb2.FieldMask()
+        mask.paths[:] = list(safe_paths)
+
+        if not mask.IsValidForDescriptor(storage_pb2.Object.DESCRIPTOR):
             return testbench.error.invalid(
-                "UpdateObject() invalid field for Object [%s]"
-                % ",".join(intersection.paths),
+                "UpdateObject() invalid field for Object [%s]" % ",".join(mask.paths),
                 context,
             )
         self.db.insert_test_bucket()
@@ -525,20 +563,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             preconditions=testbench.common.make_grpc_preconditions(request),
         )
         # TODO(#270) - cleanup the manual steps
-        paths = set(request.update_mask.paths)
-        safe_paths = paths.copy()
-        safe_paths.discard("acl")
-        safe_paths.discard("metadata")
-        mask = field_mask_pb2.FieldMask()
-        mask.paths[:] = list(safe_paths)
-        mask.MergeMessage(request.object, blob.metadata)
+        object = blob.metadata
+        mask.MergeMessage(request.object, object)
         # Manually replace the repeated fields.
         if "acl" in request.update_mask.paths:
-            del blob.metadata.acl[:]
-            blob.metadata.acl.extend(request.object.acl)
-        if "metadata" in request.update_mask.paths:
-            blob.metadata.metadata.clear()
-            blob.metadata.metadata.update(request.object.metadata)
+            del object.acl[:]
+            object.acl.extend(request.object.acl)
         # Manually handle predefinedACL.
         if request.predefined_acl:
             acls = testbench.acl.compute_predefined_object_acl(
@@ -548,11 +578,18 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 request.predefined_acl,
                 context,
             )
-            del blob.metadata.acl[:]
-            blob.metadata.acl.extend(acls)
-        blob.metadata.metageneration += 1
-        blob.metadata.update_time.FromDatetime(datetime.datetime.now())
-        return blob.metadata
+            del object.acl[:]
+            object.acl.extend(acls)
+        if replace_metadata:
+            object.metadata.clear()
+            object.metadata.update(request.object.metadata)
+        else:
+            object.metadata.update(updated_metadata)
+            for k in removed_metadata_keys:
+                object.metadata.pop(k, None)
+        object.metageneration += 1
+        object.update_time.FromDatetime(datetime.datetime.now())
+        return object
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata
