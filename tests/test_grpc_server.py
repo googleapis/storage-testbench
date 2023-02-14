@@ -549,8 +549,6 @@ class TestGrpc(unittest.TestCase):
         response = self.grpc.CreateBucket(request, context)
         context.abort.assert_not_called()
 
-        # Change the value of a label, remove one label, leave one label unchanged,
-        # and insert a new label
         new_acl = list(response.acl)
         new_acl.append(
             storage_pb2.BucketAccessControl(
@@ -1081,8 +1079,8 @@ class TestGrpc(unittest.TestCase):
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.db.insert_object("bucket-name", blob, None)
         blob.metadata.metadata.update({"k0": "v0", "k1": "v1", "k2": "v2"})
-        # Change the value of a label, remove one label, leave one label unchanged,
-        # and insert a new label
+        # Change the value of a metadata pair, remove one metadata pai, leave
+        # one unchanged, and insert a new metadata pair.
         request = storage_pb2.UpdateObjectRequest(
             object=storage_pb2.Object(
                 bucket="projects/_/buckets/bucket-name",
@@ -1118,8 +1116,6 @@ class TestGrpc(unittest.TestCase):
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.db.insert_object("bucket-name", blob, None)
-        # Change the value of a label, remove one label, leave one label unchanged,
-        # and insert a new label
         new_acl = list(blob.metadata.acl)
         new_acl.append(
             storage_pb2.ObjectAccessControl(
