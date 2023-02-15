@@ -17,12 +17,13 @@
 """Unit test for testbench_waitress"""
 
 import io
+import platform
 import subprocess
 import sys
-import platform
-import waitress
 import unittest
 from unittest.mock import patch
+
+import waitress
 
 
 class TestTestbenchRun(unittest.TestCase):

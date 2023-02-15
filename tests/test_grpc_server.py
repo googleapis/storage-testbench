@@ -26,9 +26,9 @@ import grpc
 from google.protobuf import field_mask_pb2
 
 import gcs
-from google.storage.v2 import storage_pb2, storage_pb2_grpc
-from google.iam.v1 import iam_policy_pb2, policy_pb2
 import testbench
+from google.iam.v1 import iam_policy_pb2, policy_pb2
+from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 
 class TestGrpc(unittest.TestCase):

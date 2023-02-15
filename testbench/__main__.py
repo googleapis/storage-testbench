@@ -16,6 +16,5 @@
 
 from . import rest_server
 
-
 if __name__ == "__main__":
     rest_server._main()

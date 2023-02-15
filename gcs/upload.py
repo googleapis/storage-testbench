@@ -23,8 +23,8 @@ import crc32c
 import flask
 from google.protobuf import json_format
 
-from google.storage.v2 import storage_pb2
 import testbench
+from google.storage.v2 import storage_pb2
 
 
 class Upload(types.SimpleNamespace):

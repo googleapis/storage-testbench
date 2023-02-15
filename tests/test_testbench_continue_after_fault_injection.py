@@ -17,11 +17,11 @@
 """Verify the testbench generate 'connection reset' errors and continues working after them."""
 
 import json
+import platform
 import re
 import subprocess
 import time
 import unittest
-import platform
 
 import requests
 

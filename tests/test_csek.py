@@ -24,8 +24,8 @@ from unittest.mock import ANY, Mock
 import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.storage.v2 import storage_pb2
 
+from google.storage.v2 import storage_pb2
 from testbench import csek, error
 
 

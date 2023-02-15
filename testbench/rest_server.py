@@ -22,11 +22,10 @@ from google.protobuf import json_format
 from werkzeug import serving
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
-from google.storage.v2 import storage_pb2
 import gcs as gcs_type
 import testbench
-from testbench.servers import iam_rest_server, projects_rest_server, echo
-
+from google.storage.v2 import storage_pb2
+from testbench.servers import echo, iam_rest_server, projects_rest_server
 
 db = testbench.database.Database.init()
 # retry_test decorates a routing function to handle the Retry Test API, with

@@ -28,9 +28,9 @@ import flask
 import grpc
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
-from google.storage.v2 import storage_pb2
 
 import testbench
+from google.storage.v2 import storage_pb2
 
 
 class TestCommonUtils(unittest.TestCase):

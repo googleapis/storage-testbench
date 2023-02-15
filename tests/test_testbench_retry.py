@@ -24,7 +24,6 @@ import unittest
 import testbench
 from testbench import rest_server
 
-
 UPLOAD_QUANTUM = 256 * 1024
 
 

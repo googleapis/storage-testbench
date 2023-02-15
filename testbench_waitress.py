@@ -14,9 +14,9 @@
 
 """Request's HTTPChannel with socket of waitress is exposed to produce "broken-stream" and "return-reset-connection" error."""
 
+from waitress import create_server
 from waitress.channel import HTTPChannel
 from waitress.task import WSGITask
-from waitress import create_server
 
 
 class testbench_WSGITask(WSGITask):

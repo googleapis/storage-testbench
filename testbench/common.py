@@ -15,26 +15,26 @@
 """Common utils"""
 
 import base64
-from functools import wraps
 import gzip
 import io
 import json
+import platform
 import random
 import re
 import socket
 import struct
 import types
+from functools import wraps
 
 import flask
+import scalpl
 from google.protobuf import timestamp_pb2
 from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
-import scalpl
 
-from google.storage.v2 import storage_pb2
 import testbench
-import platform
+from google.storage.v2 import storage_pb2
 
 re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")
 retry_return_error_code = re.compile(r"return-([0-9]+)$")

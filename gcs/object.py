@@ -28,8 +28,8 @@ import crc32c
 import flask
 from google.protobuf import field_mask_pb2, json_format
 
-from google.storage.v2 import storage_pb2
 import testbench
+from google.storage.v2 import storage_pb2
 
 
 class Object:

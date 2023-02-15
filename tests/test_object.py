@@ -17,6 +17,7 @@
 """Tests for the Object class (see gcs/object.py)."""
 
 import base64
+import datetime
 import hashlib
 import json
 import unittest
@@ -25,10 +26,9 @@ import unittest.mock
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
-import datetime
 import gcs
-from google.storage.v2 import storage_pb2
 import testbench
+from google.storage.v2 import storage_pb2
 from tests.format_multipart_upload import format_multipart_upload
 
 

@@ -18,13 +18,12 @@
 
 import json
 import os
+import platform
 import re
 import unittest
-import platform
 
 from testbench import rest_server
 from tests.format_multipart_upload import format_multipart_upload
-
 
 UPLOAD_QUANTUM = 256 * 1024
 
