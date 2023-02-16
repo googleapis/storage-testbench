@@ -15,6 +15,7 @@
 """Implement the flask appthe `/storage/v1/<project-id>/` path."""
 
 import json
+
 import flask
 
 import testbench.common

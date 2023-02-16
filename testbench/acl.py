@@ -17,9 +17,8 @@
 import hashlib
 import os
 
-from google.storage.v2 import storage_pb2
-
 import testbench
+from google.storage.v2 import storage_pb2
 
 PROJECT_NUMBER = os.getenv(
     "GOOGLE_CLOUD_CPP_STORAGE_EMULATOR_PROJECT_NUMBER", "123456789"

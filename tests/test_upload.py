@@ -29,8 +29,8 @@ from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
 import gcs
-from google.storage.v2 import storage_pb2
 import testbench
+from google.storage.v2 import storage_pb2
 
 
 class TestHolder(unittest.TestCase):

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import platform
-import waitress
-import testbench
 import logging
+import platform
 import subprocess
+import sys
+
+import waitress
+
+import testbench
 from testbench_waitress import testbench_create_server
 
 logger = logging.getLogger("waitress")

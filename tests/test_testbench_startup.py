@@ -17,6 +17,7 @@
 """Verify the testbench module starts a usable service."""
 
 import json
+import platform
 import re
 import subprocess
 import time
@@ -24,7 +25,6 @@ import unittest
 
 import grpc
 import requests
-import platform
 
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 

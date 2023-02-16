@@ -14,10 +14,10 @@
 
 """Echo back HTTP requests for low-level integration tests."""
 
-import flask
-
 import http
 import json
+
+import flask
 
 import testbench.error
 

@@ -16,7 +16,6 @@
 
 """Test the embedded echo server."""
 
-import unittest
 import json
 import os
 import unittest

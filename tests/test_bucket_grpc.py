@@ -19,10 +19,10 @@
 import unittest
 import unittest.mock
 
-from google.storage.v2 import storage_pb2
 import grpc
 
 import gcs
+from google.storage.v2 import storage_pb2
 
 
 class TestBucketGrpc(unittest.TestCase):
