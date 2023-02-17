@@ -136,7 +136,7 @@ def __postprocess_rest_retention_policy_duration(data: str):
     # The string is in the canonical JSON representation for proto durations,
     # that is: "%{seconds + nanos/1'000'000'000}s", we are just going to
     # ignore the nanos and return this as a string.
-    return str(int(data.removesuffix("s")))
+    return str(int(data[:-1]))
 
 
 def __postprocess_rest_retention_policy(data):
