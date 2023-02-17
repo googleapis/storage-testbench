@@ -16,6 +16,7 @@
 
 """Tests for the gRPC functions in the Bucket class (see gcs/bucket.py)."""
 
+import datetime
 import unittest
 import unittest.mock
 
@@ -175,6 +176,32 @@ class TestBucketGrpc(unittest.TestCase):
                 {"publicAccessPrevention": value},
                 bucket_rest.get("iamConfiguration"),
             )
+
+    def test_init_grpc_retention_policy(self):
+        rp = storage_pb2.Bucket.RetentionPolicy()
+        rp.retention_duration.FromTimedelta(datetime.timedelta(seconds=86400))
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/_",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                project="project/test-project",
+                retention_policy=rp,
+            ),
+        )
+        context = unittest.mock.Mock()
+        bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
+        self.assertEqual(bucket.metadata.bucket_id, "test-bucket-name")
+        self.assertEqual(
+            bucket.metadata.retention_policy.retention_duration.seconds,
+            86400,
+        )
+        self.assertLess(0, bucket.metadata.metageneration)
+
+        rest = bucket.rest()
+        self.assertEqual(
+            rest.get("retentionPolicy", dict()), {"retentionPeriod": "86400"}
+        )
 
 
 if __name__ == "__main__":
