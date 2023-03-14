@@ -1001,6 +1001,7 @@ class TestGrpc(unittest.TestCase):
         c = chunks[0]
         self.assertEqual(10, len(c.checksummed_data.content))
         self.assertEqual(c.checksummed_data.crc32c, crc32c.crc32c(c.checksummed_data.content))
+        self.assertEqual(media[1:11], c.checksummed_data.content)
 
     def test_read_zero_size_object(self):
         request = testbench.common.FakeRequest(
