@@ -1305,8 +1305,11 @@ class TestGrpc(unittest.TestCase):
             ),
             finish_write=True,
         )
-        with self.assertRaises(grpc.RpcError):
-            _ = self.grpc.WriteObject([r1], context=self.mock_context())
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        self.grpc.WriteObject([r1], context=context)
+        context.abort.assert_called_once()
 
     def test_rewrite_object(self):
         # We need a large enough payload to make sure the first rewrite does
