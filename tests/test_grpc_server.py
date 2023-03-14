@@ -999,7 +999,7 @@ class TestGrpc(unittest.TestCase):
         chunks = [r for r in response]
         self.assertEqual(1, len(chunks))
         c = chunks[0]
-        self.assertEqual(9, len(c.checksummed_data.content))
+        self.assertEqual(10, len(c.checksummed_data.content))
         self.assertEqual(c.checksummed_data.crc32c, crc32c.crc32c(c.checksummed_data.content))
 
     def test_read_zero_size_object(self):
