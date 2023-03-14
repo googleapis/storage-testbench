@@ -1260,7 +1260,6 @@ class TestGrpc(unittest.TestCase):
 
     def test_object_write_conditional(self):
         media = TestGrpc._create_block(1024).encode("utf-8")
-
         r1 = storage_pb2.WriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource={
@@ -1284,7 +1283,7 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
     def test_object_write_conditional_overwrite(self):
-        media = b"._-=-_." * 1024
+        media = TestGrpc._create_block(1024).encode("utf-8")
         request = testbench.common.FakeRequest(
             args={"name": "object-name"}, data=media, headers={}, environ={}
         )
