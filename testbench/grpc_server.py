@@ -501,7 +501,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 metadata=meta,
             )
             meta = None
-            start = end + 1
+            start = start + size
 
     def UpdateObject(self, request, context):
         intersection = field_mask_pb2.FieldMask(
