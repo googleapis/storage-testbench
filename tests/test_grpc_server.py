@@ -1000,12 +1000,14 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(1, len(chunks))
         c = chunks[0]
         self.assertEqual(10, len(c.checksummed_data.content))
-        self.assertEqual(c.checksummed_data.crc32c, crc32c.crc32c(c.checksummed_data.content))
+        self.assertEqual(
+            c.checksummed_data.crc32c, crc32c.crc32c(c.checksummed_data.content)
+        )
         self.assertEqual(media[1:11], c.checksummed_data.content)
 
     def test_read_zero_size_object(self):
         request = testbench.common.FakeRequest(
-            args={"name": "object-name"}, data=b'', headers={}, environ={}
+            args={"name": "object-name"}, data=b"", headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.db.insert_object("bucket-name", blob, None)
