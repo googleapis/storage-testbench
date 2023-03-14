@@ -43,7 +43,7 @@ setuptools.setup(
     ],
     python_requires=">=3.6",
     install_requires=[
-        "grpcio==1.51.1",
+        "grpcio==1.51.3",
         "googleapis-common-protos==1.58.0",
         "protobuf==4.21.12",
         "flask==2.2.3",
