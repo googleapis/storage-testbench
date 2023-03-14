@@ -1258,6 +1258,57 @@ class TestGrpc(unittest.TestCase):
         context.abort.assert_called_once()
         self.assertIsNone(write)
 
+    def test_object_write_conditional(self):
+        media = TestGrpc._create_block(1024).encode("utf-8")
+
+        r1 = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={
+                    "name": "object-name",
+                    "bucket": "projects/_/buckets/bucket-name",
+                },
+                if_generation_match=0,
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=media, crc32c=crc32c.crc32c(media)
+            ),
+            finish_write=True,
+        )
+
+        write = self.grpc.WriteObject([r1], context=self.mock_context())
+        self.assertIsNotNone(write)
+        self.assertIsNotNone(write.resource)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name", msg=write)
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_object_write_conditional_overwrite(self):
+        media = b"._-=-_." * 1024
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        media = TestGrpc._create_block(1024).encode("utf-8")
+        r1 = storage_pb2.WriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={
+                    "name": "object-name",
+                    "bucket": "projects/_/buckets/bucket-name",
+                },
+                if_generation_match=0,
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=media, crc32c=crc32c.crc32c(media)
+            ),
+            finish_write=True,
+        )
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.WriteObject([r1], context=self.mock_context())
+
     def test_rewrite_object(self):
         # We need a large enough payload to make sure the first rewrite does
         # not complete.  The minimum is 1 MiB
