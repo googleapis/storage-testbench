@@ -484,18 +484,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             generation=request.generation,
             preconditions=testbench.common.make_grpc_preconditions(request),
         )
+        meta = blob.metadata
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
         start = request.read_offset
         read_end = len(blob.media)
         if request.read_limit > 0:
             read_end = min(read_end, start + request.read_limit)
-        is_first = True
         while start <= read_end:
             end = min(start + size, read_end)
             chunk = blob.media[start:end]
-            start = end + 1
-            meta = blob.metadata if is_first else None
-            is_first = False
             yield storage_pb2.ReadObjectResponse(
                 checksummed_data={
                     "content": chunk,
@@ -503,6 +500,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 },
                 metadata=meta,
             )
+            meta = None
+            start = end + 1
 
     def UpdateObject(self, request, context):
         intersection = field_mask_pb2.FieldMask(
