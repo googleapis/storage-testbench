@@ -1022,7 +1022,7 @@ class TestGrpc(unittest.TestCase):
         c = chunks[0]
         self.assertEqual(0, len(c.checksummed_data.content))
         self.assertEqual(0, c.checksummed_data.crc32c)
-        
+
     def test_update_object(self):
         media = b"How vexingly quick daft zebras jump!"
         request = testbench.common.FakeRequest(
