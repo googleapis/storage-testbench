@@ -485,11 +485,16 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             preconditions=testbench.common.make_grpc_preconditions(request),
         )
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+        start = request.read_offset
+        read_end = len(blob.media)        
+        if request.read_limit > 0:
+            read_end = min(read_end, start + request.read_limit)
         is_first = True
-        for start in range(0, len(blob.media), size):
-            end = min(start + size, len(blob.media))
+        while start <= read_end:
+            end = min(start + size, read_end)
             chunk = blob.media[start:end]
-            meta = blob.metadata if is_first else None
+            start = end + 1
+            meta = blob.metadata if is_first else Nonez
             is_first = False
             yield storage_pb2.ReadObjectResponse(
                 checksummed_data={
