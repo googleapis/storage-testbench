@@ -980,6 +980,46 @@ class TestGrpc(unittest.TestCase):
             crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
         )
 
+    def test_read_object_byte_range(self):
+        media = TestGrpc._create_block(5 * 1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                read_offset=1,
+                read_limit=10,
+            ),
+            "fake-context",
+        )
+        chunks = [r for r in response]
+        self.assertEqual(1, len(chunks))
+        c = chunks[0]
+        self.assertEqual(9, len(c.checksummed_data.content))
+        self.assertEqual(c.checksummed_data.crc32c, crc32c.crc32c(c.checksummed_data.content))
+
+    def test_read_zero_size_object(self):
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b'', headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            "fake-context",
+        )
+        chunks = [r for r in response]
+        self.assertEqual(1, len(chunks))
+        c = chunks[0]
+        self.assertEqual(0, len(c.checksummed_data.content))
+        self.assertEqual(0, c.checksummed_data.crc32c)
+        
     def test_update_object(self):
         media = b"How vexingly quick daft zebras jump!"
         request = testbench.common.FakeRequest(
