@@ -494,7 +494,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             end = min(start + size, read_end)
             chunk = blob.media[start:end]
             start = end + 1
-            meta = blob.metadata if is_first else Nonez
+            meta = blob.metadata if is_first else None
             is_first = False
             yield storage_pb2.ReadObjectResponse(
                 checksummed_data={
