@@ -486,7 +486,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
         start = request.read_offset
-        read_end = len(blob.media)        
+        read_end = len(blob.media)
         if request.read_limit > 0:
             read_end = min(read_end, start + request.read_limit)
         is_first = True
