@@ -493,7 +493,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         content_range = None
         if request.read_offset > 0 or request.read_limit > 0:
             content_range = storage_pb2.ContentRange(
-                    start=start, end=read_end, complete_length=len(blob.media)
+                start=start, end=read_end, complete_length=len(blob.media)
             )
 
         while start <= read_end:
