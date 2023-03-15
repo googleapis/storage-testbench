@@ -154,7 +154,9 @@ class Upload(types.SimpleNamespace):
         fake_request = testbench.common.FakeRequest.init_protobuf(request, context)
         fake_request.update_protobuf(request.write_object_spec, context)
         upload = cls.init(fake_request, metadata, bucket, "", upload_id)
-        upload.preconditions = testbench.common.make_grpc_preconditions(request.write_object_spec)
+        upload.preconditions = testbench.common.make_grpc_preconditions(
+            request.write_object_spec
+        )
         return upload
 
     @classmethod
