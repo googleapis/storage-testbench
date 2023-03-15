@@ -490,6 +490,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         read_end = len(blob.media)
         if request.read_limit > 0:
             read_end = min(read_end, start + request.read_limit)
+        content_range = None
+        if request.read_offset > 0 or request.read_limit > 0:
+            content_range = storage_pb2.ContentRange(
+                    start=start, end=read_end, complete_length=len(blob.media)
+            )
+
         while start <= read_end:
             end = min(start + size, read_end)
             chunk = blob.media[start:end]
@@ -499,8 +505,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     "crc32c": crc32c.crc32c(chunk),
                 },
                 metadata=meta,
+                content_range=content_range,
             )
             meta = None
+            content_range = None
             start = start + size
 
     def UpdateObject(self, request, context):
