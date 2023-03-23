@@ -489,8 +489,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         start = request.read_offset
         read_end = len(blob.media)
         if start > read_end:
-            testbench.error.range_not_satisfiable(context)
-            return
+            return testbench.error.range_not_satisfiable(context)
         if request.read_limit > 0:
             read_end = min(read_end, start + request.read_limit)
         content_range = None
