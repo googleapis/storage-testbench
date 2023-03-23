@@ -1042,7 +1042,7 @@ class TestGrpc(unittest.TestCase):
                 object="object-name",
                 read_offset=10,
             ),
-            context=context,
+            context,
         )
         context.abort.assert_called_once()
 
