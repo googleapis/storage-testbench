@@ -1044,8 +1044,8 @@ class TestGrpc(unittest.TestCase):
             ),
             context,
         )
-        for r in response:
-            pass
+        chunks = [r for r in response]
+        self.assertEqual(0, len(chunks))
         context.abort.assert_called_once()
 
     def test_update_object(self):
