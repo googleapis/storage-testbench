@@ -980,6 +980,24 @@ class TestGrpc(unittest.TestCase):
             crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
         )
 
+    def test_read_zero_size_object(self):
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b"", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            "fake-context",
+        )
+        chunks = [r for r in response]
+        self.assertEqual(1, len(chunks))
+        c = chunks[0]
+        self.assertEqual(0, len(c.checksummed_data.content))
+        self.assertEqual(0, c.checksummed_data.crc32c)
+
     def test_read_object_byte_range(self):
         media = TestGrpc._create_block(5 * 1024 * 1024).encode("utf-8")
         request = testbench.common.FakeRequest(
@@ -1008,23 +1026,25 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(11, c.content_range.end)
         self.assertEqual(len(media), c.content_range.complete_length)
 
-    def test_read_zero_size_object(self):
+    def test_read_object_read_offset_too_large(self):
         request = testbench.common.FakeRequest(
-            args={"name": "object-name"}, data=b"", headers={}, environ={}
+            args={"name": "object-name"}, data=b"abcd", headers={}, environ={}
         )
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.db.insert_object("bucket-name", blob, None)
-        response = self.grpc.ReadObject(
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        self.grpc.ReadObject(
             storage_pb2.ReadObjectRequest(
-                bucket="projects/_/buckets/bucket-name", object="object-name"
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                read_offset=10,
             ),
-            "fake-context",
+            context=context,
         )
-        chunks = [r for r in response]
-        self.assertEqual(1, len(chunks))
-        c = chunks[0]
-        self.assertEqual(0, len(c.checksummed_data.content))
-        self.assertEqual(0, c.checksummed_data.crc32c)
+        context.abort.assert_called_once()
 
     def test_update_object(self):
         media = b"How vexingly quick daft zebras jump!"
