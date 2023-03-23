@@ -1036,7 +1036,7 @@ class TestGrpc(unittest.TestCase):
         context = unittest.mock.Mock()
         context.abort = unittest.mock.MagicMock()
         context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
-        self.grpc.ReadObject(
+        response = self.grpc.ReadObject(
             storage_pb2.ReadObjectRequest(
                 bucket="projects/_/buckets/bucket-name",
                 object="object-name",
@@ -1044,6 +1044,8 @@ class TestGrpc(unittest.TestCase):
             ),
             context,
         )
+        for r in response:
+            pass
         context.abort.assert_called_once()
 
     def test_update_object(self):
