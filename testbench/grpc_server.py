@@ -489,7 +489,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         start = request.read_offset
         read_end = len(blob.media)
         if start > read_end:
-            google3.third_party.storage_testbench.testbench.error.range_not_satisfiable(
+            testbench.error.range_not_satisfiable(
                 context=context
             )
             return
