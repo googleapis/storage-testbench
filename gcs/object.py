@@ -38,6 +38,8 @@ _GENERATION = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 100
 
 
 def make_generation():
+    global _GENERATION
+    global _GENERATION_LOCK
     with _GENERATION_LOCK:
         _GENERATION += 1
         return _GENERATION
