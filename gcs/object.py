@@ -22,6 +22,7 @@ import json
 import re
 import socket
 import struct
+import threading
 import time
 
 import crc32c
@@ -30,6 +31,18 @@ from google.protobuf import field_mask_pb2, json_format
 
 import testbench
 from google.storage.v2 import storage_pb2
+
+# Lock to prevent race condition while generating metadata versions:
+_GENERATION_LOCK = threading.Lock()
+_GENERATION = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+
+
+def make_generation():
+    global _GENERATION
+    global _GENERATION_LOCK
+    with _GENERATION_LOCK:
+        _GENERATION += 1
+        return _GENERATION
 
 
 class Object:
@@ -80,7 +93,7 @@ class Object:
             media = testbench.common.corrupt_media(media)
         timestamp = datetime.datetime.now(datetime.timezone.utc)
         metadata.bucket = bucket.name
-        metadata.generation = int(timestamp.timestamp() * 1000)
+        metadata.generation = make_generation()
         metadata.metageneration = 1
         metadata.etag = cls._metadata_etag(metadata)
         metadata.size = len(media)
