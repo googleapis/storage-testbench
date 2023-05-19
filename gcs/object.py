@@ -32,7 +32,6 @@ from google.protobuf import field_mask_pb2, json_format
 import testbench
 from google.storage.v2 import storage_pb2
 
-
 # Lock to prevent race condition while generating metadata versions:
 _GENERATION_LOCK = threading.Lock()
 _GENERATION = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
