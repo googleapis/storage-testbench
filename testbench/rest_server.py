@@ -948,14 +948,8 @@ def resumable_upload_chunk(bucket_name):
     if upload_id is None:
         testbench.error.missing("upload_id in resumable_upload_chunk", None)
     upload = db.get_upload(upload_id, None)
-
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
-    # Return status for incomplete resumable upload queries
-    if len(request.data) == 0:
-        override_308 = request.headers.get("X-Guploader-No-308") == "yes"
-        return upload.resumable_status_rest(override_308=override_308)
-
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
     data = testbench.common.extract_media(request)
