@@ -960,31 +960,12 @@ def resumable_upload_chunk(bucket_name):
     content_range = request.headers.get("content-range")
     custom_header_value = request.headers.get("x-goog-emulator-custom-header")
 
-    # Handle instructions here
+    # Handle "return-503-after-256K" instructions for uploads
     instruction = testbench.common.extract_instruction(request, context=None)
     if instruction == "return-503-after-256K":
         data = testbench.common.interrupt_media(data, 262144)
         upload.media += data
         upload.complete = False
-        blob, _ = gcs_type.object.Object.init(
-            upload.request,
-            upload.metadata,
-            upload.media,
-            upload.bucket,
-            False,
-            None,
-        )
-        blob.metadata.metadata["x_emulator_transfer_encoding"] = ":".join(
-            upload.transfer
-        )
-        db.insert_object(
-            bucket_name,
-            blob,
-            context=None,
-            preconditions=testbench.common.make_json_preconditions(
-                upload.request
-            ),
-        )
         return flask.Response("Service Unavailable", status=503)
 
     if content_range is not None:
