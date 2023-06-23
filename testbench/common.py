@@ -841,6 +841,23 @@ def gen_retry_test_decorator(db):
     return retry_test
 
 
+def handle_retry_resumable_uploads_error_after_bytes(upload, data, database, request):
+    test_id = request.headers.get("x-retry-test-id", None)
+    if not test_id:
+        return 0, 0, ""
+    next_instruction = database.peek_next_instruction(test_id, "storage.objects.insert")
+    if not next_instruction:
+        return 0, 0, ""
+    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(next_instruction)
+    if error_after_bytes_matches:
+        # database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        items = list(error_after_bytes_matches.groups())
+        error_code = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return error_code, after_bytes, test_id
+    return 0, 0, ""
+
+
 def handle_gzip_request(request):
     """
     Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests.
