@@ -960,7 +960,6 @@ def resumable_upload_chunk(bucket_name):
         testbench.error.invalid("content-length header", None)
     content_range = request.headers.get("content-range")
     custom_header_value = request.headers.get("x-goog-emulator-custom-header")
-
     if content_range is not None:
         items = list(testbench.common.content_range_split.match(content_range).groups())
         # TODO(#27) - maybe this should be an assert()
@@ -1028,12 +1027,25 @@ def resumable_upload_chunk(bucket_name):
             )
         ### Handle error-after-bytes instructions, either retry test or x-goog-emulator-instructions.
         instruction = testbench.common.extract_instruction(request, context=None)
-        error_code, after_bytes, test_id = testbench.common.get_retry_uploads_error_after_bytes(db, request)
+        (
+            error_code,
+            after_bytes,
+            test_id,
+        ) = testbench.common.get_retry_uploads_error_after_bytes(db, request)
         if instruction or error_code:
             if instruction == "return-503-after-256K":
                 error_code = 503
                 after_bytes = 262144
-            testbench.common.handle_retry_uploads_error_after_bytes(upload, data, db, error_code, after_bytes, last_byte_persisted, chunk_first_byte, test_id)
+            testbench.common.handle_retry_uploads_error_after_bytes(
+                upload,
+                data,
+                db,
+                error_code,
+                after_bytes,
+                last_byte_persisted,
+                chunk_first_byte,
+                test_id,
+            )
         # The testbench should ignore any request bytes that have already been persisted,
         # to be aligned with GCS behavior (https://cloud.google.com/storage/docs/resumable-uploads#resent-data).
         # Thus we validate chunk_first_byte against last_byte_persisted.
@@ -1041,9 +1053,14 @@ def resumable_upload_chunk(bucket_name):
         if chunk_first_byte != "*":
             if int(chunk_first_byte) < last_byte_persisted:
                 range_start = last_byte_persisted - int(chunk_first_byte) + 1
-            elif int(chunk_first_byte) == last_byte_persisted and last_byte_persisted != 0:
+            elif (
+                int(chunk_first_byte) == last_byte_persisted
+                and last_byte_persisted != 0
+            ):
                 range_start = int(chunk_first_byte) + 1
-        data = testbench.common.partial_media(data, range_end=(chunk_last_byte + 1), range_start=range_start)
+        data = testbench.common.partial_media(
+            data, range_end=(chunk_last_byte + 1), range_start=range_start
+        )
 
         upload.media += data
         upload.complete = total_object_size == len(upload.media) or (

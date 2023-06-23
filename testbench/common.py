@@ -612,7 +612,7 @@ def corrupt_media(media):
 
 
 def partial_media(media, range_end, range_start=0):
-    """ Returns partial media due to forced interruption or server validation. """
+    """Returns partial media due to forced interruption or server validation."""
     return media[range_start:range_end]
 
 
@@ -830,7 +830,9 @@ def get_retry_uploads_error_after_bytes(database, request):
     next_instruction = database.peek_next_instruction(test_id, "storage.objects.insert")
     if not next_instruction:
         return 0, 0, ""
-    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(next_instruction)
+    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
+        next_instruction
+    )
     if error_after_bytes_matches:
         items = list(error_after_bytes_matches.groups())
         error_code = int(items[0])
@@ -838,7 +840,17 @@ def get_retry_uploads_error_after_bytes(database, request):
         return error_code, after_bytes, test_id
     return 0, 0, ""
 
-def handle_retry_uploads_error_after_bytes(upload, data, database, error_code, after_bytes, last_byte_persisted, chunk_first_byte, test_id=0):
+
+def handle_retry_uploads_error_after_bytes(
+    upload,
+    data,
+    database,
+    error_code,
+    after_bytes,
+    last_byte_persisted,
+    chunk_first_byte,
+    test_id=0,
+):
     """
     Handle error-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
     This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
@@ -850,7 +862,9 @@ def handle_retry_uploads_error_after_bytes(upload, data, database, error_code, a
             range_start = last_byte_persisted - int(chunk_first_byte) + 1
         elif int(chunk_first_byte) == last_byte_persisted and last_byte_persisted != 0:
             range_start = int(chunk_first_byte) + 1
-        data = testbench.common.partial_media(data, range_end=after_bytes, range_start=range_start)
+        data = testbench.common.partial_media(
+            data, range_end=after_bytes, range_start=range_start
+        )
         upload.media += data
         upload.complete = False
     if len(upload.media) >= after_bytes:
