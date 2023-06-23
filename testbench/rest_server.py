@@ -950,6 +950,9 @@ def resumable_upload_chunk(bucket_name):
     upload = db.get_upload(upload_id, None)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
+    # The server should ignore any request bytes that have already been persisted.
+    # Thus we check the last_byte_persisted in the upload.
+    last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
     data = testbench.common.extract_media(request)
@@ -963,10 +966,12 @@ def resumable_upload_chunk(bucket_name):
     # Handle "return-503-after-256K" instructions for uploads
     instruction = testbench.common.extract_instruction(request, context=None)
     if instruction == "return-503-after-256K":
-        data = testbench.common.interrupt_media(data, 262144)
-        upload.media += data
-        upload.complete = False
-        return flask.Response("Service Unavailable", status=503)
+        if last_byte_persisted < 262144:
+            data = testbench.common.partial_media(data, range_end=262144, range_start=last_byte_persisted)
+            upload.media += data
+            upload.complete = False
+        if len(upload.media) >= 262144:
+            return flask.Response("Service Unavailable", status=503)
 
     if content_range is not None:
         items = list(testbench.common.content_range_split.match(content_range).groups())
@@ -1009,7 +1014,8 @@ def resumable_upload_chunk(bucket_name):
                     blob.rest_metadata(), projection, fields
                 )
             return upload.resumable_status_rest()
-        _, chunk_last_byte = [v for v in items[0].split("-")]
+        # In addition to chunk_last_byte, we also need to inspect chunk_first_byte.
+        chunk_first_byte, chunk_last_byte = [v for v in items[0].split("-")]
         x_upload_content_length = int(
             upload.request.headers.get("x-upload-content-length", 0)
         )
@@ -1032,6 +1038,15 @@ def resumable_upload_chunk(bucket_name):
                 None,
                 rest_code=400,
             )
+        # Validate chunk_first_byte to ignore any request bytes that have already been persisted.
+        if chunk_first_byte == "*":
+            # TODO what is the use case and how to handle
+            pass
+        elif int(chunk_first_byte) <= last_byte_persisted:
+            # Ignore request bytes that have already been persisted.
+            chunk_first_byte = last_byte_persisted + 1
+            data = testbench.common.partial_media(data, range_end=(chunk_last_byte + 1), range_start=chunk_first_byte)
+
         upload.media += data
         upload.complete = total_object_size == len(upload.media) or (
             chunk_last_byte + 1 == total_object_size

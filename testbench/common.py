@@ -611,9 +611,9 @@ def corrupt_media(media):
     return b"B" + media[1:] if media[0:1] == b"A" else b"A" + media[1:]
 
 
-def interrupt_media(media, num_bytes):
-    """ Returns partial media due to forced interruption. """
-    return media[:num_bytes]
+def partial_media(media, range_end, range_start=0):
+    """ Returns partial media due to forced interruption or server validation. """
+    return media[range_start:range_end]
 
 
 # === HEADERS === #
