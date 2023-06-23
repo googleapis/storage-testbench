@@ -950,8 +950,6 @@ def resumable_upload_chunk(bucket_name):
     upload = db.get_upload(upload_id, None)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
-    # The server should ignore any request bytes that have already been persisted.
-    # Thus we check the last_byte_persisted in the upload.
     last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
@@ -1028,34 +1026,17 @@ def resumable_upload_chunk(bucket_name):
                 None,
                 rest_code=400,
             )
-        ### Handle "return-503-after-256K" instructions for uploads
-        ### Probably move this entire logic to a helper method?!
+        ### Handle error-after-bytes instructions, either retry test or x-goog-emulator-instructions.
         instruction = testbench.common.extract_instruction(request, context=None)
-        error_code, after_bytes, test_id = testbench.common.handle_retry_resumable_uploads_error_after_bytes(upload, data, db, request)
+        error_code, after_bytes, test_id = testbench.common.get_retry_uploads_error_after_bytes(db, request)
         if instruction or error_code:
             if instruction == "return-503-after-256K":
                 error_code = 503
                 after_bytes = 262144
-            if last_byte_persisted < after_bytes:
-                range_start = 0
-                # Ignore request bytes that have already been persisted.
-                if int(chunk_first_byte) < last_byte_persisted:
-                    range_start = last_byte_persisted - int(chunk_first_byte) + 1
-                elif int(chunk_first_byte) == last_byte_persisted and last_byte_persisted != 0:
-                    range_start = int(chunk_first_byte) + 1
-                data = testbench.common.partial_media(data, range_end=after_bytes, range_start=range_start)
-                upload.media += data
-                upload.complete = False
-            if len(upload.media) >= after_bytes:
-                if test_id:
-                    db.dequeue_next_instruction(test_id, "storage.objects.insert")
-                testbench.error.generic(
-                    "Fault injected during a resumable upload",
-                    rest_code=error_code,
-                    grpc_code=None,
-                    context=None,
-                )
-        # Validate chunk_first_byte to ignore any request bytes that have already been persisted.
+            testbench.common.handle_retry_uploads_error_after_bytes(upload, data, db, error_code, after_bytes, last_byte_persisted, chunk_first_byte, test_id)
+        # The testbench should ignore any request bytes that have already been persisted,
+        # to be aligned with GCS behavior (https://cloud.google.com/storage/docs/resumable-uploads#resent-data).
+        # Thus we validate chunk_first_byte against last_byte_persisted.
         range_start = 0
         if chunk_first_byte != "*":
             if int(chunk_first_byte) < last_byte_persisted:
