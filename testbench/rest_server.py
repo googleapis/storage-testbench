@@ -1009,7 +1009,6 @@ def resumable_upload_chunk(bucket_name):
         if chunk_last_byte == "*":
             x_upload_content_length = len(upload.media)
             chunk_last_byte = len(upload.media) - 1
-            # chunk_last_byte = (int(chunk_first_byte) + len(data) - 1) if chunk_first_byte != "*" else last_byte_persisted + len(data)
         else:
             chunk_last_byte = int(chunk_last_byte)
         total_object_size = (
