@@ -438,16 +438,8 @@ class TestTestbenchRetry(unittest.TestCase):
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
         )
         self.assertEqual(response.status_code, 200)
-        # Use the XML API to inject an object with some data.
-        media = self._create_block(256)
-        response = self.client.put(
-            "/bucket-name/256k.txt",
-            content_type="text/plain",
-            data=media,
-        )
-        self.assertEqual(response.status_code, 200)
 
-        # Setup a failure for reading back the object.
+        # Setup a failure for uploading an object.
         response = self.client.post(
             "/retry_test",
             data=json.dumps(
@@ -481,10 +473,23 @@ class TestTestbenchRetry(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
             headers={
-                "content-range": "bytes 0-{len:d}/*".format(len=UPLOAD_QUANTUM - 1),
+                "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                    len=UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+                ),
                 "x-retry-test-id": id,
             },
             data=chunk,
+        )
+        self.assertEqual(response.status_code, 504, msg=response.data)
+
+        # Check the status of a resumable upload.
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes */*",
+                "x-retry-test-id": id,
+            },
         )
         self.assertEqual(response.status_code, 308, msg=response.data)
         self.assertIn("range", response.headers)
@@ -496,14 +501,16 @@ class TestTestbenchRetry(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
             headers={
-                "content-range": "bytes {beg:d}-{end:d}/*".format(
-                    beg=UPLOAD_QUANTUM, end=2 * UPLOAD_QUANTUM - 1
+                "content-range": "bytes {beg:d}-{end:d}/{obj_size:d}".format(
+                    beg=UPLOAD_QUANTUM,
+                    end=2 * UPLOAD_QUANTUM - 1,
+                    obj_size=2 * UPLOAD_QUANTUM,
                 ),
                 "x-retry-test-id": id,
             },
             data=chunk,
         )
-        self.assertEqual(response.status_code, 504, msg=response.data)
+        self.assertEqual(response.status_code, 200, msg=response.data)
 
 
 if __name__ == "__main__":

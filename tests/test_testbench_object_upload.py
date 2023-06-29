@@ -268,7 +268,7 @@ class TestTestbenchObjectUpload(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
             headers={
-                "content-range": "bytes {last:d}-*/*".format(last=len(chunk) - 1),
+                "content-range": "bytes {last:d}-*/*".format(last=len(chunk)),
             },
             data=chunk,
         )
