@@ -1009,6 +1009,7 @@ def resumable_upload_chunk(bucket_name):
         if chunk_last_byte == "*":
             x_upload_content_length = len(upload.media)
             chunk_last_byte = len(upload.media) - 1
+            # chunk_last_byte = (int(chunk_first_byte) + len(data) - 1) if chunk_first_byte != "*" else last_byte_persisted + len(data)
         else:
             chunk_last_byte = int(chunk_last_byte)
         total_object_size = (
@@ -1044,6 +1045,7 @@ def resumable_upload_chunk(bucket_name):
                 after_bytes,
                 last_byte_persisted,
                 chunk_first_byte,
+                chunk_last_byte,
                 test_id,
             )
         # The testbench should ignore any request bytes that have already been persisted,
@@ -1061,7 +1063,6 @@ def resumable_upload_chunk(bucket_name):
         data = testbench.common.partial_media(
             data, range_end=(chunk_last_byte + 1), range_start=range_start
         )
-
         upload.media += data
         upload.complete = total_object_size == len(upload.media) or (
             chunk_last_byte + 1 == total_object_size

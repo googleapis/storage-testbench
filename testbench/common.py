@@ -849,21 +849,26 @@ def handle_retry_uploads_error_after_bytes(
     after_bytes,
     last_byte_persisted,
     chunk_first_byte,
+    chunk_last_byte,
     test_id=0,
 ):
     """
     Handle error-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
     This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
     """
-    if last_byte_persisted < after_bytes:
+    if after_bytes > last_byte_persisted and after_bytes <= (chunk_last_byte + 1):
         range_start = 0
         # Ignore request bytes that have already been persisted.
         if int(chunk_first_byte) < last_byte_persisted:
             range_start = last_byte_persisted - int(chunk_first_byte) + 1
         elif int(chunk_first_byte) == last_byte_persisted and last_byte_persisted != 0:
             range_start = int(chunk_first_byte) + 1
+        range_end = len(data)
+        # Only partial data will be commited due to the instructed interruption.
+        if after_bytes <= chunk_last_byte:
+            range_end = len(data) - (chunk_last_byte - after_bytes + 1)
         data = testbench.common.partial_media(
-            data, range_end=after_bytes, range_start=range_start
+            data, range_end=range_end, range_start=range_start
         )
         upload.media += data
         upload.complete = False
