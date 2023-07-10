@@ -859,10 +859,8 @@ def handle_retry_uploads_error_after_bytes(
     if after_bytes > last_byte_persisted and after_bytes <= (chunk_last_byte + 1):
         range_start = 0
         # Ignore request bytes that have already been persisted.
-        if int(chunk_first_byte) < last_byte_persisted:
+        if last_byte_persisted != 0 and int(chunk_first_byte) <= last_byte_persisted:
             range_start = last_byte_persisted - int(chunk_first_byte) + 1
-        elif int(chunk_first_byte) == last_byte_persisted and last_byte_persisted != 0:
-            range_start = int(chunk_first_byte) + 1
         range_end = len(data)
         # Only partial data will be commited due to the instructed interruption.
         if after_bytes <= chunk_last_byte:
