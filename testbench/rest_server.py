@@ -1038,7 +1038,7 @@ def resumable_upload_chunk(bucket_name):
             after_bytes,
             test_id,
         ) = testbench.common.get_retry_uploads_error_after_bytes(db, request)
-        if instruction or error_code:
+        if error_code or instruction == "return-503-after-256K":
             if instruction == "return-503-after-256K":
                 error_code = 503
                 after_bytes = 262144
