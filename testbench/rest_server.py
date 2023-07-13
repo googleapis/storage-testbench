@@ -1007,8 +1007,14 @@ def resumable_upload_chunk(bucket_name):
             upload.request.headers.get("x-upload-content-length", 0)
         )
         if chunk_last_byte == "*":
-            x_upload_content_length = len(upload.media)
-            chunk_last_byte = len(upload.media) - 1
+            x_upload_content_length = (
+                len(data) if not x_upload_content_length else x_upload_content_length
+            )
+            chunk_last_byte = (
+                len(data) - 1
+                if chunk_first_byte == "*"
+                else int(chunk_first_byte) + len(data) - 1
+            )
         else:
             chunk_last_byte = int(chunk_last_byte)
         total_object_size = (
@@ -1052,16 +1058,15 @@ def resumable_upload_chunk(bucket_name):
         # Thus we validate chunk_first_byte against last_byte_persisted.
         range_start = 0
         if chunk_first_byte != "*":
-            if int(chunk_first_byte) < last_byte_persisted:
-                range_start = last_byte_persisted - int(chunk_first_byte) + 1
-            elif (
-                int(chunk_first_byte) == last_byte_persisted
-                and last_byte_persisted != 0
+            if (
+                last_byte_persisted != 0
+                and int(chunk_first_byte) <= last_byte_persisted
             ):
-                range_start = int(chunk_first_byte) + 1
-        data = testbench.common.partial_media(
-            data, range_end=(chunk_last_byte + 1), range_start=range_start
-        )
+                range_start = last_byte_persisted - int(chunk_first_byte) + 1
+        if range_start:
+            data = testbench.common.partial_media(
+                data, range_end=(chunk_last_byte + 1), range_start=range_start
+            )
         upload.media += data
         upload.complete = total_object_size == len(upload.media) or (
             chunk_last_byte + 1 == total_object_size

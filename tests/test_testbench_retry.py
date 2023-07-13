@@ -324,7 +324,7 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.put(
             location,
             headers={
-                "content-range": "bytes {last:d}-*/*".format(last=len(chunk) - 1),
+                "content-range": "bytes {last:d}-*/*".format(last=len(chunk)),
                 "x-retry-test-id": id,
             },
             data=chunk,
