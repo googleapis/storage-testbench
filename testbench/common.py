@@ -611,6 +611,11 @@ def corrupt_media(media):
     return b"B" + media[1:] if media[0:1] == b"A" else b"A" + media[1:]
 
 
+def partial_media(media, range_end, range_start=0):
+    """Returns partial media due to forced interruption or server validation."""
+    return media[range_start:range_end]
+
+
 # === HEADERS === #
 
 
@@ -784,25 +789,6 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         return __get_streamer_response_fn(
             database, method, socket_closer, test_id, limit=after_bytes
         )
-    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
-        next_instruction
-    )
-    if error_after_bytes_matches and method == "storage.objects.insert":
-        items = list(error_after_bytes_matches.groups())
-        error_code = int(items[0])
-        after_bytes = int(items[1]) * 1024
-        # Upload failures should allow to not complete after certain bytes
-        upload_id = request.args.get("upload_id", None)
-        if upload_id is not None:
-            upload = database.get_upload(upload_id, None)
-            if upload is not None and len(upload.media) >= after_bytes:
-                database.dequeue_next_instruction(test_id, method)
-                testbench.error.generic(
-                    "Fault injected after uploading %d bytes" % len(upload.media),
-                    rest_code=error_code,
-                    grpc_code=StatusCode.INTERNAL,  # not really used
-                    context=None,
-                )
     retry_return_short_response = testbench.common.retry_return_short_response.match(
         next_instruction
     )
@@ -834,6 +820,65 @@ def gen_retry_test_decorator(db):
         return decorator
 
     return retry_test
+
+
+def get_retry_uploads_error_after_bytes(database, request):
+    """Retrieve error code and #bytes corresponding to uploads from retry test instructions."""
+    test_id = request.headers.get("x-retry-test-id", None)
+    if not test_id:
+        return 0, 0, ""
+    next_instruction = database.peek_next_instruction(test_id, "storage.objects.insert")
+    if not next_instruction:
+        return 0, 0, ""
+    error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
+        next_instruction
+    )
+    if error_after_bytes_matches:
+        items = list(error_after_bytes_matches.groups())
+        error_code = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return error_code, after_bytes, test_id
+    return 0, 0, ""
+
+
+def handle_retry_uploads_error_after_bytes(
+    upload,
+    data,
+    database,
+    error_code,
+    after_bytes,
+    last_byte_persisted,
+    chunk_first_byte,
+    chunk_last_byte,
+    test_id=0,
+):
+    """
+    Handle error-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
+    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
+    """
+    if after_bytes > last_byte_persisted and after_bytes <= (chunk_last_byte + 1):
+        range_start = 0
+        # Ignore request bytes that have already been persisted.
+        if last_byte_persisted != 0 and int(chunk_first_byte) <= last_byte_persisted:
+            range_start = last_byte_persisted - int(chunk_first_byte) + 1
+        range_end = len(data)
+        # Only partial data will be commited due to the instructed interruption.
+        if after_bytes <= chunk_last_byte:
+            range_end = len(data) - (chunk_last_byte - after_bytes + 1)
+        data = testbench.common.partial_media(
+            data, range_end=range_end, range_start=range_start
+        )
+        upload.media += data
+        upload.complete = False
+    if len(upload.media) >= after_bytes:
+        if test_id:
+            database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        testbench.error.generic(
+            "Fault injected during a resumable upload",
+            rest_code=error_code,
+            grpc_code=None,
+            context=None,
+        )
 
 
 def handle_gzip_request(request):

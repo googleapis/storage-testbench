@@ -268,7 +268,7 @@ class TestTestbenchObjectUpload(unittest.TestCase):
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
             headers={
-                "content-range": "bytes {last:d}-*/*".format(last=len(chunk) - 1),
+                "content-range": "bytes {last:d}-*/*".format(last=len(chunk)),
             },
             data=chunk,
         )
@@ -616,6 +616,69 @@ class TestTestbenchObjectUpload(unittest.TestCase):
                 data=media,
             )
             self.assertEqual(response.status_code, 412, msg=name)
+
+    def test_upload_resumable_w_fault_injection(self):
+        # Test fault injection "return-503-after-256K"
+        media = self._create_valid_chunk()
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "fox"},
+            content_type="application/json",
+            headers={
+                "x-goog-testbench-instructions": "return-503-after-256K",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        location = response.headers.get("location")
+        self.assertIn("upload_id=", location)
+        match = re.search("[&?]upload_id=([^&]+)", location)
+        self.assertIsNotNone(match, msg=location)
+        upload_id = match.group(1)
+
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            data=media,
+            headers={
+                "content-range": "bytes 0-{last:d}/{object_size:d}".format(
+                    last=UPLOAD_QUANTUM - 1, object_size=UPLOAD_QUANTUM
+                ),
+                "x-goog-testbench-instructions": "return-503-after-256K",
+            },
+        )
+        self.assertEqual(response.status_code, 503)
+
+        # Test fault injection "inject-upload-data-error"
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "zebra"},
+            content_type="application/json",
+            headers={
+                "x-goog-testbench-instructions": "inject-upload-data-error",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        location = response.headers.get("location")
+        self.assertIn("upload_id=", location)
+        match = re.search("[&?]upload_id=([^&]+)", location)
+        self.assertIsNotNone(match, msg=location)
+        upload_id = match.group(1)
+
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            data=media,
+            headers={
+                "x-goog-testbench-instructions": "inject-upload-data-error",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/download/storage/v1/b/bucket-name/o/zebra", query_string={"alt": "media"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.data.decode("utf-8"), media)
 
 
 if __name__ == "__main__":

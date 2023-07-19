@@ -950,6 +950,7 @@ def resumable_upload_chunk(bucket_name):
     upload = db.get_upload(upload_id, None)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
+    last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
     data = testbench.common.extract_media(request)
@@ -1000,13 +1001,20 @@ def resumable_upload_chunk(bucket_name):
                     blob.rest_metadata(), projection, fields
                 )
             return upload.resumable_status_rest()
-        _, chunk_last_byte = [v for v in items[0].split("-")]
+        # In addition to chunk_last_byte, we also need to inspect chunk_first_byte.
+        chunk_first_byte, chunk_last_byte = [v for v in items[0].split("-")]
         x_upload_content_length = int(
             upload.request.headers.get("x-upload-content-length", 0)
         )
         if chunk_last_byte == "*":
-            x_upload_content_length = len(upload.media)
-            chunk_last_byte = len(upload.media) - 1
+            x_upload_content_length = (
+                len(data) if not x_upload_content_length else x_upload_content_length
+            )
+            chunk_last_byte = (
+                len(data) - 1
+                if chunk_first_byte == "*"
+                else int(chunk_first_byte) + len(data) - 1
+            )
         else:
             chunk_last_byte = int(chunk_last_byte)
         total_object_size = (
@@ -1022,6 +1030,42 @@ def resumable_upload_chunk(bucket_name):
                 total_object_size,
                 None,
                 rest_code=400,
+            )
+        ### Handle error-after-bytes instructions, either retry test or x-goog-emulator-instructions.
+        instruction = testbench.common.extract_instruction(request, context=None)
+        (
+            error_code,
+            after_bytes,
+            test_id,
+        ) = testbench.common.get_retry_uploads_error_after_bytes(db, request)
+        if error_code or instruction == "return-503-after-256K":
+            if instruction == "return-503-after-256K":
+                error_code = 503
+                after_bytes = 262144
+            testbench.common.handle_retry_uploads_error_after_bytes(
+                upload,
+                data,
+                db,
+                error_code,
+                after_bytes,
+                last_byte_persisted,
+                chunk_first_byte,
+                chunk_last_byte,
+                test_id,
+            )
+        # The testbench should ignore any request bytes that have already been persisted,
+        # to be aligned with GCS behavior (https://cloud.google.com/storage/docs/resumable-uploads#resent-data).
+        # Thus we validate chunk_first_byte against last_byte_persisted.
+        range_start = 0
+        if chunk_first_byte != "*":
+            if (
+                last_byte_persisted != 0
+                and int(chunk_first_byte) <= last_byte_persisted
+            ):
+                range_start = last_byte_persisted - int(chunk_first_byte) + 1
+        if range_start:
+            data = testbench.common.partial_media(
+                data, range_end=(chunk_last_byte + 1), range_start=range_start
             )
         upload.media += data
         upload.complete = total_object_size == len(upload.media) or (
