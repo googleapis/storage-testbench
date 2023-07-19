@@ -50,7 +50,7 @@ setuptools.setup(
         "requests-toolbelt==1.0.0",
         "scalpl==0.4.2",
         "crc32c==2.3",
-        "gunicorn==20.1.0",
+        "gunicorn==21.2.0",
         "waitress==2.1.2",
     ],
 )
