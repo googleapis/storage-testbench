@@ -220,6 +220,7 @@ def bucket_insert():
 @gcs.route("/b/<bucket_name>")
 @retry_test(method="storage.buckets.get")
 def bucket_get(bucket_name):
+    print("### REST SERVER ### bucket_get")
     db.insert_test_bucket()
     db.insert_test_bucket()
     bucket = db.get_bucket(
@@ -556,6 +557,7 @@ def object_delete(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
 def object_get(bucket_name, object_name):
+    print("### REST SERVER ### object_get")
     blob = db.get_object(
         bucket_name,
         object_name,
