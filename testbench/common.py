@@ -739,11 +739,14 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
 def grpc_handle_retry_test_instruction(database, request, context, method):
     print("!!!!!!! entered new retry test decorator")
     print("!!!!!!! entered new retry test decorator")
-    print("!!!!!!! entered new retry test decorator")
-    import pdb; pdb.set_trace()
-    test_id = request.headers.get("x-retry-test-id", None)
-    # if not test_id or not database.has_instructions_retry_test(test_id, method):
-    #     return __get_default_response_fn
+    test_id = None
+    if context is not None:
+        if hasattr(context, "invocation_metadata"):
+            for key, value in context.invocation_metadata():
+                if key == "x-retry-test-id":
+                    test_id = value
+    if not test_id or not database.has_instructions_retry_test(test_id, method):
+            return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
     error_code_matches = testbench.common.retry_return_error_code.match(
         next_instruction
@@ -751,13 +754,13 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
     if error_code_matches:
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
-        error_code = items[0]
-        error_message = {
-            "error": {"message": "Retry Test: Caused a {}".format(error_code)}
-        }
-        testbench.error.generic(
-            msg=error_message, rest_code=error_code, grpc_code=None, context=None
-        )
+        rest_code = items[0]
+        # TODO: Map error code between http and gRPC
+        grpc_code = StatusCode.UNAVAILABLE
+        print("### injecting error ###")
+        testbench.error.inject_error(context, rest_code, grpc_code, msg="")
+    return __get_default_response_fn
+
 
 def handle_retry_test_instruction(database, request, socket_closer, method):
     upload_id = request.args.get("upload_id", None)

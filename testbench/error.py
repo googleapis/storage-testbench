@@ -151,3 +151,11 @@ def range_not_satisfiable(
         grpc_code,
         context,
     )
+
+
+def inject_error(context, rest_code, grpc_code, msg=""):
+    """Inject error in grpc_server forced by the Retry Test API."""
+    msg = "Retry Test: Caused a %s. %s" % (grpc_code, msg)
+    generic(
+        _simple_json_error(msg), rest_code, grpc_code, context
+    )

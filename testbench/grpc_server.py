@@ -117,10 +117,12 @@ def _metadata_echo_decorator(function):
 
     return decorated
 
+
 def _retry_test_decorator(function):
     """
-    Send back the invocation metadata as initial metadata, if metadata echo is
-    enabled.
+    Decorates a routing function to handle the Retry Test API,
+    with method names based on the JSON API.
+    TODO: add extra wrapper for method name
     """
     @functools.wraps(function)
     def decorated(self, request, context):
@@ -130,43 +132,6 @@ def _retry_test_decorator(function):
         return response_handler(function(self,request,context))
     return decorated
 
-# def _gen_retry_test_decorator(db):
-#     def retry_test(self, request, context, method):
-#         import flask
-#         self.db.insert_supported_methods([method])
-
-#         def decorator(function):
-#             @functools.wraps(function)
-#             def wrapper(*args, **kwargs):
-#                 response_handler = testbench.common.handle_retry_test_instruction(
-#                     self.db, flask.request, testbench.common._make_closer(flask.request), method
-#                 )
-#                 return response_handler(function(*args, **kwargs))
-
-#             return wrapper
-
-#         return decorator
-
-#     return retry_test
-
-
-# def gen_retry_test_decorator(db):
-#     def retry_test(method):
-#         db.insert_supported_methods([method])
-
-#         def decorator(func):
-#             @wraps(func)
-#             def wrapper(*args, **kwargs):
-#                 response_handler = handle_retry_test_instruction(
-#                     db, flask.request, _make_closer(flask.request), method
-#                 )
-#                 return response_handler(func(*args, **kwargs))
-
-#             return wrapper
-
-#         return decorator
-
-#     return retry_test
 
 def decorate_all_rpc_methods(klass):
     """Decorate all the RPC-looking methods."""
@@ -519,12 +484,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def GetObject(self, request, context):
         print("### GRPC ### GetObject")
-        # test_id = "sample727testid727"
-        # method = "storage.objects.get"
-        # if self.db.has_instructions_retry_test(test_id, method):
-        #     next_instruction = self.db.peek_next_instruction(test_id, method)
-        #     print(f"next instruction is {next_instruction}")
-        import pdb; pdb.set_trace()
         blob = self.db.get_object(
             request.bucket,
             request.object,
