@@ -118,19 +118,23 @@ def _metadata_echo_decorator(function):
     return decorated
 
 
-def _retry_test_decorator(function):
+def retry_test(method):
     """
-    Decorates a routing function to handle the Retry Test API,
+    Decorate a routing function to handle the Retry Test API instructions,
     with method names based on the JSON API.
-    TODO: add extra wrapper for method name
     """
-    @functools.wraps(function)
-    def decorated(self, request, context):
-        response_handler = testbench.common.grpc_handle_retry_test_instruction(
-            self.db, request, context, method="storage.objects.get"
-        )
-        return response_handler(function(self,request,context))
-    return decorated
+
+    def decorator(function):
+        @functools.wraps(function)
+        def wrapper(self, request, context):
+            response_handler = testbench.common.grpc_handle_retry_test_instruction(
+                self.db, request, context, method=method
+            )
+            return response_handler(function(self,request,context))
+
+        return wrapper
+
+    return decorator
 
 
 def decorate_all_rpc_methods(klass):
@@ -140,8 +144,7 @@ def decorate_all_rpc_methods(klass):
             continue
         value = getattr(klass, key)
         if isinstance(value, types.FunctionType):
-            function = _metadata_echo_decorator(value)
-            wrapped = _retry_test_decorator(function)
+            wrapped = _metadata_echo_decorator(value)
             wrapped = _logging_method_decorator(wrapped)
             setattr(klass, key, wrapped)
     return klass
@@ -482,6 +485,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.delete_upload(request.upload_id, context)
         return storage_pb2.CancelResumableWriteResponse()
 
+    @retry_test("storage.objects.get")
     def GetObject(self, request, context):
         print("### GRPC ### GetObject")
         blob = self.db.get_object(
