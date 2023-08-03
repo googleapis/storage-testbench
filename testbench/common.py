@@ -755,11 +755,27 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
         rest_code = items[0]
-        # TODO: Map error code between http and gRPC
-        grpc_code = StatusCode.UNAVAILABLE
+        grpc_code = map_closest_http_to_grpc(rest_code)
+        error_message = {
+            "error": {"message": "Retry Test: Caused a {}".format(grpc_code)}
+        }
         print("### injecting error ###")
         testbench.error.inject_error(context, rest_code, grpc_code, msg="")
     return __get_default_response_fn
+
+
+def map_closest_http_to_grpc(http_code):
+    # Only map the status codes that are used in tests and listed in
+    # the README, to avoid error-prone code conversions.
+    status_map = {
+        "400": StatusCode.INVALID_ARGUMENT,
+        "401": StatusCode.UNAUTHENTICATED,
+        "408": StatusCode.DEADLINE_EXCEEDED,
+        "500": StatusCode.INTERNAL,
+        "503": StatusCode.UNAVAILABLE,
+        "504": StatusCode.DEADLINE_EXCEEDED,
+    }
+    return status_map[http_code]
 
 
 def handle_retry_test_instruction(database, request, socket_closer, method):

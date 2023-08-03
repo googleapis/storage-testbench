@@ -850,8 +850,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
 def run(port, database, echo_metadata=False):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
-    global retry_test
-    retry_test = testbench.common.gen_retry_test_decorator(database)
     storage_pb2_grpc.add_StorageServicer_to_server(
         StorageServicer(database, echo_metadata), server
     )
