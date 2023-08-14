@@ -130,7 +130,7 @@ def retry_test(method):
             response_handler = testbench.common.grpc_handle_retry_test_instruction(
                 self.db, request, context, method=method
             )
-            return response_handler(function(self,request,context))
+            return response_handler(function(self, request, context))
 
         return wrapper
 

@@ -153,9 +153,17 @@ def range_not_satisfiable(
     )
 
 
+def unimplemented(msg, context, rest_code=501, grpc_code=grpc.StatusCode.UNIMPLEMENTED):
+    """Error returned when an operation is not implemented/supported."""
+    generic(
+        _simple_json_error("%s is not implemented." % msg),
+        rest_code,
+        grpc_code,
+        context,
+    )
+
+
 def inject_error(context, rest_code, grpc_code, msg=""):
     """Inject error in grpc_server forced by the Retry Test API."""
     msg = "Retry Test: Caused a %s. %s" % (grpc_code, msg)
-    generic(
-        _simple_json_error(msg), rest_code, grpc_code, context
-    )
+    generic(_simple_json_error(msg), rest_code, grpc_code, context)

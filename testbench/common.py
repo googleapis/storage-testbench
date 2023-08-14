@@ -736,6 +736,7 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
 
     return limited_response_fn
 
+
 def grpc_handle_retry_test_instruction(database, request, context, method):
     print("!!!!!!! entered new retry test decorator")
     print("!!!!!!! entered new retry test decorator")
@@ -745,8 +746,10 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
             for key, value in context.invocation_metadata():
                 if key == "x-retry-test-id":
                     test_id = value
+    # Validate retry instructions, method and request transport.
+    # TODO: Pass in GRPC transport upon enablement.
     if not test_id or not database.has_instructions_retry_test(test_id, method):
-            return __get_default_response_fn
+        return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
     error_code_matches = testbench.common.retry_return_error_code.match(
         next_instruction
@@ -756,9 +759,7 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         items = list(error_code_matches.groups())
         rest_code = items[0]
         grpc_code = map_closest_http_to_grpc(rest_code)
-        msg = {
-            "error": {"message": "Retry Test: Caused a {}".format(grpc_code)}
-        }
+        msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
         print("### injecting error ###")
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
     retry_connection_matches = testbench.common.retry_return_error_connection.match(
@@ -768,7 +769,10 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         items = list(retry_connection_matches.groups())
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
-            context.abort(StatusCode.UNAVAILABLE, "Injected 'socket closed, connection reset by peer' fault")
+            context.abort(
+                StatusCode.UNAVAILABLE,
+                "Injected 'socket closed, connection reset by peer' fault",
+            )
     return __get_default_response_fn
 
 
@@ -789,7 +793,10 @@ def map_closest_http_to_grpc(http_code):
 def handle_retry_test_instruction(database, request, socket_closer, method):
     upload_id = request.args.get("upload_id", None)
     test_id = request.headers.get("x-retry-test-id", None)
-    if not test_id or not database.has_instructions_retry_test(test_id, method):
+    # Validate retry instructions, method and request transport.
+    if not test_id or not database.has_instructions_retry_test(
+        test_id, method, transport="JSON"
+    ):
         return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
     error_code_matches = testbench.common.retry_return_error_code.match(
