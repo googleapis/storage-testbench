@@ -738,8 +738,6 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
 
 
 def grpc_handle_retry_test_instruction(database, request, context, method):
-    print("!!!!!!! entered new retry test decorator")
-    print("!!!!!!! entered new retry test decorator")
     test_id = None
     if context is not None:
         if hasattr(context, "invocation_metadata"):
@@ -747,8 +745,7 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
                 if key == "x-retry-test-id":
                     test_id = value
     # Validate retry instructions, method and request transport.
-    # TODO: Pass in GRPC transport upon enablement.
-    if not test_id or not database.has_instructions_retry_test(test_id, method):
+    if not test_id or not database.has_instructions_retry_test(test_id, method, transport="GRPC"):
         return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
     error_code_matches = testbench.common.retry_return_error_code.match(
@@ -760,7 +757,6 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         rest_code = items[0]
         grpc_code = map_closest_http_to_grpc(rest_code)
         msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
-        print("### injecting error ###")
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
     retry_connection_matches = testbench.common.retry_return_error_connection.match(
         next_instruction
@@ -820,7 +816,6 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
             sock = _get_socket(request)
-            print("@@@ rest handle retry")
             if sock is not None:
                 sock.setsockopt(
                     socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
