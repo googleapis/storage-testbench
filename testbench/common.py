@@ -776,20 +776,6 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
     return __get_default_response_fn
 
 
-def map_closest_http_to_grpc(http_code):
-    # Only map the status codes that are used in tests and listed in
-    # the README, to avoid error-prone code conversions.
-    status_map = {
-        "400": StatusCode.INVALID_ARGUMENT,
-        "401": StatusCode.UNAUTHENTICATED,
-        "408": StatusCode.DEADLINE_EXCEEDED,
-        "500": StatusCode.INTERNAL,
-        "503": StatusCode.UNAVAILABLE,
-        "504": StatusCode.DEADLINE_EXCEEDED,
-    }
-    return status_map[http_code]
-
-
 def handle_retry_test_instruction(database, request, socket_closer, method):
     upload_id = request.args.get("upload_id", None)
     test_id = request.headers.get("x-retry-test-id", None)
@@ -1117,3 +1103,17 @@ def bucket_name_from_proto(bucket_name):
 
 def bucket_name_to_proto(bucket_name):
     return "projects/_/buckets/" + bucket_name
+
+
+def map_closest_http_to_grpc(http_code):
+    # Only map the status codes that are used in tests and listed in
+    # the README, to avoid error-prone code conversions.
+    status_map = {
+        "400": StatusCode.INVALID_ARGUMENT,
+        "401": StatusCode.UNAUTHENTICATED,
+        "408": StatusCode.DEADLINE_EXCEEDED,
+        "500": StatusCode.INTERNAL,
+        "503": StatusCode.UNAVAILABLE,
+        "504": StatusCode.DEADLINE_EXCEEDED,
+    }
+    return status_map.get(http_code, None)

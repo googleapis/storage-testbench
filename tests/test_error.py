@@ -84,6 +84,28 @@ class TestError(unittest.TestCase):
             error.notallowed(None)
         self.assertEqual(rest.exception.code, 405)
 
+    def test_unimplemented(self):
+        with self.assertRaises(error.RestException) as rest:
+            error.unimplemented("requested method", None)
+        self.assertEqual(rest.exception.code, 501)
+
+        context = Mock()
+        error.unimplemented("requested method", context)
+        context.abort.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED, ANY)
+
+    def test_inject_error(self):
+        with self.assertRaises(error.RestException) as rest:
+            error.inject_error(
+                None, rest_code=503, grpc_code=grpc.StatusCode.UNAVAILABLE
+            )
+        self.assertEqual(rest.exception.code, 503)
+
+        context = Mock()
+        error.inject_error(
+            context, rest_code=503, grpc_code=grpc.StatusCode.UNAVAILABLE
+        )
+        context.abort.assert_called_once_with(grpc.StatusCode.UNAVAILABLE, ANY)
+
 
 if __name__ == "__main__":
     unittest.main()
