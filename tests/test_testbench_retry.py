@@ -22,11 +22,12 @@ import re
 import unittest
 import unittest.mock
 
+from grpc import StatusCode
+
 import gcs
 import testbench
-from testbench import rest_server
 from google.storage.v2 import storage_pb2
-from grpc import StatusCode
+from testbench import rest_server
 
 UPLOAD_QUANTUM = 256 * 1024
 

@@ -24,15 +24,16 @@ import re
 import socket
 import struct
 import types
+from collections.abc import Iterable
 from functools import wraps
 
 import flask
 import scalpl
-from collections.abc import Iterable
 from google.protobuf import timestamp_pb2
 from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
-from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
+from requests_toolbelt.multipart.decoder import \
+    ImproperBodyPartContentException
 
 import testbench
 from google.storage.v2 import storage_pb2
