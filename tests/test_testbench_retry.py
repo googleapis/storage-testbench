@@ -20,9 +20,13 @@ import json
 import os
 import re
 import unittest
+import unittest.mock
 
+import gcs
 import testbench
 from testbench import rest_server
+from google.storage.v2 import storage_pb2
+from grpc import StatusCode
 
 UPLOAD_QUANTUM = 256 * 1024
 
@@ -557,6 +561,73 @@ class TestTestbenchRetry(unittest.TestCase):
         create_rest = json.loads(response.data)
         self.assertIn("size", create_rest)
         self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
+
+
+class TestTestbenchRetryGrpc(unittest.TestCase):
+    def setUp(self):
+        rest_server.db.clear()
+        self.db = rest_server.db
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"name": "bucket-name"}),
+        )
+        self.bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.db.insert_bucket(self.bucket, None)
+        self.rest_client = rest_server.server.test_client()
+        self.grpc = testbench.grpc_server.StorageServicer(self.db)
+
+    def test_grpc_retry_return_error(self):
+        # Use the rest client to setup a 503 failure for retrieving bucket metadata.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {"storage.buckets.get": ["return-503"]},
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value={"x-retry-test-id": create_rest.get("id")}
+        )
+        response = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        context.abort.assert_called_once_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+
+    def test_grpc_retry_reset_connection(self):
+        # Use the rest client to setup a failure for retrieving bucket metadata.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.buckets.get": ["return-reset-connection"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value={"x-retry-test-id": create_rest.get("id")}
+        )
+        response = self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        context.abort.assert_called_once_with(
+            StatusCode.UNAVAILABLE,
+            "Injected 'socket closed, connection reset by peer' fault",
+        )
 
 
 if __name__ == "__main__":

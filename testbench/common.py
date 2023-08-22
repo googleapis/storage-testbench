@@ -28,6 +28,7 @@ from functools import wraps
 
 import flask
 import scalpl
+from collections.abc import Iterable
 from google.protobuf import timestamp_pb2
 from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
@@ -741,9 +742,12 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
     test_id = None
     if context is not None:
         if hasattr(context, "invocation_metadata") and isinstance(
-            context.invocation_metadata(), tuple
+            context.invocation_metadata(), Iterable  # Handle mocks in tests
         ):
-            for key, value in context.invocation_metadata():
+            metadata = context.invocation_metadata()
+            if not isinstance(metadata, dict):
+                metadata = dict(metadata)
+            for key, value in metadata.items():
                 if key == "x-retry-test-id":
                     test_id = value
     # Validate retry instructions, method and request transport.
