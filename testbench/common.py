@@ -32,8 +32,7 @@ import scalpl
 from google.protobuf import timestamp_pb2
 from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
-from requests_toolbelt.multipart.decoder import \
-    ImproperBodyPartContentException
+from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
 
 import testbench
 from google.storage.v2 import storage_pb2
