@@ -24,7 +24,6 @@ import re
 import socket
 import struct
 import types
-from collections.abc import Iterable
 from functools import wraps
 
 import flask
@@ -742,12 +741,9 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
     test_id = None
     if context is not None:
         if hasattr(context, "invocation_metadata") and isinstance(
-            context.invocation_metadata(), Iterable  # Handle mocks in tests
+            context.invocation_metadata(), tuple  # Handle mocks in tests
         ):
-            metadata = context.invocation_metadata()
-            if not isinstance(metadata, dict):
-                metadata = dict(metadata)
-            for key, value in metadata.items():
+            for key, value in context.invocation_metadata():
                 if key == "x-retry-test-id":
                     test_id = value
     # Validate retry instructions, method and request transport.

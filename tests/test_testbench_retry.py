@@ -594,7 +594,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
 
         context = unittest.mock.Mock()
         context.invocation_metadata = unittest.mock.Mock(
-            return_value={"x-retry-test-id": create_rest.get("id")}
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
         )
         response = self.grpc.GetBucket(
             storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
@@ -620,7 +620,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
 
         context = unittest.mock.Mock()
         context.invocation_metadata = unittest.mock.Mock(
-            return_value={"x-retry-test-id": create_rest.get("id")}
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
         )
         response = self.grpc.GetBucket(
             storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
