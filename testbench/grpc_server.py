@@ -183,6 +183,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.insert_bucket(bucket, context)
         return bucket.metadata
 
+    @retry_test("storage.buckets.list")
     def ListBuckets(self, request, context):
         if not request.parent.startswith("projects/"):
             return testbench.error.invalid(
@@ -250,6 +251,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
+    @retry_test(method="storage.buckets.getIamPolicy")
     def GetIamPolicy(self, request, context):
         bucket = self.db.get_bucket(request.resource, context)
         return bucket.iam_policy
@@ -372,6 +374,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket.delete_notification(notification_id, context)
         return empty_pb2.Empty()
 
+    @retry_test(method="storage.notifications.get")
     def GetNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
@@ -398,6 +401,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = bucket.insert_notification(json.dumps(notification), context)
         return self._notification_from_rest(rest, request.parent)
 
+    @retry_test("storage.notifications.list")
     def ListNotificationConfigs(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         items = bucket.list_notifications(context).get("items", [])
@@ -461,7 +465,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -496,6 +503,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return blob.metadata
 
+    @retry_test(method="storage.objects.get")
     def ReadObject(self, request, context):
         blob = self.db.get_object(
             request.bucket,
@@ -517,7 +525,64 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = storage_pb2.ContentRange(
                 start=start, end=read_end, complete_length=len(blob.media)
             )
+        print("@@@@ GRPC ReadObject")
+        print(f"request.read_limit is {request.read_limit}")
+        print(f"request.read_offset is {request.read_offset}")
+        print(f"size is {size}")
+        print(f"start is {start}")
+        print(f"read_end is {read_end}")
 
+
+        ### Enbed the return-broken-stream failures directly in ReadObject ###
+        # TODO: convert to helper method 1 in common under headers (maybe can combine with something?!)
+        test_id = None
+        method="storage.objects.get"
+        if context is not None:
+            if hasattr(context, "invocation_metadata") and isinstance(
+                context.invocation_metadata(), tuple  # Handle mocks in tests
+            ):
+                for key, value in context.invocation_metadata():
+                    if key == "x-retry-test-id":
+                        test_id = value
+
+        # TODO: convert to helper method 2 in common that handles the
+        # broken-stream broken-stream-after-bytes logic
+        retry_connection_matches = None
+        broken_stream_after_bytes = None
+        after_bytes = None
+        if test_id and self.db.has_instructions_retry_test(test_id, method, transport="GRPC"):
+            next_instruction = self.db.peek_next_instruction(test_id, method)
+            retry_connection_matches = testbench.common.retry_return_error_connection.match(
+                next_instruction
+            )
+            if retry_connection_matches and list(retry_connection_matches.groups())[0] == "broken-stream":
+                after_bytes = 4
+            broken_stream_after_bytes = (
+                testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
+            )
+            if broken_stream_after_bytes:
+                items = list(broken_stream_after_bytes.groups())
+                after_bytes = int(items[0]) * 1024
+
+        if retry_connection_matches or broken_stream_after_bytes:
+            end = min(start + after_bytes, read_end)
+            chunk = blob.media[start:end]
+            yield storage_pb2.ReadObjectResponse(
+                checksummed_data={
+                    "content": chunk,
+                    "crc32c": crc32c.crc32c(chunk),
+                },
+                metadata=meta,
+                content_range=content_range,
+            )
+            # Inject broken stream failure and dequeue retry test instructions.
+            self.db.dequeue_next_instruction(test_id, method)
+            context.abort(
+                grpc.StatusCode.UNAVAILABLE,
+                "Injected 'socket closed, connection reset by peer' fault",
+            )
+
+        # BACK TO ORIGINAL LOGIC FLOW
         while start <= read_end:
             end = min(start + size, read_end)
             chunk = blob.media[start:end]
@@ -650,6 +715,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return storage_pb2.WriteObjectResponse(resource=blob.metadata)
 
+    @retry_test(method="storage.objects.list")
     def ListObjects(self, request, context):
         items, prefixes = self.db.list_object(request, request.parent, context)
         return storage_pb2.ListObjectsResponse(objects=items, prefixes=prefixes)
@@ -735,6 +801,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             return storage_pb2.QueryWriteStatusResponse(resource=upload.blob.metadata)
         return storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media))
 
+    @retry_test("storage.serviceaccount.get")
     def GetServiceAccount(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
@@ -782,6 +849,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         project.delete_hmac_key(request.access_id, context)
         return empty_pb2.Empty()
 
+    @retry_test("storage.hmacKey.get")
     def GetHmacKey(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
@@ -793,6 +861,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = project.get_hmac_key(request.access_id, context)
         return self._hmac_key_metadata_from_rest(rest)
 
+    @retry_test("storage.hmacKey.list")
     def ListHmacKeys(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(

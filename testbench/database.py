@@ -417,7 +417,18 @@ class Database:
     def __validate_grpc_method_implemented_retry(self, method):
         """Returns Unimplemented 501 for methods that are not yet supported.
         Temporary validation while adding Retry Test API support in gRPC."""
-        implemented_grpc_w_retry = {"storage.buckets.get"}
+        implemented_grpc_w_retry = {
+            "storage.buckets.get",
+            "storage.buckets.getIamPolicy",
+            "storage.buckets.list"
+            "storage.serviceaccount.get",
+            "storage.notifications.get",
+            "storage.notifications.list",
+            "storage.hmacKey.get",
+            "storage.hmacKey.list",
+            "storage.objects.list",
+            "storage.objects.get"
+        }
         if method not in implemented_grpc_w_retry:
             testbench.error.unimplemented(
                 "Retry Test API support for the requested method <%s> in GRPC" % method,
