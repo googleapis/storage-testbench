@@ -923,6 +923,37 @@ def handle_retry_uploads_error_after_bytes(
         )
 
 
+def get_retry_test_id_from_context(context):
+    """Get the retry test id from context; returns None if not found."""
+    if context is not None:
+        if hasattr(context, "invocation_metadata") and isinstance(
+            context.invocation_metadata(), tuple  # Handle mocks in tests
+        ):
+            for key, value in context.invocation_metadata():
+                if key == "x-retry-test-id":
+                    return value
+
+
+def get_broken_stream_after_bytes(instruction):
+    """Get after_bytes for return-broken-stream retry instructions; returns 0 if instructions do not apply."""
+    after_bytes = 0
+    retry_connection_matches = testbench.common.retry_return_error_connection.match(
+        instruction
+    )
+    if (
+        retry_connection_matches
+        and list(retry_connection_matches.groups())[0] == "broken-stream"
+    ):
+        after_bytes = 4
+    broken_stream_after_bytes = (
+        testbench.common.retry_return_broken_stream_after_bytes.match(instruction)
+    )
+    if broken_stream_after_bytes:
+        items = list(broken_stream_after_bytes.groups())
+        after_bytes = int(items[0]) * 1024
+    return after_bytes
+
+
 def handle_gzip_request(request):
     """
     Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests.

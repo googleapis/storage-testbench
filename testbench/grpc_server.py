@@ -493,6 +493,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.delete_upload(request.upload_id, context)
         return storage_pb2.CancelResumableWriteResponse()
 
+    @retry_test(method="storage.objects.get")
     def GetObject(self, request, context):
         blob = self.db.get_object(
             request.bucket,
@@ -532,40 +533,20 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         print(f"start is {start}")
         print(f"read_end is {read_end}")
 
-
-        ### Enbed the return-broken-stream failures directly in ReadObject ###
-        # TODO: convert to helper method 1 in common under headers (maybe can combine with something?!)
-        test_id = None
-        method="storage.objects.get"
-        if context is not None:
-            if hasattr(context, "invocation_metadata") and isinstance(
-                context.invocation_metadata(), tuple  # Handle mocks in tests
-            ):
-                for key, value in context.invocation_metadata():
-                    if key == "x-retry-test-id":
-                        test_id = value
-
-        # TODO: convert to helper method 2 in common that handles the
-        # broken-stream broken-stream-after-bytes logic
-        retry_connection_matches = None
-        broken_stream_after_bytes = None
-        after_bytes = None
-        if test_id and self.db.has_instructions_retry_test(test_id, method, transport="GRPC"):
+        # Handle retry test broken-stream failures if applicable.
+        test_id = testbench.common.get_retry_test_id_from_context(context)
+        broken_stream_after_bytes = 0
+        method = "storage.objects.get"
+        if test_id and self.db.has_instructions_retry_test(
+            test_id, method, transport="GRPC"
+        ):
             next_instruction = self.db.peek_next_instruction(test_id, method)
-            retry_connection_matches = testbench.common.retry_return_error_connection.match(
+            broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
-            if retry_connection_matches and list(retry_connection_matches.groups())[0] == "broken-stream":
-                after_bytes = 4
-            broken_stream_after_bytes = (
-                testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
-            )
-            if broken_stream_after_bytes:
-                items = list(broken_stream_after_bytes.groups())
-                after_bytes = int(items[0]) * 1024
-
-        if retry_connection_matches or broken_stream_after_bytes:
-            end = min(start + after_bytes, read_end)
+        if broken_stream_after_bytes:
+            end = min(start + size, read_end)  # Ensure chunk size does not exceed 2 MiB
+            end = min(start + broken_stream_after_bytes, end)
             chunk = blob.media[start:end]
             yield storage_pb2.ReadObjectResponse(
                 checksummed_data={
@@ -582,7 +563,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 "Injected 'socket closed, connection reset by peer' fault",
             )
 
-        # BACK TO ORIGINAL LOGIC FLOW
         while start <= read_end:
             end = min(start + size, read_end)
             chunk = blob.media[start:end]
