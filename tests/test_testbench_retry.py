@@ -577,6 +577,11 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.rest_client = rest_server.server.test_client()
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
+    @staticmethod
+    def _create_block(desired_kib):
+        line = "A" * 127 + "\n"
+        return int(desired_kib / len(line)) * line
+
     def test_grpc_retry_return_error(self):
         # Use the rest client to setup a 503 failure for retrieving bucket metadata.
         response = self.rest_client.post(
@@ -628,6 +633,78 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         context.abort.assert_called_once_with(
             StatusCode.UNAVAILABLE,
             "Injected 'socket closed, connection reset by peer' fault",
+        )
+
+    def test_grpc_retry_broken_stream(self):
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(512)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a return-broken-stream failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {"storage.objects.get": ["return-broken-stream"]},
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="512k.txt"
+            ),
+            context,
+        )
+        list(response)
+        context.abort.assert_called_once_with(
+            StatusCode.UNAVAILABLE,
+            "Injected 'broken stream' fault",
+        )
+
+        # Setup a return-broken-stream-after-256K failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["return-broken-stream-after-256K"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="512k.txt"
+            ),
+            context,
+        )
+        list(response)
+        context.abort.assert_called_once_with(
+            StatusCode.UNAVAILABLE,
+            "Injected 'broken stream' fault",
         )
 
 

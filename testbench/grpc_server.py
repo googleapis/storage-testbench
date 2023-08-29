@@ -560,7 +560,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             self.db.dequeue_next_instruction(test_id, method)
             context.abort(
                 grpc.StatusCode.UNAVAILABLE,
-                "Injected 'socket closed, connection reset by peer' fault",
+                "Injected 'broken stream' fault",
             )
 
         while start <= read_end:
