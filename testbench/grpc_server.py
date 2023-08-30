@@ -533,7 +533,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         print(f"start is {start}")
         print(f"read_end is {read_end}")
 
-        # Handle retry test broken-stream failures if applicable.
+        # Check retry test broken-stream instructions.
         test_id = testbench.common.get_retry_test_id_from_context(context)
         broken_stream_after_bytes = 0
         method = "storage.objects.get"
@@ -544,27 +544,26 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
-        if broken_stream_after_bytes:
-            end = min(start + size, read_end)  # Ensure chunk size does not exceed 2 MiB
-            end = min(start + broken_stream_after_bytes, end)
-            chunk = blob.media[start:end]
-            yield storage_pb2.ReadObjectResponse(
-                checksummed_data={
-                    "content": chunk,
-                    "crc32c": crc32c.crc32c(chunk),
-                },
-                metadata=meta,
-                content_range=content_range,
-            )
-            # Inject broken stream failure and dequeue retry test instructions.
-            self.db.dequeue_next_instruction(test_id, method)
-            context.abort(
-                grpc.StatusCode.UNAVAILABLE,
-                "Injected 'broken stream' fault",
-            )
 
         while start <= read_end:
             end = min(start + size, read_end)
+            # Handle retry test broken-stream failures if applicable.
+            if broken_stream_after_bytes and end >= broken_stream_after_bytes:
+                chunk = blob.media[start:broken_stream_after_bytes]
+                yield storage_pb2.ReadObjectResponse(
+                    checksummed_data={
+                        "content": chunk,
+                        "crc32c": crc32c.crc32c(chunk),
+                    },
+                    metadata=meta,
+                    content_range=content_range,
+                )
+                # Inject broken stream failure and dequeue retry test instructions.
+                self.db.dequeue_next_instruction(test_id, method)
+                context.abort(
+                    grpc.StatusCode.UNAVAILABLE,
+                    "Injected 'broken stream' fault",
+                )
             chunk = blob.media[start:end]
             yield storage_pb2.ReadObjectResponse(
                 checksummed_data={

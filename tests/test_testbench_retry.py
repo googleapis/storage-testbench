@@ -637,7 +637,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
 
     def test_grpc_retry_broken_stream(self):
         # Use the XML API to inject an object with some data.
-        media = self._create_block(512)
+        media = self._create_block(2 * UPLOAD_QUANTUM)
         response = self.rest_client.put(
             "/bucket-name/512k.txt",
             content_type="text/plain",
