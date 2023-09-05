@@ -577,11 +577,14 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.rest_client = rest_server.server.test_client()
         self.grpc = testbench.grpc_server.StorageServicer(self.db)
 
+<<<<<<< HEAD
     @staticmethod
     def _create_block(desired_kib):
         line = "A" * 127 + "\n"
         return int(desired_kib / len(line)) * line
 
+=======
+>>>>>>> f929482812c6eb259df210a9b259099856922f57
     def test_grpc_retry_return_error(self):
         # Use the rest client to setup a 503 failure for retrieving bucket metadata.
         response = self.rest_client.post(

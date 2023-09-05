@@ -251,7 +251,7 @@ class Database:
 
             live_generation = self._live_generations[bucket_key].get(object_name, None)
 
-            if generation is None or generation == 0:
+            if generation is None or int(generation) == 0:
                 # We are looking for the latest "live" version, but there is none.
                 if live_generation is None:
                     return testbench.error.notfound(
@@ -266,7 +266,7 @@ class Database:
             if blob is None:
                 return testbench.error.notfound(
                     "Could not find object %s/%s#%d"
-                    % (bucket_name, object_name, generation),
+                    % (bucket_name, object_name, lookup_generation),
                     context,
                 )
             for precondition in preconditions:
