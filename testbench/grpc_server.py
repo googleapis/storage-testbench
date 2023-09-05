@@ -118,6 +118,25 @@ def _metadata_echo_decorator(function):
     return decorated
 
 
+def retry_test(method):
+    """
+    Decorate a routing function to handle the Retry Test API instructions,
+    with method names based on the JSON API.
+    """
+
+    def decorator(function):
+        @functools.wraps(function)
+        def wrapper(self, request, context):
+            response_handler = testbench.common.grpc_handle_retry_test_instruction(
+                self.db, request, context, method=method
+            )
+            return response_handler(function(self, request, context))
+
+        return wrapper
+
+    return decorator
+
+
 def decorate_all_rpc_methods(klass):
     """Decorate all the RPC-looking methods."""
     for key in dir(klass):
@@ -150,6 +169,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return empty_pb2.Empty()
 
+    @retry_test("storage.buckets.get")
     def GetBucket(self, request, context):
         bucket = self.db.get_bucket(
             request.name,

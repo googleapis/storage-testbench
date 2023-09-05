@@ -384,6 +384,7 @@ class Database:
                 key: list(value) for key, value in retry_test["instructions"].items()
             },
             "completed": retry_test["completed"],
+            "transport": retry_test["transport"].upper(),
         }
 
     def supported_methods(self):
@@ -413,18 +414,41 @@ class Database:
                 return
         testbench.error.invalid("The fault injection request <%s>" % failure, None)
 
-    def __validate_instructions(self, instructions):
+    def __validate_grpc_method_implemented_retry(self, method):
+        """Returns Unimplemented 501 for methods that are not yet supported.
+        Temporary validation while adding Retry Test API support in gRPC."""
+        implemented_grpc_w_retry = {"storage.buckets.get"}
+        if method not in implemented_grpc_w_retry:
+            testbench.error.unimplemented(
+                "Retry Test API support for the requested method <%s> in GRPC" % method,
+                None,
+            )
+
+    def __validate_instructions(self, instructions, transport="JSON"):
         for method, failures in instructions.items():
             if method not in self._supported_methods:
                 testbench.error.invalid(
                     "The requested method <%s> for fault injection" % method, None
                 )
+            # TODO: Temporary validation will be removed once Retry Test API is fully supported in gRPC.
+            if transport.upper() == "GRPC":
+                self.__validate_grpc_method_implemented_retry(method)
             for failure in failures:
                 self.__validate_injected_failure_description(failure)
 
-    def insert_retry_test(self, instructions):
+    def __validate_transport(self, transport):
+        if transport.upper() not in ("JSON", "GRPC"):
+            testbench.error.invalid(
+                "The requested transport <%s> is not supported in the testbench"
+                % transport,
+                None,
+            )
+
+    def insert_retry_test(self, instructions, transport="JSON"):
         with self._retry_tests_lock:
-            self.__validate_instructions(instructions)
+            # Validate transport - Invalid request for any value other than "JSON" or "GRPC".
+            self.__validate_transport(transport)
+            self.__validate_instructions(instructions, transport)
             retry_test_id = uuid.uuid4().hex
             self._retry_tests[retry_test_id] = {
                 "id": retry_test_id,
@@ -432,16 +456,17 @@ class Database:
                     key: collections.deque(value) for key, value in instructions.items()
                 },
                 "completed": False,
+                "transport": transport.upper(),
             }
             return self.__to_serializeable_retry_test(self._retry_tests[retry_test_id])
 
-    def has_instructions_retry_test(self, retry_test_id, method):
+    def has_instructions_retry_test(self, retry_test_id, method, transport="JSON"):
         with self._retry_tests_lock:
-            self.get_retry_test(retry_test_id)
-            if (
-                len(self._retry_tests[retry_test_id]["instructions"].get(method, []))
-                > 0
-            ):
+            retry_test = self.get_retry_test(retry_test_id)
+            # Add validation for request transport as well.
+            if (len(retry_test["instructions"].get(method, [])) > 0) and retry_test[
+                "transport"
+            ].upper() == transport.upper():
                 return True
             return False
 

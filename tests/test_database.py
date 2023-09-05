@@ -453,6 +453,26 @@ class TestDatabaseRetryTest(unittest.TestCase):
             _ = database.insert_retry_test({"storage.buckets.get": ["return-429"]})
         self.assertEqual(rest.exception.code, 400)
 
+    def test_insert_retry_test_invalid_transport(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.get"])
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = database.insert_retry_test(
+                {"storage.buckets.get": ["return-429"]}, transport="THRIFT"
+            )
+        self.assertEqual(rest.exception.code, 400)
+
+    def test_insert_retry_test_unimplemented_grpc_method(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.resumable.upload"])
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _ = database.insert_retry_test(
+                {"storage.resumable.upload": ["return-429"]}, transport="GRPC"
+            )
+        self.assertEqual(rest.exception.code, 501)
+
 
 if __name__ == "__main__":
     unittest.main()
