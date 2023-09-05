@@ -420,14 +420,14 @@ class Database:
         implemented_grpc_w_retry = {
             "storage.buckets.get",
             "storage.buckets.getIamPolicy",
-            "storage.buckets.list"
-            "storage.serviceaccount.get",
-            "storage.notifications.get",
-            "storage.notifications.list",
+            "storage.buckets.list",
             "storage.hmacKey.get",
             "storage.hmacKey.list",
+            "storage.notifications.get",
+            "storage.notifications.list",
             "storage.objects.list",
-            "storage.objects.get"
+            "storage.objects.get",
+            "storage.serviceaccount.get",
         }
         if method not in implemented_grpc_w_retry:
             testbench.error.unimplemented(

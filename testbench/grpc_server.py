@@ -526,12 +526,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = storage_pb2.ContentRange(
                 start=start, end=read_end, complete_length=len(blob.media)
             )
-        print("@@@@ GRPC ReadObject")
-        print(f"request.read_limit is {request.read_limit}")
-        print(f"request.read_offset is {request.read_offset}")
-        print(f"size is {size}")
-        print(f"start is {start}")
-        print(f"read_end is {read_end}")
 
         # Check retry test broken-stream instructions.
         test_id = testbench.common.get_retry_test_id_from_context(context)

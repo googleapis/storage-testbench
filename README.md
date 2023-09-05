@@ -209,12 +209,15 @@ and to some degree decouples the test setup from the test execution.
 ### Creating a new Retry Test
 
 The following cURL request will create a Retry Test resource which emits a 503
-when a buckets list operation is received by the testbench with the returned
+when a buckets list operation is received by the testbench JSON server with the returned
 retry test ID.
+
+Note: A Retry Test resource can only apply to one transport, either JSON or GRPC. It defaults
+to "JSON" if not specified.
 
 ```bash
 curl -X POST "http://localhost:9000/retry_test" -H 'Content-Type: application/json' \
-     -d '{"instructions":{"storage.buckets.list": ["return-503"]}}'
+     -d '{"instructions":{"storage.buckets.list": ["return-503"]}, "transport": "JSON"}'
 ```
 
 ### Get a Retry Test resource
@@ -236,8 +239,12 @@ curl -X DELETE "http://localhost:9000/retry_test/1d05c20627844214a9ff7cbcf696317
 ### Causing a failure using x-retry-test-id header
 
 The following cURL request will attempt to list buckets and the testbench will emit
-a `503` error once based on the Retry Test created above. Subsequent list buckets
+a `503` error once in the JSON server based on the Retry Test created above. Subsequent list buckets
 operations will succeed.
+
+In this example, list buckets operations in the gRPC server will not be impacted since the Retry Test
+created above only applies to JSON. Specify `"transport": "GRPC"` for a Retry Test Resource to apply
+to gRPC operations.
 
 ```bash
 curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:9100/storage/v1/b?project=test"
