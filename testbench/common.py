@@ -738,14 +738,7 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
 
 
 def grpc_handle_retry_test_instruction(database, request, context, method):
-    test_id = None
-    if context is not None:
-        if hasattr(context, "invocation_metadata") and isinstance(
-            context.invocation_metadata(), tuple  # Handle mocks in tests
-        ):
-            for key, value in context.invocation_metadata():
-                if key == "x-retry-test-id":
-                    test_id = value
+    test_id = get_retry_test_id_from_context(context)
     # Validate retry instructions, method and request transport.
     if not test_id or not database.has_instructions_retry_test(
         test_id, method, transport="GRPC"
