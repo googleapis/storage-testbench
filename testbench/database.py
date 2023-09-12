@@ -435,7 +435,7 @@ class Database:
                 None,
             )
 
-    def __validate_instructions(self, instructions, transport="JSON"):
+    def __validate_instructions(self, instructions, transport="HTTP"):
         for method, failures in instructions.items():
             if method not in self._supported_methods:
                 testbench.error.invalid(
@@ -448,16 +448,16 @@ class Database:
                 self.__validate_injected_failure_description(failure)
 
     def __validate_transport(self, transport):
-        if transport.upper() not in ("JSON", "GRPC"):
+        if transport.upper() not in ("HTTP", "GRPC"):
             testbench.error.invalid(
                 "The requested transport <%s> is not supported in the testbench"
                 % transport,
                 None,
             )
 
-    def insert_retry_test(self, instructions, transport="JSON"):
+    def insert_retry_test(self, instructions, transport="HTTP"):
         with self._retry_tests_lock:
-            # Validate transport - Invalid request for any value other than "JSON" or "GRPC".
+            # Validate transport - Invalid request for any value other than "HTTP" or "GRPC".
             self.__validate_transport(transport)
             self.__validate_instructions(instructions, transport)
             retry_test_id = uuid.uuid4().hex
@@ -471,7 +471,7 @@ class Database:
             }
             return self.__to_serializeable_retry_test(self._retry_tests[retry_test_id])
 
-    def has_instructions_retry_test(self, retry_test_id, method, transport="JSON"):
+    def has_instructions_retry_test(self, retry_test_id, method, transport="HTTP"):
         with self._retry_tests_lock:
             retry_test = self.get_retry_test(retry_test_id)
             # Add validation for request transport as well.

@@ -774,7 +774,7 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
     test_id = request.headers.get("x-retry-test-id", None)
     # Validate retry instructions, method and request transport.
     if not test_id or not database.has_instructions_retry_test(
-        test_id, method, transport="JSON"
+        test_id, method, transport="HTTP"
     ):
         return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
