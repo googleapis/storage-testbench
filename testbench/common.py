@@ -752,7 +752,7 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
         rest_code = items[0]
-        grpc_code = map_closest_http_to_grpc(rest_code)
+        grpc_code = _grpc_forced_failure_from_http_instruction(rest_code)
         msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
     retry_connection_matches = testbench.common.retry_return_error_connection.match(
@@ -1129,15 +1129,18 @@ def bucket_name_to_proto(bucket_name):
     return "projects/_/buckets/" + bucket_name
 
 
-def map_closest_http_to_grpc(http_code):
+def _grpc_forced_failure_from_http_instruction(http_code):
+    # For Retry Test API and retry conformance tests internal use only.
+    # Convert http retry instructions to the closest grpc forced failure.
     # Only map the status codes that are used in tests and listed in
     # the README, to avoid error-prone code conversions.
     status_map = {
         "400": StatusCode.INVALID_ARGUMENT,
         "401": StatusCode.UNAUTHENTICATED,
-        "408": StatusCode.DEADLINE_EXCEEDED,
+        "408": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on 408 equivalent, see b/282880909
+        "429": StatusCode.RESOURCE_EXHAUSTED,
         "500": StatusCode.INTERNAL,
         "503": StatusCode.UNAVAILABLE,
-        "504": StatusCode.DEADLINE_EXCEEDED,
+        "504": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on whether DEADLINE_EXCEEDED is retryable client-side based on AIP#194
     }
     return status_map.get(http_code, None)

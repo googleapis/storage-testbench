@@ -254,9 +254,9 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 
 | Failure Id              | Description
 | ----------------------- | ---
-| return-X                                  | Testbench will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
-| return-X-after-YK                         | Testbench will return X after YKiB of uploaded data
-| return-broken-stream-final-chunk-after-YB | Testbench will break connection on final chunk of a resumable upload after Y bytes
-| return-broken-stream                      | Testbench will fail after a few bytes
-| return-broken-stream-after-YK             | Testbench will fail after YKiB of downloaded data
-| return-reset-connection                   | Testbench will fail with a reset connection
+| return-X                                  | [HTTP] Testbench will fail with HTTP code provided for X, e.g. return-503 returns a 503  <br> [GRPC] Testbench will fail with X that is supported in the gRPC context (`400`, `401`, `429`, `500`, `501`, `503`)
+| return-X-after-YK                         | [HTTP] Testbench will return X after YKiB of uploaded data
+| return-broken-stream-final-chunk-after-YB | [HTTP] Testbench will break connection on final chunk of a resumable upload after Y bytes
+| return-broken-stream                      | [HTTP] Testbench will fail after a few downloaded bytes <br> [GRPC] Testbench will fail with `UNAVAILABLE` after a few downloaded bytes
+| return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
+| return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
