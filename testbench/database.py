@@ -425,6 +425,7 @@ class Database:
             "storage.hmacKey.list",
             "storage.notifications.get",
             "storage.notifications.list",
+            "storage.objects.insert",
             "storage.objects.list",
             "storage.objects.get",
             "storage.serviceaccount.get",

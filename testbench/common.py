@@ -857,12 +857,20 @@ def gen_retry_test_decorator(db):
     return retry_test
 
 
-def get_retry_uploads_error_after_bytes(database, request):
+def get_retry_uploads_error_after_bytes(
+    database, request, context=None, transport="HTTP"
+):
     """Retrieve error code and #bytes corresponding to uploads from retry test instructions."""
-    test_id = request.headers.get("x-retry-test-id", None)
+    method = "storage.objects.insert"
+    if context is not None:
+        test_id = get_retry_test_id_from_context(context)
+    else:
+        test_id = request.headers.get("x-retry-test-id", None)
     if not test_id:
         return 0, 0, ""
-    next_instruction = database.peek_next_instruction(test_id, "storage.objects.insert")
+    next_instruction = None
+    if database.has_instructions_retry_test(test_id, method, transport):
+        next_instruction = database.peek_next_instruction(test_id, method)
     if not next_instruction:
         return 0, 0, ""
     error_after_bytes_matches = testbench.common.retry_return_error_after_bytes.match(
@@ -914,6 +922,39 @@ def handle_retry_uploads_error_after_bytes(
             grpc_code=None,
             context=None,
         )
+
+
+def handle_grpc_retry_uploads_error_after_bytes(
+    context,
+    upload,
+    data,
+    database,
+    rest_code,
+    after_bytes,
+    write_offset,
+    persisted_size,
+    expected_persisted_size,
+    test_id,
+):
+    """
+    Handle error-after-bytes instructions for resumable uploads in the grpc server and commit only partial data before forcing a testbench error.
+    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
+    """
+    if after_bytes > len(upload.media) and after_bytes <= expected_persisted_size:
+        # Ignore request bytes that have already been persisted.
+        range_start = 0
+        if len(upload.media) != 0 and write_offset < persisted_size:
+            range_start = persisted_size - write_offset
+        # Only partial data will be commited due to the instructed interruption.
+        range_end = range_start + (after_bytes - len(upload.media))
+        content = testbench.common.partial_media(
+            data, range_end=range_end, range_start=range_start
+        )
+        upload.media += content
+        database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        grpc_code = _grpc_forced_failure_from_http_instruction(str(rest_code))
+        msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
+        testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
 
 
 def get_retry_test_id_from_context(context):
