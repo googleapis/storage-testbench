@@ -23,7 +23,6 @@ import unittest
 import unittest.mock
 
 import crc32c
-
 from grpc import StatusCode
 
 import gcs
