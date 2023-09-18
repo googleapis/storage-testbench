@@ -138,7 +138,7 @@ def create_retry_test():
             "instructions is not defined", status=400, content_type="text/plain"
         )
     # Backfill a newly added field "transport" in the retry test resource.
-    transport = payload.get("transport", "JSON")
+    transport = payload.get("transport", "HTTP")
     retry_test = db.insert_retry_test(test_instruction_set, transport)
     retry_test_response = json.dumps(retry_test)
     return flask.Response(

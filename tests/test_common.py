@@ -1206,12 +1206,14 @@ class TestCommonUtils(unittest.TestCase):
             ),
         )
 
-    def test_map_closest_http_to_grpc(self):
+    def test_grpc_forced_failure_from_http_instructions(self):
         self.assertEqual(
             grpc.StatusCode.UNAVAILABLE,
-            testbench.common.map_closest_http_to_grpc("503"),
+            testbench.common._grpc_forced_failure_from_http_instruction("503"),
         )
-        self.assertIsNone(testbench.common.map_closest_http_to_grpc("302"))
+        self.assertIsNone(
+            testbench.common._grpc_forced_failure_from_http_instruction("302")
+        )
 
     def test_handle_gzip_request(self):
         # Test gzip decompresses request payload when Content-Encoding: gzip is present.

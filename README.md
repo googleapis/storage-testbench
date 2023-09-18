@@ -209,12 +209,15 @@ and to some degree decouples the test setup from the test execution.
 ### Creating a new Retry Test
 
 The following cURL request will create a Retry Test resource which emits a 503
-when a buckets list operation is received by the testbench with the returned
+when a buckets list operation is received by the testbench HTTP server with the returned
 retry test ID.
+
+Note: A Retry Test resource can only apply to one transport, either `HTTP` or `GRPC`. It defaults
+to `HTTP` if not specified.
 
 ```bash
 curl -X POST "http://localhost:9000/retry_test" -H 'Content-Type: application/json' \
-     -d '{"instructions":{"storage.buckets.list": ["return-503"]}}'
+     -d '{"instructions":{"storage.buckets.list": ["return-503"]}, "transport": "HTTP"}'
 ```
 
 ### Get a Retry Test resource
@@ -236,8 +239,12 @@ curl -X DELETE "http://localhost:9000/retry_test/1d05c20627844214a9ff7cbcf696317
 ### Causing a failure using x-retry-test-id header
 
 The following cURL request will attempt to list buckets and the testbench will emit
-a `503` error once based on the Retry Test created above. Subsequent list buckets
+a `503` error once in the HTTP server based on the Retry Test created above. Subsequent list buckets
 operations will succeed.
+
+In this example, list buckets operations in the gRPC server will not be impacted since the Retry Test
+created above only applies to HTTP. Specify `"transport": "GRPC"` for a Retry Test Resource to apply
+to gRPC operations.
 
 ```bash
 curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:9100/storage/v1/b?project=test"
@@ -247,9 +254,9 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 
 | Failure Id              | Description
 | ----------------------- | ---
-| return-X                                  | Testbench will fail with HTTP code provided for `X`, e.g. return-503 returns a 503
-| return-X-after-YK                         | Testbench will return X after YKiB of uploaded data
-| return-broken-stream-final-chunk-after-YB | Testbench will break connection on final chunk of a resumable upload after Y bytes
-| return-broken-stream                      | Testbench will fail after a few bytes
-| return-broken-stream-after-YK             | Testbench will fail after YKiB of downloaded data
-| return-reset-connection                   | Testbench will fail with a reset connection
+| return-X                                  | [HTTP] Testbench will fail with HTTP code provided for X, e.g. return-503 returns a 503  <br> [GRPC] Testbench will fail with the equivalent gRPC error to the HTTP code provided for X (X currently supported in the gRPC context include `400`, `401`, `429`, `500`, `501`, `503`)
+| return-X-after-YK                         | [HTTP] Testbench will return X after YKiB of uploaded data
+| return-broken-stream-final-chunk-after-YB | [HTTP] Testbench will break connection on final chunk of a resumable upload after Y bytes
+| return-broken-stream                      | [HTTP] Testbench will fail after a few downloaded bytes <br> [GRPC] Testbench will fail with `UNAVAILABLE` after a few downloaded bytes
+| return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
+| return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`

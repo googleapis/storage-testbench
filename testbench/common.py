@@ -738,14 +738,7 @@ def __get_limit_response_fn(database, upload_id, test_id, method, limit):
 
 
 def grpc_handle_retry_test_instruction(database, request, context, method):
-    test_id = None
-    if context is not None:
-        if hasattr(context, "invocation_metadata") and isinstance(
-            context.invocation_metadata(), tuple  # Handle mocks in tests
-        ):
-            for key, value in context.invocation_metadata():
-                if key == "x-retry-test-id":
-                    test_id = value
+    test_id = get_retry_test_id_from_context(context)
     # Validate retry instructions, method and request transport.
     if not test_id or not database.has_instructions_retry_test(
         test_id, method, transport="GRPC"
@@ -759,7 +752,7 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
         rest_code = items[0]
-        grpc_code = map_closest_http_to_grpc(rest_code)
+        grpc_code = _grpc_forced_failure_from_http_instruction(rest_code)
         msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
     retry_connection_matches = testbench.common.retry_return_error_connection.match(
@@ -781,7 +774,7 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
     test_id = request.headers.get("x-retry-test-id", None)
     # Validate retry instructions, method and request transport.
     if not test_id or not database.has_instructions_retry_test(
-        test_id, method, transport="JSON"
+        test_id, method, transport="HTTP"
     ):
         return __get_default_response_fn
     next_instruction = database.peek_next_instruction(test_id, method)
@@ -921,6 +914,37 @@ def handle_retry_uploads_error_after_bytes(
             grpc_code=None,
             context=None,
         )
+
+
+def get_retry_test_id_from_context(context):
+    """Get the retry test id from context; returns None if not found."""
+    if context is not None:
+        if hasattr(context, "invocation_metadata") and isinstance(
+            context.invocation_metadata(), tuple  # Handle mocks in tests
+        ):
+            for key, value in context.invocation_metadata():
+                if key == "x-retry-test-id":
+                    return value
+
+
+def get_broken_stream_after_bytes(instruction):
+    """Get after_bytes for return-broken-stream retry instructions; returns 0 if instructions do not apply."""
+    after_bytes = 0
+    retry_connection_matches = testbench.common.retry_return_error_connection.match(
+        instruction
+    )
+    if (
+        retry_connection_matches
+        and list(retry_connection_matches.groups())[0] == "broken-stream"
+    ):
+        after_bytes = 4
+    broken_stream_after_bytes = (
+        testbench.common.retry_return_broken_stream_after_bytes.match(instruction)
+    )
+    if broken_stream_after_bytes:
+        items = list(broken_stream_after_bytes.groups())
+        after_bytes = int(items[0]) * 1024
+    return after_bytes
 
 
 def handle_gzip_request(request):
@@ -1105,15 +1129,18 @@ def bucket_name_to_proto(bucket_name):
     return "projects/_/buckets/" + bucket_name
 
 
-def map_closest_http_to_grpc(http_code):
+def _grpc_forced_failure_from_http_instruction(http_code):
+    # For Retry Test API and retry conformance tests internal use only.
+    # Convert http retry instructions to the closest grpc forced failure.
     # Only map the status codes that are used in tests and listed in
     # the README, to avoid error-prone code conversions.
     status_map = {
         "400": StatusCode.INVALID_ARGUMENT,
         "401": StatusCode.UNAUTHENTICATED,
-        "408": StatusCode.DEADLINE_EXCEEDED,
+        "408": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on 408 equivalent, see b/282880909
+        "429": StatusCode.RESOURCE_EXHAUSTED,
         "500": StatusCode.INTERNAL,
         "503": StatusCode.UNAVAILABLE,
-        "504": StatusCode.DEADLINE_EXCEEDED,
+        "504": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on whether DEADLINE_EXCEEDED is retryable client-side based on AIP#194
     }
     return status_map.get(http_code, None)
