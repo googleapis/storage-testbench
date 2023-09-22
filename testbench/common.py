@@ -869,7 +869,7 @@ def get_retry_uploads_error_after_bytes(
     if not test_id:
         return 0, 0, ""
     next_instruction = None
-    if database.has_instructions_retry_test(test_id, method, transport):
+    if database.has_instructions_retry_test(test_id, method, transport=transport):
         next_instruction = database.peek_next_instruction(test_id, method)
     if not next_instruction:
         return 0, 0, ""
