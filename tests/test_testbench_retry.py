@@ -22,6 +22,7 @@ import re
 import unittest
 import unittest.mock
 
+import crc32c
 from grpc import StatusCode
 
 import gcs
@@ -706,6 +707,84 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             StatusCode.UNAVAILABLE,
             "Injected 'broken stream' fault",
         )
+
+    def test_grpc_return_error_after_bytes(self):
+        # Setup two after-bytes errors to test injecting failures in
+        # resumable uploads, both multiple chunks and a single chunk.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-503-after-256K",
+                            "return-503-after-300K",
+                        ]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", id),)
+        )
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context=context,
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        # Upload the first 256KiB chunk of data and trigger error.
+        content = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+        write = self.grpc.WriteObject([r1], context)
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+
+        status = self.grpc.QueryWriteStatus(
+            storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
+            context,
+        )
+        self.assertEqual(status.persisted_size, UPLOAD_QUANTUM)
+
+        # Send a full object upload here to verify testbench can
+        # (1) trigger error_after_bytes instructions,
+        # (2) ignore duplicate request bytes and
+        # (3) return a forced failure with partial data.
+        media = self._create_block(2 * UPLOAD_QUANTUM).encode("utf-8")
+        r2 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=media, crc32c=crc32c.crc32c(media)
+            ),
+            finish_write=True,
+        )
+        write = self.grpc.WriteObject([r2], context)
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+        self.assertIsNotNone(write)
+        blob = write.resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
 
 
 if __name__ == "__main__":

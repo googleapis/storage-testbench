@@ -663,6 +663,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata
 
+    @retry_test(method="storage.objects.insert")
     def WriteObject(self, request_iterator, context):
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
             self.db, request_iterator, context
