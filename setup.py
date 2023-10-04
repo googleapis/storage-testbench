@@ -53,4 +53,10 @@ setuptools.setup(
         "gunicorn==21.2.0",
         "waitress==2.1.2",
     ],
+    # Support installing via https://pypa.github.io/pipx/
+    entry_points={
+        "console_scripts": [
+            "storage-testbench = testbench.rest_server:_main",
+        ]
+    },
 )
