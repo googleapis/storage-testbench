@@ -41,7 +41,7 @@ setuptools.setup(
         "testbench/servers",
         "gcs",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     install_requires=[
         "grpcio==1.59.0",
         "googleapis-common-protos==1.60.0",
@@ -52,5 +52,6 @@ setuptools.setup(
         "crc32c==2.3",
         "gunicorn==21.2.0",
         "waitress==2.1.2",
+        "Werkzeug==3.0.0",
     ],
 )
