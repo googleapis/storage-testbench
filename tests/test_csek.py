@@ -145,7 +145,7 @@ class TestCSEK(unittest.TestCase):
     def test_validation_success(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
         key_sha256 = hashlib.sha256(key).digest()
-        key_b64 = base64.b64encode(key)
+        key_b64 = base64.b64encode(key).decode("utf-8")
         key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
         environ = create_environ(
             base_url="http://localhost:8080",
@@ -162,7 +162,7 @@ class TestCSEK(unittest.TestCase):
     def test_validation_failure(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
         key_sha256 = hashlib.sha256(key).digest()
-        key_b64 = base64.b64encode(key)
+        key_b64 = base64.b64encode(key).decode("utf-8")
         key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
         environ = create_environ(
             base_url="http://localhost:8080",
@@ -181,7 +181,7 @@ class TestCSEK(unittest.TestCase):
     def test_validation_nothing_expected_failure(self):
         key = b"1234567890" + b"1234567890" + b"1234567890" + b"AA"
         key_sha256 = hashlib.sha256(key).digest()
-        key_b64 = base64.b64encode(key)
+        key_b64 = base64.b64encode(key).decode("utf-8")
         key_sha256_b64 = base64.b64encode(key_sha256).decode("utf-8")
         environ = create_environ(
             base_url="http://localhost:8080",
