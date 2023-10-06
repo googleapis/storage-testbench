@@ -327,8 +327,12 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def DeleteObject(self, request, context):
-        """Deletes an object and its metadata. Deletions are permanent if versioning
-        is not enabled for the bucket, or if the `generation` parameter is used.
+        """Deletes an object and its metadata.
+
+        Deletions are normally permanent when versioning is disabled or whenever
+        the generation parameter is used. However, if soft delete is enabled for
+        the bucket, deleted objects can be restored using RestoreObject until the
+        soft delete retention period has passed.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -336,6 +340,13 @@ class StorageServicer(object):
 
     def CancelResumableWrite(self, request, context):
         """Cancels an in-progress resumable upload.
+
+        Any attempts to write to the resumable upload after cancelling the upload
+        will fail.
+
+        The behavior for currently in progress write operations is not guaranteed -
+        they could either complete before the cancellation or fail if the
+        cancellation completes first.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -406,6 +417,8 @@ class StorageServicer(object):
         persisted offset. Even though the data isn't written, it may still
         incur a performance cost over resuming at the correct write offset.
         This behavior can make client-side handling simpler in some cases.
+        - Clients must only send data that is a multiple of 256 KiB per message,
+        unless the object is being finished with `finish_write` set to `true`.
 
         The service will not view the object as complete until the client has
         sent a `WriteObjectRequest` with `finish_write` set to `true`. Sending any
@@ -417,6 +430,7 @@ class StorageServicer(object):
         Attempting to resume an already finalized object will result in an OK
         status, with a WriteObjectResponse containing the finalized object's
         metadata.
+
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
