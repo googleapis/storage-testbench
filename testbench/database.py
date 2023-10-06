@@ -15,6 +15,7 @@
 import collections
 import json
 import os
+import pathlib
 import threading
 import uuid
 
@@ -167,6 +168,7 @@ class Database:
             request.lexicographic_start,
             request.lexicographic_end,
             request.include_trailing_delimiter,
+            request.match_glob,
         )
 
     @classmethod
@@ -182,6 +184,7 @@ class Database:
         start_offset = request.args.get("startOffset", "")
         end_offset = request.args.get("endOffset")
         include_trailing_delimiter = request.args.get("includeTrailingDelimiter", False)
+        match_glob = request.args.get("matchGlob", None)
         return (
             delimiter,
             prefix,
@@ -189,6 +192,7 @@ class Database:
             start_offset,
             end_offset,
             include_trailing_delimiter,
+            match_glob,
         )
 
     def __get_live_generation(self, bucket_name, object_name, context):
@@ -213,6 +217,7 @@ class Database:
                 start_offset,
                 end_offset,
                 include_trailing_delimiter,
+                match_glob,
             ) = self.__extract_list_object_request(request, context)
             items = []
             prefixes = set()
@@ -228,6 +233,8 @@ class Database:
                 if name < start_offset:
                     continue
                 if end_offset and name >= end_offset:
+                    continue
+                if match_glob and not pathlib.PurePath(name).match(match_glob):
                     continue
                 delimiter_index = name.find(delimiter, len(prefix))
                 if delimiter != "" and delimiter_index > 0:

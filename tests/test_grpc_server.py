@@ -1653,6 +1653,45 @@ class TestGrpc(unittest.TestCase):
             ],
         )
 
+    def test_list_objects_match_glob(self):
+        names = [
+            "a/a/1.txt",
+            "a/b/1.py",
+            "a/b/x/1.txt",
+            "a/b/x/1.py",
+            "a/c/1.txt",
+            "a/d/1.py",
+            "a/e/1.cc",
+            "b/e/2.txt",
+            "b/e/2.py",
+        ]
+        media = b"The quick brown fox jumps over the lazy dog"
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
+        context = unittest.mock.Mock()
+        response = self.grpc.ListObjects(
+            storage_pb2.ListObjectsRequest(
+                parent="projects/_/buckets/bucket-name",
+                prefix="a/",
+                match_glob="**/*.py",
+            ),
+            context,
+        )
+        self.assertEqual(response.prefixes, [])
+        response_names = [o.name for o in response.objects]
+        self.assertEqual(
+            response_names,
+            [
+                "a/b/1.py",
+                "a/b/x/1.py",
+                "a/d/1.py",
+            ],
+        )
+
     def test_list_objects_trailing_delimiters(self):
         names = [
             "a/a/",
