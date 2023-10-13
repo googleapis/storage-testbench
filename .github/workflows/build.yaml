@@ -41,6 +41,8 @@ jobs:
             flags: unittests
             name: codecov-umbrella
             verbose: true
+          attempt_limit: 5
+          attempt_delay: 10000
   windows-tests:
     runs-on: windows-2022
     strategy:
