@@ -52,7 +52,7 @@ setuptools.setup(
         "crc32c==2.3",
         "gunicorn==21.2.0",
         "waitress==2.1.2",
-        "Werkzeug==3.0.0",
+        "Werkzeug==3.0.1",
     ],
     # Support installing via https://pypa.github.io/pipx/
     entry_points={
