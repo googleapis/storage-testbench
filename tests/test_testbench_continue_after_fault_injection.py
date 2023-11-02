@@ -36,23 +36,29 @@ class TestTestbenchContinueAfterFaultInjection(unittest.TestCase):
         if platform.system().lower() == "windows":
             server_start_message = "INFO:waitress:Serving on http://"
             server_regex_pattern = "INFO:waitress:Serving on.*:([0-9]+)"
-            python_command = "py"
+            python_command = "python"
 
         self.testbench_server = subprocess.Popen(
             [python_command, "testbench_run.py", "localhost", "0", "10"],
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
+        captured = []
         self.port = None
         start = time.time()
         # Wait for the message declaring this process is running
-        while self.port is None and time.time() - start < 120:
+        while self.port is None and time.time() - start < 20:
             line = self.testbench_server.stderr.readline()
             if server_start_message in line:
                 m = re.compile(server_regex_pattern).search(line)
                 if m is not None:
                     self.port = m[1]
-        self.assertIsNotNone(self.port)
+        self.assertIsNotNone(
+            self.port,
+            msg="Did not find startup message {} in log:\n{}".format(
+                server_start_message, "\n".join(captured)
+            ),
+        )
 
     def tearDown(self):
         self.testbench_server.stderr.close()

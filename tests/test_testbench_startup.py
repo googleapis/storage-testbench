@@ -32,7 +32,7 @@ from google.storage.v2 import storage_pb2, storage_pb2_grpc
 class TestTestbenchStartup(unittest.TestCase):
     def python_command(self):
         if platform.system().lower() == "windows":
-            return "py"
+            return "python"
         return "python3"
 
     def setUp(self):
@@ -64,7 +64,6 @@ class TestTestbenchStartup(unittest.TestCase):
             p.wait(30)
 
     def wait_testbench_server(self):
-        started = False
         port = None
         start = time.time()
 
@@ -77,14 +76,20 @@ class TestTestbenchStartup(unittest.TestCase):
             server_regex_pattern = "INFO:waitress:Serving on.*:([0-9]+)"
 
         # Wait for the message declaring this process is running
-        while not started and time.time() - start < 120:
+        captured = []
+        while port is None and time.time() - start < 120:
             line = self.testbench_server.stderr.readline()
+            captured.append(line)
             if server_start_message in line:
                 m = re.compile(server_regex_pattern).search(line)
                 if m is not None:
-                    started = True
                     port = m[1]
-        self.assertTrue(started)
+        self.assertIsNotNone(
+            port,
+            msg="Did not find startup message {} in log:\n{}".format(
+                server_start_message, "\n".join(captured)
+            ),
+        )
         return port
 
     def test_startup_server(self):
