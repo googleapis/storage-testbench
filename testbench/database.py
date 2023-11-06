@@ -18,9 +18,14 @@ import os
 import pathlib
 import threading
 import uuid
+import copy
+from typing import TypeVar, Any, Callable
 
 import gcs
 import testbench
+
+
+T = TypeVar('T')
 
 
 class Database:
@@ -175,9 +180,6 @@ class Database:
     def __extract_list_object_request(cls, request, context):
         if context is not None:
             return cls.__extract_list_object_request_grpc(request)
-        delimiter, prefix, versions = "", "", False
-        start_offset, end_offset = "", None
-        include_trailing_delimiter = False
         delimiter = request.args.get("delimiter", "")
         prefix = request.args.get("prefix", "")
         versions = request.args.get("versions", False, type=bool)
@@ -248,46 +250,49 @@ class Database:
             items.sort(key=lambda item: item.name)
             return items, sorted(list(prefixes))
 
-    def _get_object(
+    def __get_object(
         self, bucket_name, object_name, context=None, generation=None, preconditions=[]
     ):
-        with self._resources_lock:
-            bucket_key = self.__bucket_key(bucket_name, context)
-            if bucket_key not in self._live_generations:
-                return testbench.error.notfound("Bucket %s" % bucket_name, context)
+        bucket_key = self.__bucket_key(bucket_name, context)
+        if bucket_key not in self._live_generations:
+            return testbench.error.notfound("Bucket %s" % bucket_name, context)
 
-            live_generation = self._live_generations[bucket_key].get(object_name, None)
+        live_generation = self._live_generations[bucket_key].get(object_name, None)
 
-            if generation is None or int(generation) == 0:
-                # We are looking for the latest "live" version, but there is none.
-                if live_generation is None:
-                    return testbench.error.notfound(
-                        "Live version of object %s/%s" % (bucket_name, object_name),
-                        context,
-                    )
-                lookup_generation = int(live_generation)
-            else:
-                lookup_generation = int(generation)
-            bucket = self.__get_bucket_for_object(bucket_name, context)
-            blob = bucket.get("%s#%d" % (object_name, lookup_generation), None)
-            if blob is None:
+        if generation is None or int(generation) == 0:
+            # We are looking for the latest "live" version, but there is none.
+            if live_generation is None:
                 return testbench.error.notfound(
-                    "Could not find object %s/%s#%d"
-                    % (bucket_name, object_name, lookup_generation),
+                    "Live version of object %s/%s" % (bucket_name, object_name),
                     context,
                 )
-            for precondition in preconditions:
-                if not precondition(blob, live_generation, context):
-                    return None, None
-            return blob, live_generation
+            lookup_generation = int(live_generation)
+        else:
+            lookup_generation = int(generation)
+        bucket = self.__get_bucket_for_object(bucket_name, context)
+        blob = bucket.get("%s#%d" % (object_name, lookup_generation), None)
+        if blob is None:
+            return testbench.error.notfound(
+                "Could not find object %s/%s#%d"
+                % (bucket_name, object_name, lookup_generation),
+                context,
+            )
+        for precondition in preconditions:
+            if not precondition(blob, live_generation, context):
+                return None, None
+        return blob, live_generation
 
     def get_object(
         self, bucket_name, object_name, context=None, generation=None, preconditions=[]
     ):
-        blob, _ = self._get_object(
-            bucket_name, object_name, context, generation, preconditions
-        )
-        return blob
+        with self._resources_lock:
+            blob, _ = self.__get_object(
+                bucket_name, object_name, context, generation, preconditions
+            )
+            # return a snapshot copy of the blob/blob.metadata
+            b = copy.copy(blob)
+            b.metadata = copy.copy(blob.metadata)
+            return b
 
     def insert_object(self, bucket_name, blob, context=None, preconditions=[]):
         with self._resources_lock:
@@ -322,7 +327,7 @@ class Database:
         preconditions=[],
     ):
         with self._resources_lock:
-            blob, live_generation = self._get_object(
+            blob, live_generation = self.__get_object(
                 bucket_name, object_name, context, generation, preconditions
             )
             # _get_object() raises if the object is not found or the generation mismatches.
@@ -332,6 +337,22 @@ class Database:
             bucket = self.__get_bucket_for_object(bucket_name, context)
             bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
+    def do_update(
+        self,
+        bucket_name: str,
+        object_name: str,
+        *,
+        update_fn: Callable[[Any, Any], T],
+        context=None,
+        generation=None,
+        preconditions=[],
+    ) -> T:
+        with self._resources_lock:
+            blob, live_generation = self.__get_object(
+                bucket_name, object_name, context, generation, preconditions
+            )
+            return update_fn(blob, live_generation)
+        
     # === UPLOAD === #
 
     def get_upload(self, upload_id, context):

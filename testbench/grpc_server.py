@@ -623,42 +623,58 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 "UpdateObject() invalid field for Object [%s]" % ",".join(mask.paths),
                 context,
             )
-        self.db.insert_test_bucket()
-        blob = self.db.get_object(
-            request.object.bucket,
-            request.object.name,
-            context=context,
-            generation=request.object.generation,
-            preconditions=testbench.common.make_grpc_preconditions(request),
-        )
-        # TODO(#270) - cleanup the manual steps
-        object = blob.metadata
-        mask.MergeMessage(request.object, object)
-        # Manually replace the repeated fields.
-        if "acl" in request.update_mask.paths:
-            del object.acl[:]
-            object.acl.extend(request.object.acl)
-        # Manually handle predefinedACL.
+
+        acls = None
         if request.predefined_acl:
-            acls = testbench.acl.compute_predefined_object_acl(
+           acls = testbench.acl.compute_predefined_object_acl(
                 request.object.bucket,
                 request.object.name,
                 request.object.generation,
                 request.predefined_acl,
                 context,
             )
-            del object.acl[:]
-            object.acl.extend(acls)
-        if replace_metadata:
-            object.metadata.clear()
-            object.metadata.update(request.object.metadata)
-        else:
-            object.metadata.update(updated_metadata)
-            for k in removed_metadata_keys:
-                object.metadata.pop(k, None)
-        object.metageneration += 1
-        object.update_time.FromDatetime(datetime.datetime.now())
-        return object
+
+        def update_impl(blob, live_generation) -> storage_pb2.Object:
+            del live_generation
+            # TODO(#270) - cleanup the manual steps
+            object = blob.metadata
+            mask.MergeMessage(request.object, object)
+            # Manually replace the repeated fields.
+            if "acl" in request.update_mask.paths:
+                del object.acl[:]
+                object.acl.extend(request.object.acl)
+            # Manually handle predefinedACL.
+            if request.predefined_acl:
+                acls = testbench.acl.compute_predefined_object_acl(
+                    request.object.bucket,
+                    request.object.name,
+                    request.object.generation,
+                    request.predefined_acl,
+                    context,
+                )
+                del object.acl[:]
+                object.acl.extend(acls)
+            if replace_metadata:
+                object.metadata.clear()
+                object.metadata.update(request.object.metadata)
+            else:
+                object.metadata.update(updated_metadata)
+                for k in removed_metadata_keys:
+                    object.metadata.pop(k, None)
+            object.metageneration += 1
+            object.update_time.FromDatetime(datetime.datetime.now())
+            return object
+
+        self.db.insert_test_bucket()
+
+        return self.db.get_object(
+            request.object.bucket,
+            request.object.name,
+            context=context,
+            generation=request.object.generation,
+            preconditions=testbench.common.make_grpc_preconditions(request),
+            update_fn=update_impl,
+        )
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata

@@ -508,18 +508,22 @@ def object_list(bucket_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["PUT"])
 @retry_test(method="storage.objects.update")
 def object_update(bucket_name, object_name):
-    blob = db.get_object(
+    projection = testbench.common.extract_projection(flask.request, "full", None)
+    fields = flask.request.args.get("fields", None)
+    def update_impl(blob, live_generation):
+        del live_generation
+        blob.update(flask.request, None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+
+    return db.get_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
-    )
-    blob.update(flask.request, None)
-    projection = testbench.common.extract_projection(flask.request, "full", None)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(
-        blob.rest_metadata(), projection, fields
+        update_fn=update_impl,
     )
 
 
@@ -527,18 +531,22 @@ def object_update(bucket_name, object_name):
 @retry_test(method="storage.objects.patch")
 def object_patch(bucket_name, object_name):
     testbench.common.enforce_patch_override(flask.request)
-    blob = db.get_object(
+    projection = testbench.common.extract_projection(flask.request, "full", None)
+    fields = flask.request.args.get("fields", None)
+    def patch_impl(blob, live_generation):
+        del live_generation
+        blob.patch(flask.request, None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+
+    return db.get_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
-    )
-    blob.patch(flask.request, None)
-    projection = testbench.common.extract_projection(flask.request, "full", None)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(
-        blob.rest_metadata(), projection, fields
+        update_fn=patch_impl,
     )
 
 
