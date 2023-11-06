@@ -290,6 +290,8 @@ class Database:
                 bucket_name, object_name, context, generation, preconditions
             )
             # return a snapshot copy of the blob/blob.metadata
+            if blob is None:
+                return blob
             b = copy.copy(blob)
             b.metadata = copy.copy(blob.metadata)
             return b
