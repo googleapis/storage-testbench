@@ -517,7 +517,7 @@ def object_update(bucket_name, object_name):
             blob.rest_metadata(), projection, fields
         )
 
-    return db.get_object(
+    return db.do_update(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -540,7 +540,7 @@ def object_patch(bucket_name, object_name):
             blob.rest_metadata(), projection, fields
         )
 
-    return db.get_object(
+    return db.do_update(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
