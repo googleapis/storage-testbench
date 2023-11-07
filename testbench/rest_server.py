@@ -508,18 +508,23 @@ def object_list(bucket_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>", methods=["PUT"])
 @retry_test(method="storage.objects.update")
 def object_update(bucket_name, object_name):
-    blob = db.get_object(
+    projection = testbench.common.extract_projection(flask.request, "full", None)
+    fields = flask.request.args.get("fields", None)
+
+    def update_impl(blob, live_generation):
+        del live_generation
+        blob.update(flask.request, None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
-    )
-    blob.update(flask.request, None)
-    projection = testbench.common.extract_projection(flask.request, "full", None)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(
-        blob.rest_metadata(), projection, fields
+        update_fn=update_impl,
     )
 
 
@@ -527,18 +532,23 @@ def object_update(bucket_name, object_name):
 @retry_test(method="storage.objects.patch")
 def object_patch(bucket_name, object_name):
     testbench.common.enforce_patch_override(flask.request)
-    blob = db.get_object(
+    projection = testbench.common.extract_projection(flask.request, "full", None)
+    fields = flask.request.args.get("fields", None)
+
+    def patch_impl(blob, live_generation):
+        del live_generation
+        blob.patch(flask.request, None)
+        return testbench.common.filter_response_rest(
+            blob.rest_metadata(), projection, fields
+        )
+
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
-    )
-    blob.patch(flask.request, None)
-    projection = testbench.common.extract_projection(flask.request, "full", None)
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(
-        blob.rest_metadata(), projection, fields
+        update_fn=patch_impl,
     )
 
 
@@ -792,19 +802,24 @@ def object_acl_list(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl", methods=["POST"])
 @retry_test(method="storage.object_acl.insert")
 def object_acl_insert(bucket_name, object_name):
-    blob = db.get_object(
+    fields = flask.request.args.get("fields", None)
+
+    def update_impl(blob, live_generation):
+        del live_generation
+        acl = blob.insert_acl(flask.request, None)
+        response = testbench.proto2rest.object_access_control_as_rest(
+            bucket_name, object_name, str(blob.metadata.generation), acl
+        )
+        return testbench.common.filter_response_rest(response, None, fields)
+
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        update_fn=update_impl,
     )
-    acl = blob.insert_acl(flask.request, None)
-    response = testbench.proto2rest.object_access_control_as_rest(
-        bucket_name, object_name, str(blob.metadata.generation), acl
-    )
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
 
 
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>")
@@ -828,19 +843,24 @@ def object_acl_get(bucket_name, object_name, entity):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["PUT"])
 @retry_test(method="storage.object_acl.update")
 def object_acl_update(bucket_name, object_name, entity):
-    blob = db.get_object(
+    fields = flask.request.args.get("fields", None)
+
+    def update_impl(blob, live_generation):
+        del live_generation
+        acl = blob.update_acl(flask.request, entity, None)
+        response = testbench.proto2rest.object_access_control_as_rest(
+            bucket_name, object_name, str(blob.metadata.generation), acl
+        )
+        return testbench.common.filter_response_rest(response, None, fields)
+
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        update_fn=update_impl,
     )
-    acl = blob.update_acl(flask.request, entity, None)
-    response = testbench.proto2rest.object_access_control_as_rest(
-        bucket_name, object_name, str(blob.metadata.generation), acl
-    )
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
 
 
 @gcs.route(
@@ -849,32 +869,40 @@ def object_acl_update(bucket_name, object_name, entity):
 @retry_test(method="storage.object_acl.patch")
 def object_acl_patch(bucket_name, object_name, entity):
     testbench.common.enforce_patch_override(flask.request)
-    blob = db.get_object(
+    fields = flask.request.args.get("fields", None)
+
+    def update_impl(blob, live_generation):
+        del live_generation
+        acl = blob.patch_acl(flask.request, entity, None)
+        response = testbench.proto2rest.object_access_control_as_rest(
+            bucket_name, object_name, str(blob.metadata.generation), acl
+        )
+        return testbench.common.filter_response_rest(response, None, fields)
+
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        update_fn=update_impl,
     )
-    acl = blob.patch_acl(flask.request, entity, None)
-    response = testbench.proto2rest.object_access_control_as_rest(
-        bucket_name, object_name, str(blob.metadata.generation), acl
-    )
-    fields = flask.request.args.get("fields", None)
-    return testbench.common.filter_response_rest(response, None, fields)
 
 
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["DELETE"])
 @retry_test(method="storage.object_acl.delete")
 def object_acl_delete(bucket_name, object_name, entity):
-    blob = db.get_object(
+    def update_impl(blob, live_generation):
+        blob.delete_acl(entity, None)
+
+    db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        update_fn=update_impl,
     )
-    blob.delete_acl(entity, None)
     return flask.make_response("")
 
 
