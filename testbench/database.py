@@ -338,7 +338,7 @@ class Database:
             bucket = self.__get_bucket_for_object(bucket_name, context)
             bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
-    def do_update(
+    def do_update_object(
         self,
         bucket_name: str,
         object_name: str,

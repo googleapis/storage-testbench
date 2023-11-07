@@ -667,7 +667,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         self.db.insert_test_bucket()
 
-        return self.db.do_update(
+        return self.db.do_update_object(
             request.object.bucket,
             request.object.name,
             context=context,

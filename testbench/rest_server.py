@@ -518,7 +518,7 @@ def object_update(bucket_name, object_name):
             blob.rest_metadata(), projection, fields
         )
 
-    return db.do_update(
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -542,7 +542,7 @@ def object_patch(bucket_name, object_name):
             blob.rest_metadata(), projection, fields
         )
 
-    return db.do_update(
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -812,7 +812,7 @@ def object_acl_insert(bucket_name, object_name):
         )
         return testbench.common.filter_response_rest(response, None, fields)
 
-    return db.do_update(
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -853,7 +853,7 @@ def object_acl_update(bucket_name, object_name, entity):
         )
         return testbench.common.filter_response_rest(response, None, fields)
 
-    return db.do_update(
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -879,7 +879,7 @@ def object_acl_patch(bucket_name, object_name, entity):
         )
         return testbench.common.filter_response_rest(response, None, fields)
 
-    return db.do_update(
+    return db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
@@ -895,7 +895,7 @@ def object_acl_delete(bucket_name, object_name, entity):
     def update_impl(blob, live_generation):
         blob.delete_acl(entity, None)
 
-    db.do_update(
+    db.do_update_object(
         bucket_name,
         object_name,
         generation=flask.request.args.get("generation", None),
