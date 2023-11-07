@@ -892,7 +892,6 @@ def object_acl_patch(bucket_name, object_name, entity):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["DELETE"])
 @retry_test(method="storage.object_acl.delete")
 def object_acl_delete(bucket_name, object_name, entity):
-
     def update_impl(blob, live_generation):
         blob.delete_acl(entity, None)
 
