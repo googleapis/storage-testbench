@@ -510,6 +510,7 @@ def object_list(bucket_name):
 def object_update(bucket_name, object_name):
     projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
+
     def update_impl(blob, live_generation):
         del live_generation
         blob.update(flask.request, None)
@@ -533,6 +534,7 @@ def object_patch(bucket_name, object_name):
     testbench.common.enforce_patch_override(flask.request)
     projection = testbench.common.extract_projection(flask.request, "full", None)
     fields = flask.request.args.get("fields", None)
+
     def patch_impl(blob, live_generation):
         del live_generation
         blob.patch(flask.request, None)

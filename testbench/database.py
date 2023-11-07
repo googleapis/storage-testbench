@@ -24,7 +24,7 @@ from typing import Any, Callable, TypeVar
 import gcs
 import testbench
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class Database:
