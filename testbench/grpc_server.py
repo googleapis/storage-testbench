@@ -626,7 +626,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         acls = None
         if request.predefined_acl:
-           acls = testbench.acl.compute_predefined_object_acl(
+            acls = testbench.acl.compute_predefined_object_acl(
                 request.object.bucket,
                 request.object.name,
                 request.object.generation,

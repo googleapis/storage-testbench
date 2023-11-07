@@ -801,6 +801,7 @@ def object_acl_list(bucket_name, object_name):
 @retry_test(method="storage.object_acl.insert")
 def object_acl_insert(bucket_name, object_name):
     fields = flask.request.args.get("fields", None)
+
     def update_impl(blob, live_generation):
         del live_generation
         acl = blob.insert_acl(flask.request, None)
@@ -841,6 +842,7 @@ def object_acl_get(bucket_name, object_name, entity):
 @retry_test(method="storage.object_acl.update")
 def object_acl_update(bucket_name, object_name, entity):
     fields = flask.request.args.get("fields", None)
+
     def update_impl(blob, live_generation):
         del live_generation
         acl = blob.update_acl(flask.request, entity, None)
@@ -885,12 +887,13 @@ def object_acl_patch(bucket_name, object_name, entity):
     )
 
 
-
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/acl/<entity>", methods=["DELETE"])
 @retry_test(method="storage.object_acl.delete")
 def object_acl_delete(bucket_name, object_name, entity):
+
     def update_impl(blob, live_generation):
         blob.delete_acl(entity, None)
+
     db.do_update(
         bucket_name,
         object_name,

@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import collections
+import copy
 import json
 import os
 import pathlib
 import threading
 import uuid
-import copy
-from typing import TypeVar, Any, Callable
+from typing import Any, Callable, TypeVar
 
 import gcs
 import testbench
-
 
 T = TypeVar('T')
 
@@ -291,7 +290,7 @@ class Database:
             )
             # return a snapshot copy of the blob/blob.metadata
             if blob is None:
-                return blob
+                return None
             b = copy.copy(blob)
             b.metadata = copy.copy(blob.metadata)
             return b
@@ -354,7 +353,7 @@ class Database:
                 bucket_name, object_name, context, generation, preconditions
             )
             return update_fn(blob, live_generation)
-        
+
     # === UPLOAD === #
 
     def get_upload(self, upload_id, context):
