@@ -201,6 +201,10 @@ class Upload(types.SimpleNamespace):
             data = request.WhichOneof("data")
             if data == "checksummed_data":
                 checksummed_data = request.checksummed_data
+            elif data is None and request.finish_write:
+                # Handles final message with no data to insert.
+                upload.complete = True
+                continue
             else:
                 print("WARNING unexpected data field %s\n" % data)
                 continue

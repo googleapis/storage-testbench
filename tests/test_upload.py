@@ -189,7 +189,6 @@ class TestHolder(unittest.TestCase):
         _ = gcs.upload.Upload.init_resumable_rest(Request(environ), bucket)
 
     def test_resumable_rest_with_none_hashes(self):
-
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket-name"})
         )
@@ -652,6 +651,48 @@ class TestHolder(unittest.TestCase):
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
+
+    def test_init_object_write_grpc_final_message_empty_data(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        context = self.mock_context()
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, context
+        )
+
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=False,
+        )
+        r2 = storage_pb2.WriteObjectRequest(
+            write_offset=len(line),
+            finish_write=True,
+        )
+        context = self.mock_context()
+        db = unittest.mock.Mock()
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
+            db, [r1, r2], context
+        )
+        self.assertIsNotNone(upload)
+        self.assertTrue(upload.complete)
+        self.assertTrue(is_resumable)
+        self.assertEqual(upload.media, b"".join([line]))
+        self.assertEqual(upload.metadata.name, "object")
+        self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
 
 
 if __name__ == "__main__":
