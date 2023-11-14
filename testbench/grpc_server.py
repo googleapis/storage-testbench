@@ -776,6 +776,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         return response
 
+    @retry_test(method="storage.objects.insert")
     def StartResumableWrite(self, request, context):
         bucket = self.__get_bucket(request.write_object_spec.resource.bucket, context)
         upload = gcs.upload.Upload.init_resumable_grpc(request, bucket, context)
