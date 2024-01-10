@@ -703,32 +703,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return storage_pb2.WriteObjectResponse(resource=blob.metadata)
 
     def BidiWriteObject(self, request_iterator, context):
-        upload, is_resumable, responses = gcs.upload.Upload.init_bidi_write_object_grpc(
+        return gcs.upload.Upload.process_bidi_write_object_grpc(
             self.db, request_iterator, context
         )
-        if upload is None:
-            return []
-        if not upload.complete:
-            if not is_resumable:
-                return testbench.error.missing("finish_write in request", context)
-            responses.append(storage_pb2.BidiWriteObjectResponse(persisted_size=len(upload.media)))
-        else:
-            blob, _ = gcs.object.Object.init(
-                upload.request, upload.metadata, upload.media, upload.bucket, False, context
-            )
-            upload.blob = blob
-            self.db.insert_object(
-                upload.bucket.name,
-                blob,
-                context=context,
-                preconditions=upload.preconditions,
-            )
-            responses.append(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
-        print(f"len(responses) is {len(responses)}")
-        # Return a stream of BidiWriteObjectResponse
-        for response in responses:
-            yield response
-
 
     @retry_test(method="storage.objects.list")
     def ListObjects(self, request, context):
