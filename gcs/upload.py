@@ -282,30 +282,27 @@ class Upload(types.SimpleNamespace):
 
     @classmethod
     def init_bidi_write_object_grpc(cls, db, request_iterator, context):
-        """Process an WriteObject streaming RPC, returning the upload object associated with it."""
-        upload, object_checksums, is_resumable, get_state = None, None, False, False
-        count = 0
+        """Process a BidiWriteObject streaming RPC, returning a stream of responses and the upload object associated with it."""
+        upload, object_checksums, is_resumable = None, None, False
+        responses = []  # storage_pb2.BidiWriteObjectResponse
         for request in request_iterator:
-            count += 1
-            print(f"request count is {count}")
-            # import pdb; pdb.set_trace()
             first_message = request.WhichOneof("first_message")
-            if first_message == "upload_id":
+            if first_message == "upload_id":            # resumable upload
                 upload = db.get_upload(request.upload_id, context)
                 if upload.complete:
                     testbench.error.invalid(
                         "Uploading to a completed upload %s" % upload.upload_id, context
                     )
-                    return None, False, False
+                    return None, False, []
                 is_resumable = True
-            elif first_message == "write_object_spec":
+            elif first_message == "write_object_spec":  # one shot upload (non-resumable)
                 bucket = db.get_bucket(
                     request.write_object_spec.resource.bucket, context
                 ).metadata
                 upload = cls.__init_first_write_grpc(request, bucket, context)
             elif upload is None:
                 testbench.error.invalid("Upload missing a first_message field", context)
-                return None, False, False
+                return None, False, []
 
             if request.HasField("object_checksums"):
                 # The object checksums may appear only in the first message *or* the last message, but not both
@@ -314,13 +311,13 @@ class Upload(types.SimpleNamespace):
                         "Object checksums can be included only in the first or last message",
                         context,
                     )
-                    return None, False, False
+                    return None, False, []
                 if object_checksums is not None:
                     testbench.error.invalid(
                         "Duplicate object checksums in upload",
                         context,
                     )
-                    return None, False, False
+                    return None, False, []
                 object_checksums = request.object_checksums
 
             data = request.WhichOneof("data")
@@ -332,7 +329,10 @@ class Upload(types.SimpleNamespace):
                 continue
             else:
                 print("WARNING unexpected data field %s\n" % data)
-                continue
+                testbench.error.invalid(
+                    "Invalid data field, should be one of checksummed_data",
+                    context,
+                )
             content = checksummed_data.content
             crc32c_hash = (
                 checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None
@@ -346,54 +346,35 @@ class Upload(types.SimpleNamespace):
                         actual_crc32c,
                         context,
                     )
-                    return None, False, False
+                    return None, False, []
 
-            # Handle retry test return-X-after-YK failures if applicable.
-            # (
-            #     rest_code,
-            #     after_bytes,
-            #     test_id,
-            # ) = testbench.common.get_retry_uploads_error_after_bytes(
-            #     db, request, context=context, transport="GRPC"
-            # )
-            # expected_persisted_size = request.write_offset + len(content)
-            # if rest_code:
-            #     testbench.common.handle_grpc_retry_uploads_error_after_bytes(
-            #         context,
-            #         upload,
-            #         content,
-            #         db,
-            #         rest_code,
-            #         after_bytes,
-            #         write_offset=request.write_offset,
-            #         persisted_size=len(upload.media),
-            #         expected_persisted_size=expected_persisted_size,
-            #         test_id=test_id,
-            #     )
+            #### FLUSH ?! should we introduce a mechanism / bool
+            # to auto flush and then check request.flush?
+            # Or a new field to differentiate sever buffer and disk?!
+            # if request.flush:
 
             # The testbench should ignore any request bytes that have already been persisted,
             # thus we validate write_offset against persisted_size.
             # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-            if request.flush:
-                if request.write_offset < len(upload.media):
-                    range_start = len(upload.media) - request.write_offset
-                    content = testbench.common.partial_media(
-                        content, range_end=len(content), range_start=range_start
-                    )
-
-                upload.media += content
+            if request.write_offset < len(upload.media):
+                range_start = len(upload.media) - request.write_offset
+                content = testbench.common.partial_media(
+                    content, range_end=len(content), range_start=range_start
+                )
+            upload.media += content
             if request.finish_write:
                 upload.complete = True
             if request.state_lookup:
-                return upload, is_resumable, True
+                responses.append(storage_pb2.BidiWriteObjectResponse(persisted_size=len(upload.media)))
 
         if upload is None:
             testbench.error.invalid("Upload missing a first_message field", context)
-            return None, False, False
+            return None, False, []
         if object_checksums is None:
             upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
-            return upload, is_resumable, False
+            # return upload, is_resumable, False
+            return upload, is_resumable, responses
         if object_checksums.HasField("crc32c"):
             upload.metadata.metadata[
                 "x_emulator_crc32c"
@@ -406,7 +387,7 @@ class Upload(types.SimpleNamespace):
             ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
         else:
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
-        return upload, is_resumable, False
+        return upload, is_resumable, responses
 
     def resumable_status_rest(self, override_308=False):
         response = flask.make_response()

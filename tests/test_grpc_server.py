@@ -2057,5 +2057,57 @@ class TestGrpc(unittest.TestCase):
         server.stop(grace=0)
 
 
+    def test_bidi_write_object(self):
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
+
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={
+                    "name": "object-name",
+                    "bucket": "projects/_/buckets/bucket-name",
+                },
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            state_lookup=True,
+            finish_write=False,
+        )
+
+        offset = QUANTUM
+        content = media[QUANTUM : 2 * QUANTUM]
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            state_lookup=True,
+            finish_write=False,
+        )
+
+        offset = 2 * QUANTUM
+        content = media[QUANTUM:]
+        r3 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=QUANTUM,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=True,
+        )
+
+        streamer = self.grpc.BidiWriteObject([r1, r2, r3], context=self.mock_context())
+        responses = list(streamer)
+        self.assertEqual(len(responses), 3)
+        self.assertIsNotNone(responses[0].persisted_size)
+        self.assertIsNotNone(responses[1].persisted_size)
+        self.assertIsNotNone(responses[2].resource)
+        blob = responses[2].resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
 if __name__ == "__main__":
     unittest.main()
