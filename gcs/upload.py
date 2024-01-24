@@ -26,6 +26,7 @@ from google.protobuf import json_format
 
 import testbench
 from google.storage.v2 import storage_pb2
+
 from . import object
 
 
@@ -291,14 +292,16 @@ class Upload(types.SimpleNamespace):
         should_checkpoint_session = True
         for request in request_iterator:
             first_message = request.WhichOneof("first_message")
-            if first_message == "upload_id":            # resumable upload
+            if first_message == "upload_id":  # resumable upload
                 upload = db.get_upload(request.upload_id, context)
                 if upload.complete:
                     testbench.error.invalid(
                         "Uploading to a completed upload %s" % upload.upload_id, context
                     )
                 is_resumable = True
-            elif first_message == "write_object_spec":  # one shot upload (non-resumable)
+            elif (
+                first_message == "write_object_spec"
+            ):  # one shot upload (non-resumable)
                 bucket = db.get_bucket(
                     request.write_object_spec.resource.bucket, context
                 ).metadata
@@ -359,10 +362,14 @@ class Upload(types.SimpleNamespace):
             if request.finish_write:
                 upload.complete = True
             if request.state_lookup:
-                yield storage_pb2.BidiWriteObjectResponse(persisted_size=len(upload.media))
+                yield storage_pb2.BidiWriteObjectResponse(
+                    persisted_size=len(upload.media)
+                )
 
         if upload is None:
-            return testbench.error.invalid("Upload missing a first_message field", context)
+            return testbench.error.invalid(
+                "Upload missing a first_message field", context
+            )
         if object_checksums is None:
             upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
@@ -373,7 +380,10 @@ class Upload(types.SimpleNamespace):
                 ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
             else:
                 upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
-            if object_checksums.md5_hash is not None and object_checksums.md5_hash != b"":
+            if (
+                object_checksums.md5_hash is not None
+                and object_checksums.md5_hash != b""
+            ):
                 upload.metadata.metadata[
                     "x_emulator_md5"
                 ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
@@ -383,7 +393,12 @@ class Upload(types.SimpleNamespace):
         # Create a new object when the write is completed.
         if upload.complete:
             blob, _ = object.Object.init(
-                upload.request, upload.metadata, upload.media, upload.bucket, False, context
+                upload.request,
+                upload.metadata,
+                upload.media,
+                upload.bucket,
+                False,
+                context,
             )
             upload.blob = blob
             db.insert_object(
@@ -392,7 +407,7 @@ class Upload(types.SimpleNamespace):
                 context=context,
                 preconditions=upload.preconditions,
             )
-            yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata) 
+            yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
         else:
             if not is_resumable:
                 return testbench.error.missing("finish_write in request", context)
