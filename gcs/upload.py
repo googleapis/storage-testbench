@@ -295,7 +295,7 @@ class Upload(types.SimpleNamespace):
             if first_message == "upload_id":  # resumable upload
                 upload = db.get_upload(request.upload_id, context)
                 if upload.complete:
-                    testbench.error.invalid(
+                    return testbench.error.invalid(
                         "Uploading to a completed upload %s" % upload.upload_id, context
                     )
                 is_resumable = True
@@ -307,17 +307,19 @@ class Upload(types.SimpleNamespace):
                 ).metadata
                 upload = cls.__init_first_write_grpc(request, bucket, context)
             elif upload is None:
-                testbench.error.invalid("Upload missing a first_message field", context)
+                return testbench.error.invalid(
+                    "Upload missing a first_message field", context
+                )
 
             if request.HasField("object_checksums"):
                 # The object checksums may appear only in the first message *or* the last message, but not both
                 if first_message is None and request.finish_write == False:
-                    testbench.error.invalid(
+                    return testbench.error.invalid(
                         "Object checksums can be included only in the first or last message",
                         context,
                     )
                 if object_checksums is not None:
-                    testbench.error.invalid(
+                    return testbench.error.invalid(
                         "Duplicate object checksums in upload",
                         context,
                     )
@@ -331,7 +333,7 @@ class Upload(types.SimpleNamespace):
                 upload.complete = True
                 continue
             else:
-                testbench.error.invalid(
+                return testbench.error.invalid(
                     "Invalid data field, should be one of checksummed_data",
                     context,
                 )
@@ -342,7 +344,7 @@ class Upload(types.SimpleNamespace):
             if crc32c_hash is not None:
                 actual_crc32c = crc32c.crc32c(content)
                 if actual_crc32c != crc32c_hash:
-                    testbench.error.mismatch(
+                    return testbench.error.mismatch(
                         "crc32c in checksummed data",
                         crc32c_hash,
                         actual_crc32c,
