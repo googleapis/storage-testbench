@@ -14,7 +14,6 @@
 
 """Helper class to hold data during an upload."""
 
-import datetime
 import hashlib
 import json
 import types
