@@ -260,20 +260,18 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetIamPolicy(self, request, context):
-        """Gets the IAM policy for a specified bucket or object.
+        """Gets the IAM policy for a specified bucket.
         The `resource` field in the request should be
-        `projects/_/buckets/{bucket}` for a bucket or
-        `projects/_/buckets/{bucket}/objects/{object}` for an object.
+        `projects/_/buckets/{bucket}`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SetIamPolicy(self, request, context):
-        """Updates an IAM policy for the specified bucket or object.
+        """Updates an IAM policy for the specified bucket.
         The `resource` field in the request should be
-        `projects/_/buckets/{bucket}` for a bucket or
-        `projects/_/buckets/{bucket}/objects/{object}` for an object.
+        `projects/_/buckets/{bucket}`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
