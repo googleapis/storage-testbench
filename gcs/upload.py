@@ -294,9 +294,9 @@ class Upload(types.SimpleNamespace):
             if first_message == "upload_id":  # resumable upload
                 upload = db.get_upload(request.upload_id, context)
                 if upload.complete:
-                    return testbench.error.invalid(
-                        "Uploading to a completed upload %s" % upload.upload_id, context
-                    )
+                    # Resuming an already finalized object will result with a response
+                    # containing the uploaded object's metadata.
+                    yield storage_pb2.BidiWriteObjectResponse(resource=upload.blob.metadata)
                 is_resumable = True
             elif (
                 first_message == "write_object_spec"
@@ -331,11 +331,7 @@ class Upload(types.SimpleNamespace):
                 # Handles final message with no data to insert.
                 upload.complete = True
                 continue
-            else:
-                return testbench.error.invalid(
-                    "Invalid data field, should be one of checksummed_data",
-                    context,
-                )
+
             content = checksummed_data.content
             crc32c_hash = (
                 checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None

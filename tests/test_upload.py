@@ -694,7 +694,7 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(upload.metadata.name, "object")
         self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
 
-    def test_process_bidi_write_grpc_cannot_resume_completed_upload(self):
+    def test_process_bidi_write_grpc_resumable(self):
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket-name"})
         )
@@ -729,12 +729,14 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
+        # Test resuming an already finalized object will result with
+        # a response containing the finalized object's metadata.
         context = self.mock_context()
-        context.abort = unittest.mock.MagicMock()
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
-        context.abort.assert_called_once_with(
-            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
-        )
+        streamer = gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context)
+        responses = list(streamer)
+        blob = responses[0].resource
+        self.assertEqual(blob.name, "object")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
     def test_process_bidi_write_grpc_missing_first_message(self):
         line = b"The quick brown fox jumps over the lazy dog"
