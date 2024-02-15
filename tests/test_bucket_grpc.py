@@ -203,6 +203,36 @@ class TestBucketGrpc(unittest.TestCase):
             rest.get("retentionPolicy", dict()), {"retentionPeriod": "86400"}
         )
 
+    def test_init_grpc_soft_delete_policy(self):
+        policy = storage_pb2.Bucket.SoftDeletePolicy()
+        policy.retention_duration.FromTimedelta(datetime.timedelta(seconds=30 * 86400))
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/_",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                project="project/test-project",
+                soft_delete_policy=policy,
+            ),
+        )
+        context = unittest.mock.Mock()
+        bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
+        self.assertEqual(bucket.metadata.bucket_id, "test-bucket-name")
+        self.assertEqual(
+            bucket.metadata.soft_delete_policy.retention_duration, policy.retention_duration
+        )
+        self.assertTrue(
+            bucket.metadata.soft_delete_policy.HasField("effective_time"),
+            msg=f"{bucket.metadata.soft_delete_policy}"
+        )
+        self.assertLess(0, bucket.metadata.metageneration)
+
+        rest = bucket.rest()
+        rest_policy = rest.get("softDeletePolicy", dict())
+        self.assertIn("retentionDurationSeconds", rest_policy)
+        self.assertIn("effectiveTime", rest_policy)
+        self.assertEqual(rest_policy["retentionDurationSeconds"], str(30 * 86400))
+
 
 if __name__ == "__main__":
     unittest.main()

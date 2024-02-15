@@ -44,6 +44,7 @@ class Bucket:
         "encryption",
         "billing",
         "retention_policy",
+        "soft_delete_policy",
         "location_type",
         "iam_config",
         "rpo",
@@ -191,6 +192,25 @@ class Bucket:
         )
 
     @classmethod
+    def __preprocess_rest_soft_delete_retention_duration(cls, rp):
+        # The JSON representation for a proto duration is a string in basically
+        # this format "%{seconds + nanos/1'000'000'000.0}s". For this field
+        # type the nanos should always be zero.
+        return f"{rp}s"
+
+    @classmethod
+    def __preprocess_rest_soft_delete_policy(cls, rp):
+        return testbench.common.rest_adjust(
+            rp,
+            {
+                "retentionDurationSeconds": lambda x: (
+                    "retentionDuration",
+                    Bucket.__preprocess_rest_soft_delete_retention_duration(x),
+                ),
+            },
+        )
+
+    @classmethod
     def __preprocess_rest(cls, rest):
         rest = testbench.common.rest_adjust(
             rest,
@@ -217,6 +237,10 @@ class Bucket:
                 "retentionPolicy": lambda x: (
                     "retentionPolicy",
                     Bucket.__preprocess_rest_retention_policy(x),
+                ),
+                "softDeletePolicy": lambda x: (
+                    "softDeletePolicy",
+                    Bucket.__preprocess_rest_soft_delete_policy(x),
                 ),
             },
         )
@@ -286,6 +310,26 @@ class Bucket:
         metadata.etag = cls._metadata_etag(metadata)
 
     @classmethod
+    def __validate_soft_delete_policy(cls, metadata, context):
+        if not metadata.HasField("soft_delete_policy"):
+            return
+        policy = metadata.soft_delete_policy
+        if policy.retention_duration.nanos != 0:
+            testbench.error.invalid(
+                "SoftDeletePolicy.retention_duration should not have nanoseconds",
+                context,
+            )
+        if policy.retention_duration.ToSeconds() < 7 * 86400:
+            testbench.error.invalid(
+                "SoftDeletePolicy.retention_duration should be at least 7 days", context
+            )
+        if policy.retention_duration.ToSeconds() >= 365 * 86400:
+            testbench.error.invalid(
+                "SoftDeletePolicy.retention_duration should be at less than a year",
+                context,
+            )
+
+    @classmethod
     def init(cls, request, context):
         metadata = cls.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(metadata, storage_pb2.Bucket())
@@ -329,6 +373,11 @@ class Bucket:
         metadata.iam_config.uniform_bucket_level_access.enabled = is_uniform
         metadata.bucket_id = testbench.common.bucket_name_from_proto(metadata.name)
         metadata.project = "projects/" + testbench.acl.PROJECT_NUMBER
+        if metadata.HasField("soft_delete_policy"):
+            metadata.soft_delete_policy.effective_time.FromDatetime(
+                datetime.datetime.now()
+            )
+        cls.__validate_soft_delete_policy(metadata, context)
         return (
             cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
             testbench.common.extract_projection(request, default_projection, context),
@@ -364,6 +413,11 @@ class Bucket:
         cls.__insert_predefined_default_object_acl(
             metadata, predefined_default_object_acl, context
         )
+        if metadata.HasField("soft_delete_policy"):
+            metadata.soft_delete_policy.effective_time.FromDatetime(
+                datetime.datetime.now()
+            )
+        cls.__validate_soft_delete_policy(metadata, context)
         return (cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl")
 
     # === IAM === #
@@ -430,8 +484,12 @@ class Bucket:
             update_mask = field_mask_pb2.FieldMask(paths=Bucket.modifiable_fields)
         update_mask.MergeMessage(source, self.metadata, True, True)
         now = datetime.datetime.now()
-        if "autoclass" in update_mask.paths:
+        if "autoclass" in update_mask.paths and source.HasField("autoclass"):
             self.metadata.autoclass.toggle_time.FromDatetime(now)
+        if "soft_delete_policy" in update_mask.paths and source.HasField(
+            "soft_delete_policy"
+        ):
+            self.metadata.soft_delete_policy.effective_time.FromDatetime(now)
         self.metadata.metageneration += 1
         self.metadata.update_time.FromDatetime(now)
         self.metadata.etag = Bucket._metadata_etag(self.metadata)
@@ -441,6 +499,7 @@ class Bucket:
         assert context is None
         data = self.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(data, storage_pb2.Bucket())
+        Bucket.__validate_soft_delete_policy(metadata, context)
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
@@ -460,6 +519,7 @@ class Bucket:
             testbench.common.rest_patch(self.rest(), json.loads(request.data))
         )
         metadata = json_format.ParseDict(rest, storage_pb2.Bucket())
+        Bucket.__validate_soft_delete_policy(metadata, context)
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,

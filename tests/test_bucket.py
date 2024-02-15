@@ -20,6 +20,8 @@ import json
 import unittest
 
 from google.protobuf import json_format
+import google.protobuf.duration_pb2 as duration_pb2
+import google.protobuf.timestamp_pb2 as timestamp_pb2
 
 import gcs
 import testbench
@@ -537,6 +539,69 @@ class TestBucket(unittest.TestCase):
         )
         bucket.patch(request, None)
         self.assertEqual(bucket.metadata.rpo, "ASYNC_TURBO")
+
+    def test_soft_delete(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 86400},
+                }
+            ),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        expected = duration_pb2.Duration()
+        expected.FromSeconds(7 * 86400)
+        self.assertEqual(
+            bucket.metadata.soft_delete_policy.retention_duration, expected
+        )
+        self.assertNotEqual(
+            bucket.metadata.soft_delete_policy.effective_time, timestamp_pb2.Timestamp()
+        )
+        request = testbench.common.FakeRequest(
+            args={"bucket": "bucket"},
+            data=json.dumps(
+                {"softDeletePolicy": {"retentionDurationSeconds": 30 * 86400}}
+            ),
+        )
+        bucket.patch(request, None)
+        expected = duration_pb2.Duration()
+        expected.FromSeconds(30 * 86400)
+        self.assertEqual(
+            bucket.metadata.soft_delete_policy.retention_duration, expected
+        )
+        self.assertNotEqual(
+            bucket.metadata.soft_delete_policy.effective_time, timestamp_pb2.Timestamp()
+        )
+
+    def test_soft_delete_too_short(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "softDeletePolicy": {"retentionDurationSeconds": 1 * 86400},
+                }
+            ),
+        )
+        with self.assertRaises(testbench.error.RestException) as rest:
+            bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(rest.exception.code, 400)
+
+    def test_soft_delete_too_long(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "softDeletePolicy": {"retentionDurationSeconds": 700 * 86400},
+                }
+            ),
+        )
+        with self.assertRaises(testbench.error.RestException) as rest:
+            bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(rest.exception.code, 400)
 
     def test_cdr(self):
         request = testbench.common.FakeRequest(
