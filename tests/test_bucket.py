@@ -19,9 +19,9 @@
 import json
 import unittest
 
-from google.protobuf import json_format
 import google.protobuf.duration_pb2 as duration_pb2
 import google.protobuf.timestamp_pb2 as timestamp_pb2
+from google.protobuf import json_format
 
 import gcs
 import testbench
