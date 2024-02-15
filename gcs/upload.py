@@ -296,7 +296,9 @@ class Upload(types.SimpleNamespace):
                 if upload.complete:
                     # Resuming an already finalized object will result with a response
                     # containing the uploaded object's metadata.
-                    yield storage_pb2.BidiWriteObjectResponse(resource=upload.blob.metadata)
+                    yield storage_pb2.BidiWriteObjectResponse(
+                        resource=upload.blob.metadata
+                    )
                 is_resumable = True
             elif (
                 first_message == "write_object_spec"
