@@ -286,9 +286,6 @@ class Upload(types.SimpleNamespace):
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
         upload, object_checksums, is_resumable = None, None, False
-        # Currently, the testbench will checkpoint and flush the data to upload.media per request for testing purposes,
-        # instead of the 15 seconds interval used in the GCS server.
-        should_checkpoint_session = True
         for request in request_iterator:
             first_message = request.WhichOneof("first_message")
             if first_message == "upload_id":  # resumable upload
@@ -351,24 +348,28 @@ class Upload(types.SimpleNamespace):
             # The testbench should ignore any request bytes that have already been persisted,
             # thus we validate write_offset against persisted_size.
             # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-            if request.flush or should_checkpoint_session:
-                if request.write_offset < len(upload.media):
-                    range_start = len(upload.media) - request.write_offset
-                    content = testbench.common.partial_media(
-                        content, range_end=len(content), range_start=range_start
-                    )
-                upload.media += content
+            if request.write_offset < len(upload.media):
+                range_start = len(upload.media) - request.write_offset
+                content = testbench.common.partial_media(
+                    content, range_end=len(content), range_start=range_start
+                )
+            # Currently, the testbench will always checkpoint and flush data for testing purposes,
+            # instead of the 15 seconds interval used in the GCS server.
+            # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
+            upload.media += content
             if request.finish_write:
                 upload.complete = True
-            if request.state_lookup:
+            elif request.state_lookup:
+                # For uploads not yet completed, yield response with persisted_size.
+                # For uploads that are complete, finalize the upload outside the request loop by
+                # storing full object checksums, creating new object, and yielding response with
+                # object metadata.
                 yield storage_pb2.BidiWriteObjectResponse(
                     persisted_size=len(upload.media)
                 )
 
         if upload is None:
-            return testbench.error.invalid(
-                "Upload missing a first_message field", context
-            )
+            return testbench.error.invalid("Missing BidiWriteObjectRequest", context)
         if object_checksums is None:
             upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
