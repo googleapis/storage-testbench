@@ -234,6 +234,27 @@ class TestBucketGrpc(unittest.TestCase):
         self.assertIn("effectiveTime", rest_policy)
         self.assertEqual(rest_policy["retentionDurationSeconds"], str(30 * 86400))
 
+    def test_init_grpc_soft_delete_policy_nanos_are_invalid(self):
+        policy = storage_pb2.Bucket.SoftDeletePolicy()
+        policy.retention_duration.FromTimedelta(
+            datetime.timedelta(seconds=30 * 86400, milliseconds=500)
+        )
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/_",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                project="project/test-project",
+                soft_delete_policy=policy,
+            ),
+        )
+        context = unittest.mock.Mock()
+        context.abort.side_effect = TestBucketGrpc._raise_grpc_error
+        with self.assertRaises(Exception) as _:
+            _, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
