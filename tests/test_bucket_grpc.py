@@ -219,11 +219,12 @@ class TestBucketGrpc(unittest.TestCase):
         self.assertEqual(bucket.metadata.name, "projects/_/buckets/test-bucket-name")
         self.assertEqual(bucket.metadata.bucket_id, "test-bucket-name")
         self.assertEqual(
-            bucket.metadata.soft_delete_policy.retention_duration, policy.retention_duration
+            bucket.metadata.soft_delete_policy.retention_duration,
+            policy.retention_duration,
         )
         self.assertTrue(
             bucket.metadata.soft_delete_policy.HasField("effective_time"),
-            msg=f"{bucket.metadata.soft_delete_policy}"
+            msg=f"{bucket.metadata.soft_delete_policy}",
         )
         self.assertLess(0, bucket.metadata.metageneration)
 
