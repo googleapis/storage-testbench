@@ -26,6 +26,8 @@ from google.protobuf import json_format
 import testbench
 from google.storage.v2 import storage_pb2
 
+from . import object
+
 
 class Upload(types.SimpleNamespace):
     """Holds data during an upload.
@@ -279,6 +281,136 @@ class Upload(types.SimpleNamespace):
         else:
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
         return upload, is_resumable
+
+    @classmethod
+    def process_bidi_write_object_grpc(cls, db, request_iterator, context):
+        """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
+        upload, object_checksums, is_resumable = None, None, False
+        for request in request_iterator:
+            first_message = request.WhichOneof("first_message")
+            if first_message == "upload_id":  # resumable upload
+                upload = db.get_upload(request.upload_id, context)
+                if upload.complete:
+                    # Resuming an already finalized object will result with a response
+                    # containing the uploaded object's metadata.
+                    yield storage_pb2.BidiWriteObjectResponse(
+                        resource=upload.blob.metadata
+                    )
+                is_resumable = True
+            elif (
+                first_message == "write_object_spec"
+            ):  # one shot upload (non-resumable)
+                bucket = db.get_bucket(
+                    request.write_object_spec.resource.bucket, context
+                ).metadata
+                upload = cls.__init_first_write_grpc(request, bucket, context)
+            elif upload is None:
+                return testbench.error.invalid(
+                    "Upload missing a first_message field", context
+                )
+
+            if request.HasField("object_checksums"):
+                # The object checksums may appear only in the first message *or* the last message, but not both
+                if first_message is None and request.finish_write == False:
+                    return testbench.error.invalid(
+                        "Object checksums can be included only in the first or last message",
+                        context,
+                    )
+                if object_checksums is not None:
+                    return testbench.error.invalid(
+                        "Duplicate object checksums in upload",
+                        context,
+                    )
+                object_checksums = request.object_checksums
+
+            data = request.WhichOneof("data")
+            if data == "checksummed_data":
+                checksummed_data = request.checksummed_data
+            elif data is None and request.finish_write:
+                # Handles final message with no data to insert.
+                upload.complete = True
+                continue
+
+            content = checksummed_data.content
+            crc32c_hash = (
+                checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None
+            )
+            if crc32c_hash is not None:
+                actual_crc32c = crc32c.crc32c(content)
+                if actual_crc32c != crc32c_hash:
+                    return testbench.error.mismatch(
+                        "crc32c in checksummed data",
+                        crc32c_hash,
+                        actual_crc32c,
+                        context,
+                    )
+
+            # The testbench should ignore any request bytes that have already been persisted,
+            # thus we validate write_offset against persisted_size.
+            # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+            if request.write_offset < len(upload.media):
+                range_start = len(upload.media) - request.write_offset
+                content = testbench.common.partial_media(
+                    content, range_end=len(content), range_start=range_start
+                )
+            # Currently, the testbench will always checkpoint and flush data for testing purposes,
+            # instead of the 15 seconds interval used in the GCS server.
+            # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
+            upload.media += content
+            if request.finish_write:
+                upload.complete = True
+            elif request.state_lookup:
+                # For uploads not yet completed, yield response with persisted_size.
+                # For uploads that are complete, finalize the upload outside the request loop by
+                # storing full object checksums, creating new object, and yielding response with
+                # object metadata.
+                yield storage_pb2.BidiWriteObjectResponse(
+                    persisted_size=len(upload.media)
+                )
+
+        if upload is None:
+            return testbench.error.invalid("Missing BidiWriteObjectRequest", context)
+        if object_checksums is None:
+            upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
+            upload.metadata.metadata["x_emulator_no_md5"] = "true"
+        else:
+            if object_checksums.HasField("crc32c"):
+                upload.metadata.metadata[
+                    "x_emulator_crc32c"
+                ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+            else:
+                upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
+            if (
+                object_checksums.md5_hash is not None
+                and object_checksums.md5_hash != b""
+            ):
+                upload.metadata.metadata[
+                    "x_emulator_md5"
+                ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+            else:
+                upload.metadata.metadata["x_emulator_no_md5"] = "true"
+
+        # Create a new object when the write is completed.
+        if upload.complete:
+            blob, _ = object.Object.init(
+                upload.request,
+                upload.metadata,
+                upload.media,
+                upload.bucket,
+                False,
+                context,
+            )
+            upload.blob = blob
+            db.insert_object(
+                upload.bucket.name,
+                blob,
+                context=context,
+                preconditions=upload.preconditions,
+            )
+            yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
+        else:
+            if not is_resumable:
+                return testbench.error.missing("finish_write in request", context)
 
     def resumable_status_rest(self, override_308=False):
         response = flask.make_response()

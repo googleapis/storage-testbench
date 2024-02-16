@@ -702,6 +702,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return storage_pb2.WriteObjectResponse(resource=blob.metadata)
 
+    def BidiWriteObject(self, request_iterator, context):
+        return gcs.upload.Upload.process_bidi_write_object_grpc(
+            self.db, request_iterator, context
+        )
+
     @retry_test(method="storage.objects.list")
     def ListObjects(self, request, context):
         items, prefixes = self.db.list_object(request, request.parent, context)

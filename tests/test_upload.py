@@ -694,6 +694,302 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(upload.metadata.name, "object")
         self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
 
+    def test_process_bidi_write_grpc_resumable(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        context = self.mock_context()
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, context
+        )
+
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=True,
+        )
+        db = unittest.mock.Mock()
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+
+        context = self.mock_context()
+        streamer = gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context)
+        responses = list(streamer)
+        blob = responses[0].resource
+        self.assertEqual(blob.name, "object")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+        # Test resuming an already finalized object will result with
+        # a response containing the finalized object's metadata.
+        context = self.mock_context()
+        streamer = gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context)
+        responses = list(streamer)
+        blob = responses[0].resource
+        self.assertEqual(blob.name, "object")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_process_bidi_write_grpc_missing_first_message(self):
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=True,
+        )
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_missing_finish_write(self):
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=False,
+        )
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_missing_checksum_at_invalid_place(self):
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=False,
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=len(line),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            object_checksums=storage_pb2.ObjectChecksums(
+                crc32c=crc32c.crc32c(b"".join(3 * [line]))
+            ),
+            finish_write=False,
+        )
+        r3 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=2 * len(line),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=True,
+        )
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(
+            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1, r2, r3], context)
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_checksum_duplicated(self):
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            object_checksums=storage_pb2.ObjectChecksums(
+                crc32c=crc32c.crc32c(b"".join(3 * [line]))
+            ),
+            finish_write=False,
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=len(line),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=False,
+        )
+        r3 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=2 * len(line),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            object_checksums=storage_pb2.ObjectChecksums(
+                crc32c=crc32c.crc32c(b"".join(3 * [line]))
+            ),
+            finish_write=True,
+        )
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(
+            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1, r2, r3], context)
+        )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_invalid_checksum(self):
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            ),
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(2 * line)
+            ),
+            object_checksums=storage_pb2.ObjectChecksums(
+                crc32c=crc32c.crc32c(b"".join(3 * [line]))
+            ),
+            finish_write=True,
+        )
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_checksums(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        proto_crc32c = crc32c.crc32c(media)
+        proto_md5_hash = hashlib.md5(media).digest()
+
+        TEST_CASES = {
+            "both": {
+                "checksums": storage_pb2.ObjectChecksums(
+                    crc32c=proto_crc32c, md5_hash=proto_md5_hash
+                ),
+                "expected": {
+                    "x_emulator_crc32c": testbench.common.rest_crc32c_from_proto(
+                        proto_crc32c
+                    ),
+                    "x_emulator_md5": testbench.common.rest_md5_from_proto(
+                        proto_md5_hash
+                    ),
+                },
+            },
+            "only md5": {
+                "checksums": storage_pb2.ObjectChecksums(md5_hash=proto_md5_hash),
+                "expected": {
+                    "x_emulator_md5": testbench.common.rest_md5_from_proto(
+                        proto_md5_hash
+                    ),
+                    "x_emulator_no_crc32c": "true",
+                },
+            },
+            "only crc32c": {
+                "checksums": storage_pb2.ObjectChecksums(crc32c=proto_crc32c),
+                "expected": {
+                    "x_emulator_crc32c": testbench.common.rest_crc32c_from_proto(
+                        proto_crc32c
+                    ),
+                    "x_emulator_no_md5": "true",
+                },
+            },
+        }
+        for name, test in TEST_CASES.items():
+            request = testbench.common.FakeRequest(
+                args={}, data=json.dumps({"name": "bucket-name"})
+            )
+            bucket, _ = gcs.bucket.Bucket.init(request, None)
+            spec = storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"},
+            )
+            request = storage_pb2.BidiWriteObjectRequest(
+                write_object_spec=spec,
+                write_offset=0,
+                object_checksums=test["checksums"],
+                finish_write=True,
+            )
+
+            context = self.mock_context()
+            db = unittest.mock.Mock()
+            db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+            responses = list(
+                gcs.upload.Upload.process_bidi_write_object_grpc(db, [request], context)
+            )
+            # Verify the annotations inserted by the testbench.
+            annotations = responses[0].resource.metadata
+            expected = test["expected"]
+            self.maxDiff = None
+            self.assertEqual(
+                annotations,
+                {**annotations, **expected},
+                msg="Testing with %s checksums" % name,
+            )
+
+    def test_process_bidi_write_grpc_empty(self):
+        db = unittest.mock.Mock()
+        context = self.mock_context()
+        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
+
+    def test_process_bidi_write_grpc_final_message_empty_data(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        context = self.mock_context()
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, context
+        )
+
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+            finish_write=False,
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=len(line),
+            finish_write=True,
+        )
+        context = self.mock_context()
+        db = unittest.mock.Mock()
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+        responses = list(
+            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1, r2], context)
+        )
+        blob = responses[0].resource
+        self.assertEqual(blob.name, "object")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
 
 if __name__ == "__main__":
     unittest.main()
