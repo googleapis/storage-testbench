@@ -151,6 +151,25 @@ def __postprocess_rest_retention_policy(data):
     )
 
 
+def __postprocess_rest_soft_delete_policy_duration(data: str):
+    # The string is in the canonical JSON representation for proto durations,
+    # that is: "%{seconds + nanos/1'000'000'000}s", we are just going to
+    # ignore the nanos and return this as a string.
+    return str(int(data[:-1]))
+
+
+def __postprocess_rest_soft_delete_policy(data):
+    return testbench.common.rest_adjust(
+        data,
+        {
+            "retentionDuration": lambda x: (
+                "retentionDurationSeconds",
+                __postprocess_rest_soft_delete_policy_duration(x),
+            )
+        },
+    )
+
+
 def __postprocess_bucket_rest(data):
     bucket_id = testbench.common.bucket_name_from_proto(data["name"])
     data = testbench.common.rest_adjust(
@@ -184,6 +203,10 @@ def __postprocess_bucket_rest(data):
             "retentionPolicy": lambda x: (
                 "retentionPolicy",
                 __postprocess_rest_retention_policy(x),
+            ),
+            "softDeletePolicy": lambda x: (
+                "softDeletePolicy",
+                __postprocess_rest_soft_delete_policy(x),
             ),
         },
     )
