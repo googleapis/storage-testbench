@@ -323,9 +323,9 @@ class Bucket:
             testbench.error.invalid(
                 "SoftDeletePolicy.retention_duration should be at least 7 days", context
             )
-        if policy.retention_duration.ToSeconds() >= 365 * 86400:
+        if policy.retention_duration.ToSeconds() >= 90 * 86400:
             testbench.error.invalid(
-                "SoftDeletePolicy.retention_duration should be at less than a year",
+                "SoftDeletePolicy.retention_duration should be less than 90 days",
                 context,
             )
 
