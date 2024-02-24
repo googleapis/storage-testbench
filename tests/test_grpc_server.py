@@ -599,6 +599,28 @@ class TestGrpc(unittest.TestCase):
 
         policy = storage_pb2.Bucket.SoftDeletePolicy()
         policy.retention_duration.FromTimedelta(
+            datetime.timedelta(seconds=60 * 86400)
+        )
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/test-bucket-name",
+                soft_delete_policy=policy,
+            ),
+            if_metageneration_match=response.metageneration,
+            update_mask=field_mask_pb2.FieldMask(paths=["soft_delete_policy"]),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateBucket(request, context)
+        context.abort.assert_not_called()
+        self.assertEqual(
+            response.soft_delete_policy.retention_duration, policy.retention_duration
+        )
+        self.assertNotEqual(
+            response.soft_delete_policy.effective_time, timestamp_pb2.Timestamp()
+        )
+
+        policy = storage_pb2.Bucket.SoftDeletePolicy()
+        policy.retention_duration.FromTimedelta(
             datetime.timedelta(seconds=30 * 86400, milliseconds=500)
         )
         request = storage_pb2.UpdateBucketRequest(
