@@ -243,7 +243,7 @@ class TestBucketGrpc(unittest.TestCase):
             parent="projects/_",
             bucket_id="test-bucket-name",
             bucket=storage_pb2.Bucket(
-                project="project/test-project",
+                project="projects/test-project",
                 soft_delete_policy=policy,
             ),
         )

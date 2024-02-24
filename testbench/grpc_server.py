@@ -339,6 +339,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             bucket.metadata.labels.update(updated_labels)
             for k in removed_label_keys:
                 bucket.metadata.labels.pop(k, None)
+        if "soft_delete_policy" in request.update_mask.paths:
+            gcs.bucket.Bucket.validate_soft_delete_policy(bucket.metadata, context)
+            bucket.metadata.soft_delete_policy.effective_time.FromDateTime(now)
         bucket.metadata.metageneration += 1
         bucket.metadata.update_time.FromDatetime(now)
         return bucket.metadata

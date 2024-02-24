@@ -16,6 +16,7 @@
 
 """Unit test for testbench.grpc."""
 
+import datetime
 import json
 import os
 import unittest
@@ -23,7 +24,7 @@ import unittest.mock
 
 import crc32c
 import grpc
-from google.protobuf import field_mask_pb2
+from google.protobuf import field_mask_pb2, timestamp_pb2
 
 import gcs
 import testbench
@@ -577,6 +578,45 @@ class TestGrpc(unittest.TestCase):
         context.abort.assert_not_called()
         self.assertEqual(response.acl, new_acl)
         self.assertEqual(response.default_object_acl, new_default_object_acl)
+
+    def test_update_bucket_soft_delete(self):
+        policy = storage_pb2.Bucket.SoftDeletePolicy()
+        policy.retention_duration.FromTimedelta(datetime.timedelta(seconds=30 * 86400))
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(soft_delete_policy=policy),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.CreateBucket(request, context)
+        context.abort.assert_not_called()
+        self.assertEqual(
+            response.soft_delete_policy.retention_duration, policy.retention_duration
+        )
+        self.assertNotEqual(
+            response.soft_delete_policy.effective_time, timestamp_pb2.Timestamp()
+        )
+
+        policy = storage_pb2.Bucket.SoftDeletePolicy()
+        policy.retention_duration.FromTimedelta(
+            datetime.timedelta(seconds=30 * 86400, milliseconds=500)
+        )
+        request = storage_pb2.UpdateBucketRequest(
+            bucket=storage_pb2.Bucket(
+                name="projects/_/buckets/test-bucket-name",
+                soft_delete_policy=policy,
+            ),
+            if_metageneration_match=response.metageneration,
+            update_mask=field_mask_pb2.FieldMask(paths=["soft_delete_policy"]),
+        )
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            _ = self.grpc.UpdateBucket(request, context)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+        )
 
     def test_delete_notification(self):
         context = unittest.mock.Mock()

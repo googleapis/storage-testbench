@@ -310,7 +310,7 @@ class Bucket:
         metadata.etag = cls._metadata_etag(metadata)
 
     @classmethod
-    def __validate_soft_delete_policy(cls, metadata, context):
+    def validate_soft_delete_policy(cls, metadata, context):
         if not metadata.HasField("soft_delete_policy"):
             return
         policy = metadata.soft_delete_policy
@@ -377,7 +377,7 @@ class Bucket:
             metadata.soft_delete_policy.effective_time.FromDatetime(
                 datetime.datetime.now()
             )
-        cls.__validate_soft_delete_policy(metadata, context)
+        cls.validate_soft_delete_policy(metadata, context)
         return (
             cls(metadata, {}, cls.__init_iam_policy(metadata, context)),
             testbench.common.extract_projection(request, default_projection, context),
@@ -417,7 +417,7 @@ class Bucket:
             metadata.soft_delete_policy.effective_time.FromDatetime(
                 datetime.datetime.now()
             )
-        cls.__validate_soft_delete_policy(metadata, context)
+        cls.validate_soft_delete_policy(metadata, context)
         return (cls(metadata, {}, cls.__init_iam_policy(metadata, context)), "noAcl")
 
     # === IAM === #
@@ -499,7 +499,7 @@ class Bucket:
         assert context is None
         data = self.__preprocess_rest(json.loads(request.data))
         metadata = json_format.ParseDict(data, storage_pb2.Bucket())
-        Bucket.__validate_soft_delete_policy(metadata, context)
+        Bucket.validate_soft_delete_policy(metadata, context)
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
@@ -519,7 +519,7 @@ class Bucket:
             testbench.common.rest_patch(self.rest(), json.loads(request.data))
         )
         metadata = json_format.ParseDict(rest, storage_pb2.Bucket())
-        Bucket.__validate_soft_delete_policy(metadata, context)
+        Bucket.validate_soft_delete_policy(metadata, context)
         self.__update_metadata(metadata, None)
         self.__insert_predefined_acl(
             metadata,
