@@ -598,9 +598,7 @@ class TestGrpc(unittest.TestCase):
         )
 
         policy = storage_pb2.Bucket.SoftDeletePolicy()
-        policy.retention_duration.FromTimedelta(
-            datetime.timedelta(seconds=60 * 86400)
-        )
+        policy.retention_duration.FromTimedelta(datetime.timedelta(seconds=60 * 86400))
         request = storage_pb2.UpdateBucketRequest(
             bucket=storage_pb2.Bucket(
                 name="projects/_/buckets/test-bucket-name",
