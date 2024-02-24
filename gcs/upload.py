@@ -210,6 +210,7 @@ class Upload(types.SimpleNamespace):
             else:
                 print("WARNING unexpected data field %s\n" % data)
                 continue
+
             content = checksummed_data.content
             crc32c_hash = (
                 checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None
@@ -329,6 +330,9 @@ class Upload(types.SimpleNamespace):
             elif data is None and request.finish_write:
                 # Handles final message with no data to insert.
                 upload.complete = True
+                continue
+            else:
+                print("WARNING unexpected data field %s\n" % data)
                 continue
 
             content = checksummed_data.content

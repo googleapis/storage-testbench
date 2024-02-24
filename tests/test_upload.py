@@ -694,6 +694,40 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(upload.metadata.name, "object")
         self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
 
+    def test_init_object_write_grpc_message_empty_data(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        context = self.mock_context()
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, context
+        )
+
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            finish_write=False,
+        )
+
+        context = self.mock_context()
+        db = unittest.mock.Mock()
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+        upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(
+            db, [r1], context
+        )
+        self.assertIsNotNone(upload)
+        self.assertFalse(upload.complete)
+        self.assertTrue(is_resumable)
+        self.assertEqual(upload.metadata.name, "object")
+        self.assertEqual(upload.metadata.bucket, "projects/_/buckets/bucket-name")
+
     def test_process_bidi_write_grpc_resumable(self):
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket-name"})
@@ -989,6 +1023,36 @@ class TestHolder(unittest.TestCase):
         blob = responses[0].resource
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+        self.assertTrue(upload.complete)
+
+    def test_process_bidi_write_grpc_message_empty_data(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        context = self.mock_context()
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, context
+        )
+
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            finish_write=False,
+        )
+        context = self.mock_context()
+        db = unittest.mock.Mock()
+        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+        responses = list(
+            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context)
+        )
+        self.assertFalse(upload.complete)
 
 
 if __name__ == "__main__":
