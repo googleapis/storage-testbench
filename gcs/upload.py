@@ -24,9 +24,8 @@ import flask
 from google.protobuf import json_format
 
 import testbench
+import gcs
 from google.storage.v2 import storage_pb2
-
-from . import object
 
 
 class Upload(types.SimpleNamespace):
@@ -392,7 +391,7 @@ class Upload(types.SimpleNamespace):
 
         # Create a new object when the write is completed.
         if upload.complete:
-            blob, _ = object.Object.init(
+            blob, _ = gcs.object.Object.init(
                 upload.request,
                 upload.metadata,
                 upload.media,
