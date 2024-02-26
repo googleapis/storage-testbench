@@ -208,8 +208,8 @@ class Upload(types.SimpleNamespace):
                 upload.complete = True
                 continue
             else:
-                print("WARNING unexpected data field %s\n" % data)
-                continue
+                testbench.error.invalid("Invalid data field in upload", context)
+                return None, False
 
             content = checksummed_data.content
             crc32c_hash = (
@@ -332,8 +332,7 @@ class Upload(types.SimpleNamespace):
                 upload.complete = True
                 continue
             else:
-                print("WARNING unexpected data field %s\n" % data)
-                continue
+                return testbench.error.invalid("Invalid data field in upload", context)
 
             content = checksummed_data.content
             crc32c_hash = (
