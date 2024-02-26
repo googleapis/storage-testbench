@@ -46,7 +46,6 @@ class TestTestbenchObjectGzip(unittest.TestCase):
 
     def _insert_compressed_object(self, name):
         media = "How vexingly quick daft zebras jump!"
-        compressed = gzip.compress(media.encode("utf-8"))
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={
@@ -55,7 +54,7 @@ class TestTestbenchObjectGzip(unittest.TestCase):
                 "contentEncoding": "gzip",
             },
             content_type="application/octet-stream",
-            data=compressed,
+            data=gzip.compress(media.encode("utf-8")),
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
@@ -89,7 +88,7 @@ class TestTestbenchObjectGzip(unittest.TestCase):
             headers={"Accept-Encoding": "gzip"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, gzip.compress(media.encode("utf-8")))
+        self.assertEqual(gzip.decompress(response.data), media.encode("utf-8"))
         self.assertEqual(
             response.headers.get("x-guploader-response-body-transformations", ""), ""
         )
@@ -138,7 +137,7 @@ class TestTestbenchObjectGzip(unittest.TestCase):
             headers={"Accept-Encoding": "gzip"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, gzip.compress(media.encode("utf-8")))
+        self.assertEqual(gzip.decompress(response.data), media.encode("utf-8"))
         self.assertEqual(
             response.headers.get("x-guploader-response-body-transformations", ""),
             "",
@@ -149,9 +148,8 @@ class TestTestbenchObjectGzip(unittest.TestCase):
 
     def test_download_of_multipart_upload(self):
         media = "How vexingly quick daft zebras jump!"
-        compressed = gzip.compress(media.encode("utf-8"))
         boundary, payload = format_multipart_upload_bytes(
-            {"contentEncoding": "gzip"}, compressed
+            {"contentEncoding": "gzip"}, gzip.compress(media.encode("utf-8"))
         )
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
@@ -182,7 +180,6 @@ class TestTestbenchObjectGzip(unittest.TestCase):
 
     def test_download_of_resumable_upload(self):
         media = "How vexingly quick daft zebras jump!"
-        compressed = gzip.compress(media.encode("utf-8"))
 
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
@@ -200,7 +197,7 @@ class TestTestbenchObjectGzip(unittest.TestCase):
         finalized = self.client.put(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
-            data=compressed,
+            data=gzip.compress(media.encode("utf-8")),
         )
         self.assertEqual(finalized.status_code, 200)
         self.assertTrue(
