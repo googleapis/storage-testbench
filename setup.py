@@ -49,7 +49,7 @@ setuptools.setup(
         "flask==3.0.2",
         "requests-toolbelt==1.0.0",
         "scalpl==0.4.2",
-        "crc32c==2.3",
+        "crc32c==2.4",
         "gunicorn==21.2.0",
         "waitress==3.0.0",
         "Werkzeug==3.0.1",
