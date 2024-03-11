@@ -45,7 +45,7 @@ jobs:
           pytest --cov=./ --cov-report=xml
       - name: Upload coverage to Codecov
         if: ${{ matrix.python-version == '3.12' }}
-        uses: Wandalen/wretry.action@v1.4.8
+        uses: Wandalen/wretry.action@v1.4.9
         with:
           action: codecov/codecov-action@v3
           with: |
