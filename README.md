@@ -129,18 +129,7 @@ cd $HOME/storage-testbench
 git -C $HOME clone https://github.com/googleapis/googleapis
 
 pip install grpcio-tools
-python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=. --grpc_python_out=. \
-    $HOME/googleapis/google/iam/v1/iam_policy.proto
-python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=. --grpc_python_out=. \
-    $HOME/googleapis/google/iam/v1/options.proto
-python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=. --grpc_python_out=. \
-    $HOME/googleapis/google/iam/v1/policy.proto
-python -m grpc_tools.protoc -I$HOME/googleapis \
-    --python_out=. --grpc_python_out=. \
-    $HOME/googleapis/google/storage/v2/storage.proto
+./update-protos.sh $HOME/googleapis
 ```
 
 Then commit the files generated in `google/**`:
