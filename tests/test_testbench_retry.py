@@ -787,8 +787,8 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
 
     def test_grpc_bidiwrite_return_error_after_bytes(self):
-        # Setup two after-bytes errors to test injecting failures in
-        # resumable uploads, both multiple chunks and a single chunk.
+        # Setup an initial-response error and two after-bytes errors to test injecting
+        # failures in resumable uploads, both multiple chunks and a single chunk.
         response = self.rest_client.post(
             "/retry_test",
             data=json.dumps(
