@@ -786,6 +786,80 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
 
+    def test_grpc_bidiwrite_return_error_after_bytes(self):
+        # Setup an initial-response error and two after-bytes errors to test injecting
+        # failures in resumable uploads, both multiple chunks and a single chunk.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-503",
+                            "return-503-after-256K",
+                            "return-503-after-300K",
+                        ]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", id),)
+        )
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+            context=context,
+        )
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+        self.assertIsNotNone(start.upload_id)
+
+        # Upload the first 256KiB chunk of data and trigger error.
+        content = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+        list(self.grpc.BidiWriteObject([r1], context))
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+
+        # Send a full object upload here to verify testbench can
+        # (1) trigger error_after_bytes instructions,
+        # (2) ignore duplicate request bytes and
+        # (3) return a forced failure with partial data.
+        media = self._create_block(2 * UPLOAD_QUANTUM).encode("utf-8")
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=media, crc32c=crc32c.crc32c(media)
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context)
+        responses = list(streamer)
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+        blob = responses[0].resource
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
+
 
 if __name__ == "__main__":
     unittest.main()
