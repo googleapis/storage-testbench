@@ -795,6 +795,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
                 {
                     "instructions": {
                         "storage.objects.insert": [
+                            "return-503",
                             "return-503-after-256K",
                             "return-503-after-300K",
                         ]
@@ -822,6 +823,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             ),
             context=context,
         )
+        context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
         self.assertIsNotNone(start.upload_id)
 
         # Upload the first 256KiB chunk of data and trigger error.
