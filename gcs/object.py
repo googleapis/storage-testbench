@@ -369,6 +369,8 @@ class Object:
                 begin = int(m.group(1))
                 end = int(m.group(2)) + 1
                 response_payload = response_payload[begin:end]
+                # Ensure end is correct if the specified byte range was truncated.
+                end = begin + len(response_payload)
             m = re.match("bytes=([0-9]+)-$", range_header)
             if m:
                 begin = int(m.group(1))
