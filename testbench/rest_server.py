@@ -1072,7 +1072,7 @@ def resumable_upload_chunk(bucket_name):
             if instruction == "return-503-after-256K":
                 error_code = 503
                 after_bytes = 262144
-            testbench.common.handle_retry_uploads_error_after_bytes(
+            res = testbench.common.handle_retry_uploads_error_after_bytes(
                 upload,
                 data,
                 db,
@@ -1083,6 +1083,8 @@ def resumable_upload_chunk(bucket_name):
                 chunk_last_byte,
                 test_id,
             )
+            if res == 308:
+                return upload.resumable_status_rest()
         # The testbench should ignore any request bytes that have already been persisted,
         # to be aligned with GCS behavior (https://cloud.google.com/storage/docs/resumable-uploads#resent-data).
         # Thus we validate chunk_first_byte against last_byte_persisted.

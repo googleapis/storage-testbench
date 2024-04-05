@@ -917,9 +917,9 @@ def handle_retry_uploads_error_after_bytes(
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
         if error_code == 308:
-            print(f"got here error code is {error_code}")
-            print(f"data persisted is len(upload.media): {len(upload.media)}")
-            return upload.resumable_status_rest()
+            print(f"!!debug!! error code is {error_code}")
+            print(f"!!debug!! data persisted is len(upload.media): {len(upload.media)}")
+            return 308
         testbench.error.generic(
             "Fault injected during a resumable upload",
             rest_code=error_code,
