@@ -468,7 +468,8 @@ class Database:
         }
         if method in not_supported_grpc_w_retry:
             testbench.error.unimplemented(
-                "Retry Test API not supported for the requested method <%s> in GRPC" % method,
+                "Retry Test API not supported for the requested method <%s> in GRPC"
+                % method,
                 None,
             )
 
