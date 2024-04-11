@@ -465,6 +465,10 @@ class Database:
             "storage.object_acl.insert",
             "storage.object_acl.patch",
             "storage.object_acl.update",
+            "storage.notifications.delete",
+            "storage.notifications.get",
+            "storage.notifications.insert",
+            "storage.notifications.list",
         }
         if method in not_supported_grpc_w_retry:
             testbench.error.unimplemented(
