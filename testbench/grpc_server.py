@@ -373,7 +373,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         notification_id = notification_name[loc + len("/notificationConfigs/") :]
         return (bucket_name, notification_id)
 
-    @retry_test(method="storage.notifications.delete")
     def DeleteNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
@@ -384,7 +383,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket.delete_notification(notification_id, context)
         return empty_pb2.Empty()
 
-    @retry_test(method="storage.notifications.get")
     def GetNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
@@ -395,7 +393,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = bucket.get_notification(notification_id, context)
         return self._notification_from_rest(rest, bucket_name)
 
-    @retry_test(method="storage.notifications.insert")
     def CreateNotificationConfig(self, request, context):
         pattern = "^//pubsub.googleapis.com/projects/[^/]+/topics/[^/]+$"
         if re.match(pattern, request.notification_config.topic) is None:
@@ -412,7 +409,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = bucket.insert_notification(json.dumps(notification), context)
         return self._notification_from_rest(rest, request.parent)
 
-    @retry_test("storage.notifications.list")
     def ListNotificationConfigs(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         items = bucket.list_notifications(context).get("items", [])
