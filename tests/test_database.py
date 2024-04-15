@@ -465,11 +465,11 @@ class TestDatabaseRetryTest(unittest.TestCase):
 
     def test_insert_retry_test_unimplemented_grpc_method(self):
         database = testbench.database.Database.init()
-        database.insert_supported_methods(["storage.resumable.upload"])
+        database.insert_supported_methods(["storage.bucket_acl.get"])
 
         with self.assertRaises(testbench.error.RestException) as rest:
             _ = database.insert_retry_test(
-                {"storage.resumable.upload": ["return-429"]}, transport="GRPC"
+                {"storage.bucket_acl.get": ["return-429"]}, transport="GRPC"
             )
         self.assertEqual(rest.exception.code, 501)
 

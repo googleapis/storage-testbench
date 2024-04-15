@@ -161,6 +161,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         self.db.insert_test_bucket()
         self.echo_metadata = echo_metadata
 
+    @retry_test(method="storage.buckets.delete")
     def DeleteBucket(self, request, context):
         self.db.delete_bucket(
             request.name,
@@ -169,7 +170,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return empty_pb2.Empty()
 
-    @retry_test("storage.buckets.get")
+    @retry_test(method="storage.buckets.get")
     def GetBucket(self, request, context):
         bucket = self.db.get_bucket(
             request.name,
@@ -178,12 +179,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return bucket.metadata
 
+    @retry_test(method="storage.buckets.insert")
     def CreateBucket(self, request, context):
         bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
         self.db.insert_bucket(bucket, context)
         return bucket.metadata
 
-    @retry_test("storage.buckets.list")
+    @retry_test(method="storage.buckets.list")
     def ListBuckets(self, request, context):
         if not request.parent.startswith("projects/"):
             return testbench.error.invalid(
@@ -221,6 +223,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         ]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
 
+    @retry_test(method="storage.buckets.lockRetentionPolicy")
     def LockBucketRetentionPolicy(self, request, context):
         if request.if_metageneration_match <= 0:
             return testbench.error.invalid(
@@ -256,11 +259,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.resource, context)
         return bucket.iam_policy
 
+    @retry_test(method="storage.buckets.setIamPolicy")
     def SetIamPolicy(self, request, context):
         bucket = self.db.get_bucket(request.resource, context)
         bucket.set_iam_policy(request, context)
         return bucket.iam_policy
 
+    @retry_test(method="storage.buckets.testIamPermissions")
     def TestIamPermissions(self, request, context):
         # If the bucket does not exist this will return an error
         _ = self.db.get_bucket(request.resource, context)
@@ -269,6 +274,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             permissions=request.permissions
         )
 
+    @retry_test(method="storage.buckets.patch")
     def UpdateBucket(self, request, context):
         intersection = field_mask_pb2.FieldMask(
             paths=[
@@ -377,7 +383,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket.delete_notification(notification_id, context)
         return empty_pb2.Empty()
 
-    @retry_test(method="storage.notifications.get")
     def GetNotificationConfig(self, request, context):
         bucket_name, notification_id = self._decompose_notification_name(
             request.name, context
@@ -404,7 +409,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest = bucket.insert_notification(json.dumps(notification), context)
         return self._notification_from_rest(rest, request.parent)
 
-    @retry_test("storage.notifications.list")
     def ListNotificationConfigs(self, request, context):
         bucket = self.db.get_bucket(request.parent, context)
         items = bucket.list_notifications(context).get("items", [])
@@ -414,6 +418,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             ]
         )
 
+    @retry_test(method="storage.objects.compose")
     def ComposeObject(self, request, context):
         if len(request.source_objects) == 0:
             return testbench.error.missing(
@@ -479,6 +484,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return blob.metadata
 
+    @retry_test(method="storage.objects.delete")
     def DeleteObject(self, request, context):
         self.db.delete_object(
             request.bucket,
@@ -571,6 +577,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = None
             start = start + size
 
+    @retry_test(method="storage.objects.patch")
     def UpdateObject(self, request, context):
         intersection = field_mask_pb2.FieldMask(
             paths=[
@@ -716,6 +723,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         items, prefixes = self.db.list_object(request, request.parent, context)
         return storage_pb2.ListObjectsResponse(objects=items, prefixes=prefixes)
 
+    @retry_test(method="storage.objects.rewrite")
     def RewriteObject(self, request, context):
         token = request.rewrite_token
         if token == "":
@@ -817,6 +825,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         rest["update_time"] = rest.pop("updated")
         return json_format.ParseDict(rest, storage_pb2.HmacKeyMetadata())
 
+    @retry_test(method="storage.hmacKey.create")
     def CreateHmacKey(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
@@ -835,6 +844,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             metadata=self._hmac_key_metadata_from_rest(rest.get("metadata")),
         )
 
+    @retry_test(method="storage.hmacKey.delete")
     def DeleteHmacKey(self, request, context):
         if not request.project.startswith("projects/"):
             return testbench.error.invalid(
@@ -888,6 +898,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             ]
         )
 
+    @retry_test(method="storage.hmacKey.update")
     def UpdateHmacKey(self, request, context):
         if request.update_mask.paths == []:
             return testbench.error.invalid(
