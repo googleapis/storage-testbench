@@ -147,6 +147,11 @@ class StorageStub(object):
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectResponse.FromString,
                 )
+        self.BidiReadObject = channel.stream_stream(
+                '/google.storage.v2.Storage/BidiReadObject',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectResponse.FromString,
+                )
         self.UpdateObject = channel.unary_unary(
                 '/google.storage.v2.Storage/UpdateObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateObjectRequest.SerializeToString,
@@ -390,6 +395,22 @@ class StorageServicer(object):
 
     def ReadObject(self, request, context):
         """Reads an object's data.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BidiReadObject(self, request_iterator, context):
+        """Reads an object's data.
+
+        This is a bi-directional API with the added support for reading multiple
+        ranges within one stream both within and across multiple messages. This can
+        improve performance compared with performing individual range read RPCs.
+        If the server encountered an error for any of the inputs, the stream will
+        be closed with the relevant error code.
+        Because the API allows for multiple outstanding requests, when the stream
+        is closed the error response will contain a BidiReadObjectRangesError proto
+        in the error extension describing the error for each outstanding read_id.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -671,6 +692,11 @@ def add_StorageServicer_to_server(servicer, server):
                     servicer.ReadObject,
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectRequest.FromString,
                     response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectResponse.SerializeToString,
+            ),
+            'BidiReadObject': grpc.stream_stream_rpc_method_handler(
+                    servicer.BidiReadObject,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectResponse.SerializeToString,
             ),
             'UpdateObject': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateObject,
@@ -1088,6 +1114,23 @@ class Storage(object):
         return grpc.experimental.unary_stream(request, target, '/google.storage.v2.Storage/ReadObject',
             google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BidiReadObject(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(request_iterator, target, '/google.storage.v2.Storage/BidiReadObject',
+            google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.BidiReadObjectResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

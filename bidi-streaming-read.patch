@@ -1,0 +1,260 @@
+diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
+index 62922eadf..9d2c07960 100644
+--- a/google/storage/v2/storage.proto
++++ b/google/storage/v2/storage.proto
+@@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
+ import "google/protobuf/empty.proto";
+ import "google/protobuf/field_mask.proto";
+ import "google/protobuf/timestamp.proto";
++import "google/rpc/status.proto";
+ import "google/type/date.proto";
+ 
+ option go_package = "cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb";
+@@ -274,6 +275,28 @@ service Storage {
+     option (google.api.method_signature) = "bucket,object,generation";
+   }
+ 
++  // Reads an object's data.
++  //
++  // This is a bi-directional API with the added support for reading multiple
++  // ranges within one stream both within and across multiple messages. This can
++  // improve performance compared with performing individual range read RPCs.
++  // If the server encountered an error for any of the inputs, the stream will
++  // be closed with the relevant error code.
++  // Because the API allows for multiple outstanding requests, when the stream
++  // is closed the error response will contain a BidiReadObjectRangesError proto
++  // in the error extension describing the error for each outstanding read_id.
++  rpc BidiReadObject(stream BidiReadObjectRequest)
++      returns (stream BidiReadObjectResponse) {
++    option (google.api.method_signature) = "bucket,object";
++    option (google.api.method_signature) = "bucket,object,generation";
++    option (google.api.routing) = {
++      routing_parameters {
++        field: "read_object_spec.bucket"
++        path_template: "{bucket=**}"
++      }
++    };
++  }
++
+   // Updates an object's metadata.
+   // Equivalent to JSON API's storage.objects.patch.
+   rpc UpdateObject(UpdateObjectRequest) returns (Object) {
+@@ -995,6 +1018,218 @@ message ReadObjectResponse {
+   Object metadata = 4;
+ }
+ 
++// Describes the object to read in a BidiReadObject request.
++message BidiReadObjectSpec {
++  // The name of the bucket containing the object to read.
++  string bucket = 1 [
++    (google.api.field_behavior) = REQUIRED,
++    (google.api.resource_reference).type = "storage.googleapis.com/Bucket"
++  ];
++
++  // The name of the object to read.
++  string object = 2 [
++    (google.api.field_behavior) = REQUIRED
++  ];
++
++  // If present, selects a specific revision of this object (as opposed
++  // to the latest version, the default).
++  int64 generation = 3;
++
++  // Makes the operation conditional on whether the object's current generation
++  // matches the given value. Setting to 0 makes the operation succeed only if
++  // there are no live versions of the object.
++  optional int64 if_generation_match = 4;
++
++  // Makes the operation conditional on whether the object's live generation
++  // does not match the given value. If no live object exists, the precondition
++  // fails. Setting to 0 makes the operation succeed only if there is a live
++  // version of the object.
++  optional int64 if_generation_not_match = 5;
++
++  // Makes the operation conditional on whether the object's current
++  // metageneration matches the given value.
++  optional int64 if_metageneration_match = 6;
++
++  // Makes the operation conditional on whether the object's current
++  // metageneration does not match the given value.
++  optional int64 if_metageneration_not_match = 7;
++
++  // A set of parameters common to Storage API requests concerning an object.
++  // (-- api-linter: core::0131::request-unknown-fields=disabled
++  //     aip.dev/not-precedent: All Cloud Storage object requests share a common
++  //     set of parameters to handle billing and other per-request concerns. --)
++  CommonObjectRequestParams common_object_request_params = 8;
++
++  // Mask specifying which fields to read.
++  // The checksummed_data field and its children will always be present.
++  // If no mask is specified, will default to all fields except metadata.owner
++  // and metadata.acl.
++  // * may be used to mean "all fields".
++  optional google.protobuf.FieldMask read_mask = 12;
++}
++
++// Request message for BidiReadObject.
++message BidiReadObjectRequest {
++
++  // The first message of each stream must set this field. The stream returns an
++  // error if any subsequent message sets this field, or if the first message
++  // does not set the field.
++  oneof first_message {
++    // Describes the object to read
++    BidiReadObjectSpec read_spec = 6;
++    // The read handle is an optimized way of creating new streams. Read handles
++    // are generated and periodically refreshed from prior reads.
++    BidiReadHandle read_handle = 7;
++  }
++
++  // Provides a list of 0 or more (up to 100) ranges to read. If a single range
++  // is large enough to require multiple responses, they are guaranteed to be
++  // delivered in increasing offset order. There are no ordering guarantees
++  // across ranges. When no ranges are provided, the response message will not
++  // include ObjectRangeData. For full object downloads, the offset and size can
++  // be set to 0.
++  repeated ReadRange read_ranges = 8;
++
++  // The first message of each stream should set this field. If this is not
++  // the first message, an error will be returned.
++  BidiReadObjectSpec read_object_spec = 1 [deprecated = true];
++
++  // The offset for the first byte to return in the read, relative to the start
++  // of the object.
++  //
++  // A negative `read_offset` value will be interpreted as the number of bytes
++  // back from the end of the object to be returned. For example, if an object's
++  // length is 15 bytes, a ReadObjectRequest with `read_offset` = -5 and
++  // `read_limit` = 3 would return bytes 10 through 12 of the object. Requesting
++  // a negative offset with magnitude larger than the size of the object will
++  // return the entire object.
++  int64 read_offset = 4 [deprecated = true];
++
++  // The maximum number of `data` bytes the server is allowed to return in the
++  // sum of all `Object` messages. A `read_limit` of zero indicates that there
++  // is no limit, and a negative `read_limit` will cause an error.
++  //
++  // If the stream returns fewer bytes than allowed by the `read_limit` and no
++  // error occurred, the stream includes all data from the `read_offset` to the
++  // end of the resource.
++  int64 read_limit = 5 [deprecated = true];
++}
++
++// Response message for BidiReadObject.
++message BidiReadObjectResponse {
++  // A portion of the data for the object. The service **may** leave `data`
++  // empty for any given `ReadResponse`. This enables the service to inform the
++  // client that the request is still live while it is running an operation to
++  // generate more data.
++  ChecksummedData checksummed_data = 1
++      [deprecated = true];
++
++  // The checksums of the complete object regardless of data range. If the
++  // object is downloaded in full, the client should compute one of these
++  // checksums over the downloaded object and compare it against the value
++  // provided here.
++  ObjectChecksums object_checksums = 2
++      [deprecated = true];
++
++  // If read_offset and or read_limit was specified on the
++  // ReadObjectRequest, ContentRange will be populated on the first
++  // ReadObjectResponse message following the request.
++  ContentRange content_range = 3 [deprecated = true];
++
++  // A portion of the object's data. The service **may** leave data
++  // empty for any given ReadResponse. This enables the service to inform the
++  // client that the request is still live while it is running an operation to
++  // generate more data.
++  // The service **may** pipeline multiple responses belonging to different read
++  // requests. Each ObjectRangeData entry will have a read_id
++  // set to the same value as the corresponding source read request.
++  repeated ObjectRangeData object_data_ranges = 6;
++
++  // Metadata of the object whose media is being returned.
++  // Only populated in the first response in the stream.
++  Object metadata = 4;
++
++  // This field will be periodically refreshed, however it may not be set in
++  // every response. It allows the client to more efficiently open subsequent
++  // bidirectional streams to the same object.
++  BidiReadHandle read_handle = 7;
++
++  // If set, indicates there are no more bytes to read for the given range.
++  bool end_of_range = 5 [deprecated = true];
++}
++
++// Error extension proto containing details for all outstanding reads on the
++// failed stream
++message BidiReadObjectError {
++  // The error code for each outstanding read_range
++  repeated ReadRangeError read_range_errors = 1;
++}
++
++// Error extension proto containing details for a single range read
++message ReadRangeError {
++  // The id of the corresponding read_range
++  int64 read_id = 1;
++  // The status which should be an enum value of [google.rpc.Code].
++  google.rpc.Status status = 2;
++}
++
++// Describes a range of bytes to read in a BidiReadObjectRanges request.
++message ReadRange {
++  // The offset for the first byte to return in the read, relative to the start
++  // of the object.
++  //
++  // A negative read_offset value will be interpreted as the number of bytes
++  // back from the end of the object to be returned. For example, if an object's
++  // length is 15 bytes, a ReadObjectRequest with read_offset = -5 and
++  // read_limit = 3 would return bytes 10 through 12 of the object. Requesting
++  // a negative offset with magnitude larger than the size of the object will
++  // return the entire object. A read_offset larger than the size of the object
++  // will result in an OutOfRange error.
++  int64 read_offset = 1 [(google.api.field_behavior) = REQUIRED];
++
++  // The maximum number of data bytes the server is allowed to return across
++  // all response messages with the same read_id. A read_limit of zero
++  // indicates that there is no limit, and a negative read_limit will cause an
++  // error. If the stream returns fewer bytes than allowed by the read_limit
++  // and no error occurred, the stream includes all data from the read_offset
++  // to the resource end.
++  int64 read_limit = 2 [(google.api.field_behavior) = OPTIONAL];
++
++  // Read identifier provided by the client. When the client issues more than
++  // one outstanding ReadRange on the same stream, responses can be mapped back
++  // to their corresponding requests using this value. Clients must ensure that
++  // all outstanding requests have different read_id values. The server may
++  // close the stream with an error if this condition is not met.
++  int64 read_id = 3 [(google.api.field_behavior) = REQUIRED];
++}
++
++// Contains data and metadata for a range of an object.
++message ObjectRangeData {
++  // A portion of the data for the object.
++  ChecksummedData checksummed_data = 1;
++
++  // The ReadRange describes the content being returned with read_id set to the
++  // corresponding ReadObjectRequest in the stream. Multiple ObjectRangeData
++  // messages may have the same read_id but increasing offsets.
++  // ReadObjectResponse messages with the same read_id are guaranteed to be
++  // delivered in increasing offset order.
++  ReadRange read_range = 2;
++
++  // If set, indicates there are no more bytes to read for the given ReadRange.
++  bool range_end = 3;
++}
++
++// BidiReadHandle contains a handle from a previous BiDiReadObject
++// invocation. The client can use this instead of BidiReadObjectSpec as an
++// optimized way of opening subsequent bidirectional streams to the same object.
++message BidiReadHandle {
++  // Opaque value describing a previous read.
++  bytes handle = 1 [(google.api.field_behavior) = REQUIRED];
++
++  // The routing token is used by the SDK to correctly route the request.
++  string routing_token = 2 [(google.api.field_behavior) = REQUIRED];
++}
++
+ // Describes an attempt to insert an object, possibly over multiple requests.
+ message WriteObjectSpec {
+   // Required. Destination object, including its name and its metadata.

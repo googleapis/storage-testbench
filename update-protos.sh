@@ -31,6 +31,16 @@ readonly INPUTS=(
 )
 readonly INPUTS
 
+if [[ ! -d "${GOOGLEAPIS_ROOT}" ]]; then
+  git clone https://github.com/googleapis/googleapis.git "${GOOGLEAPIS_ROOT}"
+else
+  git -C "${GOOGLEAPIS_ROOT}" clean -f -d -x
+  git -C "${GOOGLEAPIS_ROOT}" restore google/storage
+  git -C "${GOOGLEAPIS_ROOT}" checkout master
+  git -C "${GOOGLEAPIS_ROOT}" pull
+fi
+env -C .googleapis patch -p1 <$PWD/bidi-streaming-read.patch
+
 for input in "${INPUTS[@]}"; do
   python -m grpc_tools.protoc -I"${GOOGLEAPIS_ROOT}" \
       --python_out=. --grpc_python_out=. "${GOOGLEAPIS_ROOT}/${input}"
