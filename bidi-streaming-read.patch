@@ -1,5 +1,17 @@
+diff --git a/google/storage/v2/BUILD.bazel b/google/storage/v2/BUILD.bazel
+index 8fa25cc09..d84fc9456 100644
+--- a/google/storage/v2/BUILD.bazel
++++ b/google/storage/v2/BUILD.bazel
+@@ -58,6 +58,7 @@ proto_library(
+         "//google/api:routing_proto",
+         "//google/iam/v1:iam_policy_proto",
+         "//google/iam/v1:policy_proto",
++        "//google/rpc:status_proto",
+         "//google/type:date_proto",
+         "@com_google_protobuf//:duration_proto",
+         "@com_google_protobuf//:empty_proto",
 diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
-index 62922eadf..9d2c07960 100644
+index 62922eadf..4ae3ab8cb 100644
 --- a/google/storage/v2/storage.proto
 +++ b/google/storage/v2/storage.proto
 @@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
@@ -10,7 +22,7 @@ index 62922eadf..9d2c07960 100644
  import "google/type/date.proto";
  
  option go_package = "cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb";
-@@ -274,6 +275,28 @@ service Storage {
+@@ -274,6 +275,26 @@ service Storage {
      option (google.api.method_signature) = "bucket,object,generation";
    }
  
@@ -26,8 +38,6 @@ index 62922eadf..9d2c07960 100644
 +  // in the error extension describing the error for each outstanding read_id.
 +  rpc BidiReadObject(stream BidiReadObjectRequest)
 +      returns (stream BidiReadObjectResponse) {
-+    option (google.api.method_signature) = "bucket,object";
-+    option (google.api.method_signature) = "bucket,object,generation";
 +    option (google.api.routing) = {
 +      routing_parameters {
 +        field: "read_object_spec.bucket"
@@ -39,7 +49,7 @@ index 62922eadf..9d2c07960 100644
    // Updates an object's metadata.
    // Equivalent to JSON API's storage.objects.patch.
    rpc UpdateObject(UpdateObjectRequest) returns (Object) {
-@@ -995,6 +1018,218 @@ message ReadObjectResponse {
+@@ -995,6 +1016,218 @@ message ReadObjectResponse {
    Object metadata = 4;
  }
  
