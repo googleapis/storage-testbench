@@ -1,5 +1,5 @@
 diff --git a/google/storage/v2/BUILD.bazel b/google/storage/v2/BUILD.bazel
-index 8fa25cc09..d84fc9456 100644
+index 8fa25cc09..c17d0fe82 100644
 --- a/google/storage/v2/BUILD.bazel
 +++ b/google/storage/v2/BUILD.bazel
 @@ -58,6 +58,7 @@ proto_library(
@@ -10,8 +10,16 @@ index 8fa25cc09..d84fc9456 100644
          "//google/type:date_proto",
          "@com_google_protobuf//:duration_proto",
          "@com_google_protobuf//:empty_proto",
+@@ -132,6 +133,7 @@ go_proto_library(
+         "//google/api:annotations_go_proto",
+         "//google/api:routing_go_proto",
+         "//google/iam/v1:iam_go_proto",
++        "//google/rpc:status_go_proto",
+         "//google/type:date_go_proto",
+     ],
+ )
 diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
-index 62922eadf..4ae3ab8cb 100644
+index 0f9758f19..c9c027345 100644
 --- a/google/storage/v2/storage.proto
 +++ b/google/storage/v2/storage.proto
 @@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
@@ -49,7 +57,7 @@ index 62922eadf..4ae3ab8cb 100644
    // Updates an object's metadata.
    // Equivalent to JSON API's storage.objects.patch.
    rpc UpdateObject(UpdateObjectRequest) returns (Object) {
-@@ -995,6 +1016,218 @@ message ReadObjectResponse {
+@@ -995,6 +1016,236 @@ message ReadObjectResponse {
    Object metadata = 4;
  }
  
@@ -101,6 +109,15 @@ index 62922eadf..4ae3ab8cb 100644
 +  // and metadata.acl.
 +  // * may be used to mean "all fields".
 +  optional google.protobuf.FieldMask read_mask = 12;
++
++  // The client can optionally set this field. The read handle is an optimized
++  // way of creating new streams. Read handles are generated and periodically
++  // refreshed from prior reads.
++  optional BidiReadHandle read_handle = 13;
++
++  // The routing token that influences request routing for the stream. Must be
++  // provided if a BidiReadObjectRedirectedError is returned.
++  optional string routing_token = 14;
 +}
 +
 +// Request message for BidiReadObject.
@@ -109,13 +126,16 @@ index 62922eadf..4ae3ab8cb 100644
 +  // The first message of each stream must set this field. The stream returns an
 +  // error if any subsequent message sets this field, or if the first message
 +  // does not set the field.
++  // TODO(b/340927727): The oneof will be removed once the field is no longer
++  // referenced
 +  oneof first_message {
 +    // Describes the object to read
-+    BidiReadObjectSpec read_spec = 6;
-+    // The read handle is an optimized way of creating new streams. Read handles
-+    // are generated and periodically refreshed from prior reads.
-+    BidiReadHandle read_handle = 7;
++    BidiReadObjectSpec read_spec = 6 [deprecated = true];
 +  }
++
++  // The first message of each stream should set this field. If this is not
++  // the first message, an error will be returned. Describes the object to read.
++  BidiReadObjectSpec read_object_spec = 1;
 +
 +  // Provides a list of 0 or more (up to 100) ranges to read. If a single range
 +  // is large enough to require multiple responses, they are guaranteed to be
@@ -124,10 +144,6 @@ index 62922eadf..4ae3ab8cb 100644
 +  // include ObjectRangeData. For full object downloads, the offset and size can
 +  // be set to 0.
 +  repeated ReadRange read_ranges = 8;
-+
-+  // The first message of each stream should set this field. If this is not
-+  // the first message, an error will be returned.
-+  BidiReadObjectSpec read_object_spec = 1 [deprecated = true];
 +
 +  // The offset for the first byte to return in the read, relative to the start
 +  // of the object.
@@ -181,7 +197,8 @@ index 62922eadf..4ae3ab8cb 100644
 +  repeated ObjectRangeData object_data_ranges = 6;
 +
 +  // Metadata of the object whose media is being returned.
-+  // Only populated in the first response in the stream.
++  // Only populated in the first response in the stream and not populated when
++  // the stream is opened with a read handle.
 +  Object metadata = 4;
 +
 +  // This field will be periodically refreshed, however it may not be set in
@@ -191,6 +208,18 @@ index 62922eadf..4ae3ab8cb 100644
 +
 +  // If set, indicates there are no more bytes to read for the given range.
 +  bool end_of_range = 5 [deprecated = true];
++}
++
++// Error proto containing details for a redirected read. This error is only
++// returned on initial open in case of a redirect.
++message BidiReadObjectRedirectedError {
++
++  // The read handle for the redirected read. The client can use this for the
++  // subsequent open.
++  BidiReadHandle read_handle = 1;
++
++  // The routing token that should be used when reopening the read stream.
++  optional string routing_token = 2;
 +}
 +
 +// Error extension proto containing details for all outstanding reads on the
@@ -260,9 +289,6 @@ index 62922eadf..4ae3ab8cb 100644
 +message BidiReadHandle {
 +  // Opaque value describing a previous read.
 +  bytes handle = 1 [(google.api.field_behavior) = REQUIRED];
-+
-+  // The routing token is used by the SDK to correctly route the request.
-+  string routing_token = 2 [(google.api.field_behavior) = REQUIRED];
 +}
 +
  // Describes an attempt to insert an object, possibly over multiple requests.

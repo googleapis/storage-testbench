@@ -122,7 +122,7 @@ run the grpc_tools generator:
 
 ```shell
 cd $HOME/storage-testbench
-pip install grpcio-tools
+pip install --no-deps grpcio-tools
 ./update-protos.sh $PWD/.googleapis
 ```
 
