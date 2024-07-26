@@ -577,6 +577,99 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = None
             start = start + size
 
+    def BidiReadObject(self, request_iterator, context):
+        # A PriorityQueue holds tuples (offset, response) where the offset serves as the priority predicate.
+        # A response is removed from the queue with the lowest offset. This will help guarantee that
+        # responses with the same read_id will be delivered in increasing offset order.
+        from queue import PriorityQueue
+
+        responses = PriorityQueue()
+        # TBD: yield_size is configurable and is used to emulate interleaved responses.
+        yield_size = 1
+
+        # Helper function that processes ReadRange. This could potentially become the target function
+        # when we introduce multiple workers.
+        def process_read_range(range, metadata=None):
+            size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+            # A read range corresponds to a unique read_id.
+            # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
+            start = range.read_offset
+            read_end = len(blob.media)
+            read_id = range.read_id
+
+            if start > read_end:
+                # TODO: Error handling, return a list of read_range_errors in BidiReadObjectError.
+                return testbench.error.range_not_satisfiable(context)
+            if range.read_limit < 0:
+                # TODO: Error handling, return a list of read_range_errors in BidiReadObjectError.
+                # A negative read_limit will cause an error.
+                return testbench.error.range_not_satisfiable(context)
+            elif range.read_limit > 0:
+                # read_limit is the maximum number of data bytes the server is allowed to return across all response messages with the same read_id.
+                read_end = min(read_end, start + range.read_limit)
+
+            while start <= read_end:
+                end = min(start + size, read_end)
+                chunk = blob.media[start:end]
+                # Verify if there are no more bytes to read for the given ReadRange.
+                range_end = True if end == read_end else False
+                res = storage_pb2.BidiReadObjectResponse(
+                    object_data_ranges=[
+                        storage_pb2.ObjectRangeData(
+                            checksummed_data=storage_pb2.ChecksummedData(
+                                content=chunk,
+                            ),
+                            read_range=storage_pb2.ReadRange(
+                                read_offset=start,
+                                read_limit=range.read_limit,
+                                read_id=read_id,
+                            ),
+                            range_end=range_end,
+                        ),
+                    ],
+                    metadata=metadata,
+                )
+                # Put tuple (offset, response) into the priority queue.
+                responses.put((start, res))
+                start = end + 1
+
+        # Handle first request message.
+        first_message = next(request_iterator)
+        obj_spec = first_message.read_object_spec
+        blob = self.db.get_object(
+            obj_spec.bucket,
+            obj_spec.object,
+            context=context,
+            generation=obj_spec.generation,
+            preconditions=testbench.common.make_grpc_preconditions(obj_spec),
+        )
+        metadata = blob.metadata
+        for range in first_message.read_ranges:
+            process_read_range(range, metadata=metadata)
+            # Let's start returning some responses.
+            while responses.qsize() > yield_size:
+                item = responses.get()
+                yield item[1]
+
+        # Handle incoming requests, after finshing processing the first message.
+        for request in request_iterator:
+            for range in request.read_ranges:
+                process_read_range(range)
+                # Let's start returning some responses. Response messages per read_id are put into
+                # the priority queue altogether before yielding.
+                # Not all responses are dequeued, and will result in interleaved responses.
+                while responses.qsize() > yield_size:
+                    item = responses.get()
+                    yield item[1]
+            while responses.qsize() > yield_size:
+                item = responses.get()
+                yield item[1]
+
+        # Finally, let's make sure all responses in the priority queue are returned.
+        while not responses.empty():
+            item = responses.get()
+            yield item[1]
+
     @retry_test(method="storage.objects.patch")
     def UpdateObject(self, request, context):
         intersection = field_mask_pb2.FieldMask(
