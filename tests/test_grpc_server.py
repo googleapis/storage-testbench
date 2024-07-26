@@ -2277,13 +2277,17 @@ class TestGrpc(unittest.TestCase):
         streamer = self.grpc.BidiReadObject([r1], context=self.mock_context())
         responses = list(streamer)
         read_range_1 = responses[0].object_data_ranges[0].read_range
+        data_1 = responses[0].object_data_ranges[0].checksummed_data
         self.assertEqual(read_id_1, read_range_1.read_id)
         self.assertEqual(offset_1, read_range_1.read_offset)
         self.assertEqual(limit_1, read_range_1.read_limit)
+        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
         read_range_last = responses[-1].object_data_ranges[-1].read_range
+        data_last = responses[-1].object_data_ranges[-1].checksummed_data
         self.assertEqual(read_id_2, read_range_last.read_id)
         self.assertEqual(offset_2, read_range_last.read_offset)
         self.assertEqual(limit_2, read_range_last.read_limit)
+        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
 
     def test_bidi_read_object_out_of_order(self):
         # Create object in database to read.
@@ -2336,13 +2340,17 @@ class TestGrpc(unittest.TestCase):
         streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
         responses = list(streamer)
         read_range_1 = responses[0].object_data_ranges[0].read_range
+        data_1 = responses[0].object_data_ranges[0].checksummed_data
         self.assertEqual(read_id_1, read_range_1.read_id)
         self.assertEqual(offset_1, read_range_1.read_offset)
         self.assertEqual(limit_1, read_range_1.read_limit)
+        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
         read_range_last = responses[-1].object_data_ranges[-1].read_range
+        data_last = responses[-1].object_data_ranges[-1].checksummed_data
         self.assertEqual(read_id_3, read_range_last.read_id)
         self.assertEqual(offset_3, read_range_last.read_offset)
         self.assertEqual(limit_3, read_range_last.read_limit)
+        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
 
 
 if __name__ == "__main__":

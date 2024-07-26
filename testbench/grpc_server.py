@@ -618,6 +618,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                         storage_pb2.ObjectRangeData(
                             checksummed_data=storage_pb2.ChecksummedData(
                                 content=chunk,
+                                crc32c=crc32c.crc32c(chunk),
                             ),
                             read_range=storage_pb2.ReadRange(
                                 read_offset=start,
