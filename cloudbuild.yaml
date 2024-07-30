@@ -25,7 +25,15 @@ steps:
         "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
         "gcr.io/cloud-devrel-public-resources/storage-testbench:latest",
       ]
+  - name: gcr.io/cloud-builders/docker
+    args:
+      [
+        "tag",
+        "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
+        "gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-tb-latest",
+      ]
 
 images:
   - gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME
   - gcr.io/cloud-devrel-public-resources/storage-testbench:latest
+  - gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-tb-latest
