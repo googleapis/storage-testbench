@@ -1182,6 +1182,6 @@ def _grpc_forced_failure_from_http_instruction(http_code):
         "429": StatusCode.RESOURCE_EXHAUSTED,
         "500": StatusCode.INTERNAL,
         "503": StatusCode.UNAVAILABLE,
-        "504": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on whether DEADLINE_EXCEEDED is retryable client-side based on AIP#194
+        "504": StatusCode.DEADLINE_EXCEEDED,
     }
     return status_map.get(http_code, None)
