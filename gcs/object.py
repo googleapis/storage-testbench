@@ -399,6 +399,8 @@ class Object:
         content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
 
         instructions = testbench.common.extract_instruction(request, None)
+        print("came inside rest_media")
+        print(instructions)
         if instructions is None:
 
             def streamer():

@@ -23,6 +23,7 @@ import random
 import re
 import socket
 import struct
+import time
 import types
 from functools import wraps
 
@@ -46,6 +47,10 @@ retry_return_short_response = re.compile(
 retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
+retry_stall_beginning = re.compile(
+    r"stall-at-beginning-([0-9]+)K$"
+)
+
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
 # === STR === #
@@ -777,11 +782,14 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         test_id, method, transport="HTTP"
     ):
         return __get_default_response_fn
+
     next_instruction = database.peek_next_instruction(test_id, method)
+    print("handle_retry_test: (next_instructions) ", next_instruction)
     error_code_matches = testbench.common.retry_return_error_code.match(
         next_instruction
     )
     if error_code_matches:
+        print("handle_retry_test: error code matches")
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
         error_code = items[0]
@@ -795,6 +803,7 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         next_instruction
     )
     if retry_connection_matches:
+        print("handle_retry_test: return connection matches")
         items = list(retry_connection_matches.groups())
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
@@ -814,10 +823,22 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
                 "Injected 'connection reset by peer' fault", 500
             )
         elif items[0] == "broken-stream":
+            print("broken stream")
             return __get_streamer_response_fn(database, method, socket_closer, test_id)
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
+
+    retry_stall_beginning_matches = testbench.common.retry_stall_beginning.match(
+        next_instruction
+    )
+    if retry_stall_beginning_matches and method == "storage.objects.get":
+        media = request.args.get("alt", None)
+        if media == None or media != "json":
+            print("handle_retry_test: retry_stall_beginning matches")
+            database.dequeue_next_instruction(test_id, method)
+            time.sleep(10)
+
     if broken_stream_after_bytes and method == "storage.objects.get":
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
