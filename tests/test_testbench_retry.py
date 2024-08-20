@@ -444,8 +444,8 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/retry_test",
             data=json.dumps({
-                "instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}
-            }),
+                "instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}}
+            ),
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
@@ -492,9 +492,7 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/retry_test",
             data=json.dumps(
-                {
-                    "instructions": {"storage.objects.get": ["stall-for-1s-after-128K"]}
-                }
+                {"instructions": {"storage.objects.get": ["stall-for-1s-after-128K"]}}
             ),
         )
 
