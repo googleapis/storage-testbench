@@ -465,7 +465,6 @@ class TestTestbenchRetry(unittest.TestCase):
         elapsed_time = end_time - start_time
         self.assertGreater(elapsed_time, 1)
 
-
     def test_read_retry_test_stall_after_bytes(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
