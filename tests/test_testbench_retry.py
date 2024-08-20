@@ -443,8 +443,8 @@ class TestTestbenchRetry(unittest.TestCase):
     def test_list_retry_stall_test(self):
         response = self.client.post(
             "/retry_test",
-            data=json.dumps({
-                "instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}}
+            data=json.dumps(
+                {"instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}}
             ),
         )
         self.assertEqual(response.status_code, 200)
