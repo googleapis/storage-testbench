@@ -47,8 +47,8 @@ retry_return_short_response = re.compile(
 retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
-retry_stall_beginning = re.compile(
-    r"stall-at-beginning-([0-9]+)K$"
+retry_stall_after_bytes = re.compile(
+    r"stall-for-([0-9]+)s-after-([0-9]+)K$"
 )
 
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
@@ -723,6 +723,29 @@ def __get_streamer_response_fn(
     return response_handler
 
 
+def __get_stream_and_stall_fn(
+    database, method, test_id, limit=4, stall_time_sec=10, chunk_size=4
+):
+    def response_handler(data):
+        def streamer():
+            d = _extract_data(data)
+            bytes_yield = 0
+            instruction_dequed = False
+            for r in range(0, len(d), chunk_size):
+                if bytes_yield >= limit and not instruction_dequed:
+                    time.sleep(stall_time_sec)
+                    database.dequeue_next_instruction(test_id, method)
+                    instruction_dequed = True
+                chunk_end = min(r + chunk_size, len(d))
+                chunk_downloaded = chunk_end - r
+                bytes_yield += chunk_downloaded
+                yield d[r:chunk_end]
+
+        return flask.Response(streamer(), headers=_extract_headers(data))
+
+    return response_handler
+
+
 def __get_default_response_fn(data):
     return data
 
@@ -784,12 +807,10 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         return __get_default_response_fn
 
     next_instruction = database.peek_next_instruction(test_id, method)
-    print("handle_retry_test: (next_instructions) ", next_instruction)
     error_code_matches = testbench.common.retry_return_error_code.match(
         next_instruction
     )
     if error_code_matches:
-        print("handle_retry_test: error code matches")
         database.dequeue_next_instruction(test_id, method)
         items = list(error_code_matches.groups())
         error_code = items[0]
@@ -803,7 +824,6 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         next_instruction
     )
     if retry_connection_matches:
-        print("handle_retry_test: return connection matches")
         items = list(retry_connection_matches.groups())
         if items[0] == "reset-connection":
             database.dequeue_next_instruction(test_id, method)
@@ -823,21 +843,21 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
                 "Injected 'connection reset by peer' fault", 500
             )
         elif items[0] == "broken-stream":
-            print("broken stream")
             return __get_streamer_response_fn(database, method, socket_closer, test_id)
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
 
-    retry_stall_beginning_matches = testbench.common.retry_stall_beginning.match(
+    retry_stall_after_bytes_matches = testbench.common.retry_stall_after_bytes.match(
         next_instruction
     )
-    if retry_stall_beginning_matches and method == "storage.objects.get":
-        media = request.args.get("alt", None)
-        if media == None or media != "json":
-            print("handle_retry_test: retry_stall_beginning matches")
-            database.dequeue_next_instruction(test_id, method)
-            time.sleep(10)
+    if retry_stall_after_bytes_matches:
+        items = list(retry_stall_after_bytes_matches.groups())
+        stall_time = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return __get_stream_and_stall_fn(
+            database, method, test_id, limit=after_bytes, stall_time_sec=stall_time
+        )
 
     if broken_stream_after_bytes and method == "storage.objects.get":
         items = list(broken_stream_after_bytes.groups())

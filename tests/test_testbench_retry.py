@@ -21,6 +21,7 @@ import os
 import re
 import unittest
 import unittest.mock
+import time
 
 import crc32c
 from grpc import StatusCode
@@ -438,6 +439,104 @@ class TestTestbenchRetry(unittest.TestCase):
         with self.assertRaises(testbench.error.RestException) as ex:
             _ = len(response.data)
         self.assertIn("broken stream", ex.exception.msg)
+
+    def test_list_retry_stall_test(self):
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps({
+                "instructions": {
+                    "storage.buckets.list": ["stall-for-1s-after-0K"]
+                }
+            }),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        start_time = time.perf_counter()
+        list_response = self.client.get(
+            "/storage/v1/b",
+            query_string={"project": "test-project-unused"},
+            headers={"x-retry-test-id": create_rest.get("id")},
+        )
+        self.assertEqual(len(list_response.get_data()), 40)
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertGreater(elapsed_time, 1)
+
+
+    def test_read_retry_test_stall_after_bytes(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+        # Use the XML API to inject a larger object and smaller object.
+        media = self._create_block(UPLOAD_QUANTUM)
+        blob_larger = self.client.put(
+            "/bucket-name/256k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(blob_larger.status_code, 200)
+
+        media = self._create_block(128)
+        blob_smaller = self.client.put(
+            "/bucket-name/128.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(blob_smaller.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["stall-for-1s-after-128K"]
+                    }
+                }
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        start_time = time.perf_counter()
+        # The 128-bytes file is too small to trigger the "stall-for-1s-after-128K" fault injection.
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/128.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertEqual(len(response.get_data()), 128)
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        # This will take less the injected delay (1s).
+        self.assertLess(elapsed_time, 1)
+
+        start_time = time.perf_counter()
+        # The 256KiB file triggers the "stall-for-1s-after-128K" and will
+        # take more than injected delay (1s).
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/256k.txt",
+            query_string={"alt": "media"},
+            headers={"x-retry-test-id": id},
+        )
+        self.assertEqual(len(response.get_data()), UPLOAD_QUANTUM)
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertGreater(elapsed_time, 1)
+        self.assertIn("x-goog-generation", response.headers)
 
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(

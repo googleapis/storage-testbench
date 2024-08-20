@@ -438,7 +438,7 @@ class Database:
             testbench.common.retry_return_error_after_bytes,
             testbench.common.retry_return_short_response,
             testbench.common.retry_return_broken_stream_after_bytes,
-            testbench.common.retry_stall_beginning,
+            testbench.common.retry_stall_after_bytes,
         ]:
             if expr.match(failure) is not None:
                 return

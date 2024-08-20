@@ -37,7 +37,7 @@ grpc_service = None
 
 # === DEFAULT ENTRY FOR REST SERVER === #
 root = flask.Flask(__name__)
-root.debug = True
+root.debug = False
 root.register_error_handler(Exception, testbench.error.RestException.handler)
 
 
@@ -133,7 +133,6 @@ def list_retry_tests():
 def create_retry_test():
     payload = json.loads(flask.request.data)
     test_instruction_set = payload.get("instructions", None)
-    print("under create retry test: ", test_instruction_set)
     if not test_instruction_set:
         return flask.Response(
             "instructions is not defined", status=400, content_type="text/plain"
@@ -576,7 +575,6 @@ def object_get(bucket_name, object_name):
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
     )
-    print("under object_get")
     media = flask.request.args.get("alt", None)
     if media is None or media == "json":
         projection = testbench.common.extract_projection(flask.request, "noAcl", None)
@@ -589,7 +587,6 @@ def object_get(bucket_name, object_name):
     testbench.csek.validation(
         flask.request, blob.metadata.customer_encryption.key_sha256_bytes, False, None
     )
-    print("just before rest_media call")
     return blob.rest_media(flask.request)
 
 

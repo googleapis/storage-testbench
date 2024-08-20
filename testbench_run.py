@@ -27,7 +27,7 @@ logger.setLevel(logging.INFO)
 
 
 def start_server():
-    if len(sys.argv) >= 4:
+    if len(sys.argv) == 4:
         sock_host = sys.argv[1]
         sock_port = int(sys.argv[2])
         num_of_threads = int(sys.argv[3])
