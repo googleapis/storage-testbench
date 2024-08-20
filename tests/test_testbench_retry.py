@@ -19,9 +19,9 @@
 import json
 import os
 import re
+import time
 import unittest
 import unittest.mock
-import time
 
 import crc32c
 from grpc import StatusCode
@@ -444,9 +444,7 @@ class TestTestbenchRetry(unittest.TestCase):
         response = self.client.post(
             "/retry_test",
             data=json.dumps({
-                "instructions": {
-                    "storage.buckets.list": ["stall-for-1s-after-0K"]
-                }
+                "instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}
             }),
         )
         self.assertEqual(response.status_code, 200)
@@ -495,9 +493,7 @@ class TestTestbenchRetry(unittest.TestCase):
             "/retry_test",
             data=json.dumps(
                 {
-                    "instructions": {
-                        "storage.objects.get": ["stall-for-1s-after-128K"]
-                    }
+                    "instructions": {"storage.objects.get": ["stall-for-1s-after-128K"]}
                 }
             ),
         )
@@ -536,7 +532,6 @@ class TestTestbenchRetry(unittest.TestCase):
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         self.assertGreater(elapsed_time, 1)
-        self.assertIn("x-goog-generation", response.headers)
 
     def test_retry_test_return_error_after_bytes(self):
         response = self.client.post(

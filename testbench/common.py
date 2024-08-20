@@ -47,9 +47,7 @@ retry_return_short_response = re.compile(
 retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
-retry_stall_after_bytes = re.compile(
-    r"stall-for-([0-9]+)s-after-([0-9]+)K$"
-)
+retry_stall_after_bytes = re.compile(r"stall-for-([0-9]+)s-after-([0-9]+)K$")
 
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
@@ -805,7 +803,6 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
         test_id, method, transport="HTTP"
     ):
         return __get_default_response_fn
-
     next_instruction = database.peek_next_instruction(test_id, method)
     error_code_matches = testbench.common.retry_return_error_code.match(
         next_instruction
