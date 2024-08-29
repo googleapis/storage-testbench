@@ -2352,6 +2352,95 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(limit_3, read_range_last.read_limit)
         self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
 
+    def test_bidi_read_object_not_found(self):
+        # Test BidiReadObject with non-existent object.
+        nonexistent_object_name = "object-name2"
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object=nonexistent_object_name,
+            ),
+            read_ranges=[],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+        # Test BidiReadObject with invalid object generation.
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        obj = self.db.get_object("bucket-name", "object-name", None)
+        invalid_generation = obj.metadata.generation + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                generation=invalid_generation,
+            ),
+            read_ranges=[],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r2], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_bidi_read_object_generation_precondition_failed(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test BidiReadObject with invalid object generation match precondition.
+        invalid_generation_match = 0
+        offset_1 = 0
+        limit_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=invalid_generation_match,
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_limit=limit_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
