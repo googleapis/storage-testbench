@@ -24,6 +24,7 @@ import unittest.mock
 
 import crc32c
 import grpc
+import grpc_status
 from google.protobuf import field_mask_pb2, timestamp_pb2
 
 import gcs
@@ -2440,6 +2441,128 @@ class TestGrpc(unittest.TestCase):
         context.abort.assert_called_once_with(
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
+
+    def test_bidi_read_object_out_of_order(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(6 * 1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test n ranges in 1 stream, where n=3. Test range requests offsets are out of order.
+        offset_1 = 0
+        limit_1 = 3 * 1024 * 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        offset_2 = 4 * 1024 * 1024
+        limit_2 = 1024
+        read_id_2 = read_id_1 - 1
+        offset_3 = 5 * 1024 * 1024
+        limit_3 = 1
+        read_id_3 = read_id_1 + 1
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_limit=limit_1,
+                    read_id=read_id_1,
+                ),
+                storage_pb2.ReadRange(
+                    read_offset=offset_3,
+                    read_limit=limit_3,
+                    read_id=read_id_3,
+                ),
+            ],
+        )
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_limit=limit_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
+        responses = list(streamer)
+        read_range_1 = responses[0].object_data_ranges[0].read_range
+        data_1 = responses[0].object_data_ranges[0].checksummed_data
+        self.assertEqual(read_id_1, read_range_1.read_id)
+        self.assertEqual(offset_1, read_range_1.read_offset)
+        self.assertEqual(limit_1, read_range_1.read_limit)
+        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
+        read_range_last = responses[-1].object_data_ranges[-1].read_range
+        data_last = responses[-1].object_data_ranges[-1].checksummed_data
+        self.assertEqual(read_id_3, read_range_last.read_id)
+        self.assertEqual(offset_3, read_range_last.read_offset)
+        self.assertEqual(limit_3, read_range_last.read_limit)
+        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
+
+    def test_bidi_read_out_of_range_error(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test out-of-range offset.
+        offset_1 = 8 * 1024 * 1024
+        limit_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_limit=limit_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # Test out-of-range with negative read limit.
+        limit_2 = -2048
+        offset_2 = 10
+        read_id_2 = read_id_1 + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_limit=limit_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        for request in [r1, r2]:
+            context = unittest.mock.Mock()
+            context.abort = unittest.mock.MagicMock()
+            context.abort.side_effect = grpc.RpcError()
+            with self.assertRaises(grpc.RpcError):
+                streamer = self.grpc.BidiReadObject([request], context=context)
+                list(streamer)
+
+            context.abort.assert_called_once()
+            abort_status = context.abort.call_args[0][0]
+            grpc_status_details_bin = abort_status.trailing_metadata[0][1]
+            self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
+            self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
+            self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
 
 
 if __name__ == "__main__":

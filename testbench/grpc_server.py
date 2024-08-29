@@ -21,11 +21,15 @@ import types
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
+from queue import PriorityQueue
 
 import crc32c
+import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 from google.protobuf import field_mask_pb2, json_format, text_format
+from google.rpc import status_pb2
+from grpc_status import rpc_status
 
 import gcs
 import testbench
@@ -581,8 +585,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         # A PriorityQueue holds tuples (offset, response) where the offset serves as the priority predicate.
         # A response is removed from the queue with the lowest offset. This will help guarantee that
         # responses with the same read_id will be delivered in increasing offset order.
-        from queue import PriorityQueue
-
         responses = PriorityQueue()
         # TBD: yield_size is configurable and is used to emulate interleaved responses.
         yield_size = 1
@@ -597,14 +599,14 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             read_end = len(blob.media)
             read_id = range.read_id
 
-            if start > read_end:
-                # TODO: Error handling, return a list of read_range_errors in BidiReadObjectError.
-                return testbench.error.range_not_satisfiable(context)
-            if range.read_limit < 0:
-                # TODO: Error handling, return a list of read_range_errors in BidiReadObjectError.
-                # A negative read_limit will cause an error.
-                return testbench.error.range_not_satisfiable(context)
-            elif range.read_limit > 0:
+            if start > read_end or range.read_limit < 0:
+                status_msg = self._pack_bidiread_error_details(
+                    range, grpc.StatusCode.OUT_OF_RANGE
+                )
+                grpc_status = rpc_status.to_status(status_msg)
+                return context.abort(grpc_status)
+
+            if range.read_limit > 0:
                 # read_limit is the maximum number of data bytes the server is allowed to return across all response messages with the same read_id.
                 read_end = min(read_end, start + range.read_limit)
 
@@ -670,6 +672,31 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         while not responses.empty():
             item = responses.get()
             yield item[1]
+
+    def _to_read_range_error_proto(self, range, status_code):
+        return storage_pb2.ReadRangeError(
+            read_id=range.read_id,
+            status={
+                "code": status_code.value[0],
+                "message": status_code.value[1],
+            },
+        )
+
+    def _pack_bidiread_error_details(self, range, status_code):
+        range_read_error = self._to_read_range_error_proto(range, status_code)
+        code = status_code.value[0]
+        message = status_code.value[1]
+        detail = any_pb2.Any()
+        detail.Pack(
+            storage_pb2.BidiReadObjectError(
+                read_range_errors=[range_read_error],
+            )
+        )
+        return status_pb2.Status(
+            code=code,
+            message=message,
+            details=[detail],
+        )
 
     @retry_test(method="storage.objects.patch")
     def UpdateObject(self, request, context):
