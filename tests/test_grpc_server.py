@@ -16,9 +16,11 @@
 
 """Unit test for testbench.grpc."""
 
+import collections
 import datetime
 import json
 import os
+import time
 import unittest
 import unittest.mock
 
@@ -2276,82 +2278,22 @@ class TestGrpc(unittest.TestCase):
         )
 
         streamer = self.grpc.BidiReadObject([r1], context=self.mock_context())
-        responses = list(streamer)
-        read_range_1 = responses[0].object_data_ranges[0].read_range
-        data_1 = responses[0].object_data_ranges[0].checksummed_data
-        self.assertEqual(read_id_1, read_range_1.read_id)
-        self.assertEqual(offset_1, read_range_1.read_offset)
-        self.assertEqual(limit_1, read_range_1.read_limit)
-        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
-        read_range_last = responses[-1].object_data_ranges[-1].read_range
-        data_last = responses[-1].object_data_ranges[-1].checksummed_data
-        self.assertEqual(read_id_2, read_range_last.read_id)
-        self.assertEqual(offset_2, read_range_last.read_offset)
-        self.assertEqual(limit_2, read_range_last.read_limit)
-        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
+        returned_by_readid = {
+            read_id_1: offset_1,
+            read_id_2: offset_2,
+        }
+        for resp in streamer:
+            for range in resp.object_data_ranges:
+                read_id = range.read_range.read_id
+                offset = range.read_range.read_offset
+                self.assertEqual(returned_by_readid[read_id], offset)
 
-    def test_bidi_read_object_out_of_order(self):
-        # Create object in database to read.
-        media = TestGrpc._create_block(6 * 1024 * 1024).encode("utf-8")
-        request = testbench.common.FakeRequest(
-            args={"name": "object-name"}, data=media, headers={}, environ={}
-        )
-        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object("bucket-name", blob, None)
+                data = range.checksummed_data
+                self.assertEqual(crc32c.crc32c(data.content), data.crc32c)
+                returned_by_readid[read_id] += len(data.content)
 
-        # Test n ranges in 1 stream, where n=3. Test range requests offsets are out of order.
-        offset_1 = 0
-        limit_1 = 3 * 1024 * 1024
-        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
-        offset_2 = 4 * 1024 * 1024
-        limit_2 = 1024
-        read_id_2 = read_id_1 - 1
-        offset_3 = 5 * 1024 * 1024
-        limit_3 = 1
-        read_id_3 = read_id_1 + 1
-
-        r1 = storage_pb2.BidiReadObjectRequest(
-            read_object_spec=storage_pb2.BidiReadObjectSpec(
-                bucket="projects/_/buckets/bucket-name",
-                object="object-name",
-            ),
-            read_ranges=[
-                storage_pb2.ReadRange(
-                    read_offset=offset_1,
-                    read_limit=limit_1,
-                    read_id=read_id_1,
-                ),
-                storage_pb2.ReadRange(
-                    read_offset=offset_3,
-                    read_limit=limit_3,
-                    read_id=read_id_3,
-                ),
-            ],
-        )
-        r2 = storage_pb2.BidiReadObjectRequest(
-            read_ranges=[
-                storage_pb2.ReadRange(
-                    read_offset=offset_2,
-                    read_limit=limit_2,
-                    read_id=read_id_2,
-                ),
-            ],
-        )
-
-        streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
-        responses = list(streamer)
-        read_range_1 = responses[0].object_data_ranges[0].read_range
-        data_1 = responses[0].object_data_ranges[0].checksummed_data
-        self.assertEqual(read_id_1, read_range_1.read_id)
-        self.assertEqual(offset_1, read_range_1.read_offset)
-        self.assertEqual(limit_1, read_range_1.read_limit)
-        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
-        read_range_last = responses[-1].object_data_ranges[-1].read_range
-        data_last = responses[-1].object_data_ranges[-1].checksummed_data
-        self.assertEqual(read_id_3, read_range_last.read_id)
-        self.assertEqual(offset_3, read_range_last.read_offset)
-        self.assertEqual(limit_3, read_range_last.read_limit)
-        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
+        self.assertEqual(returned_by_readid[read_id_1], offset_1 + limit_1)
+        self.assertEqual(returned_by_readid[read_id_2], offset_2 + limit_2)
 
     def test_bidi_read_object_not_found(self):
         # Test BidiReadObject with non-existent object.
@@ -2442,68 +2384,58 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
-    def test_bidi_read_object_out_of_order(self):
-        # Create object in database to read.
-        media = TestGrpc._create_block(6 * 1024 * 1024).encode("utf-8")
-        request = testbench.common.FakeRequest(
-            args={"name": "object-name"}, data=media, headers={}, environ={}
-        )
-        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
-        self.db.insert_object("bucket-name", blob, None)
+    def test_bidi_read_object_interleaves_responses(self):
+        # This lets the test pass in a reasonale amount of time - otherwise the
+        # test harness prints a _lot_ to stdout.
+        OLD_CHUNK = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+        try:
+            CHUNK = 100
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = CHUNK
+            # 100 ranges of 2 chunks each. Empirically, that makes this test
+            # flake fewer than 1 in 10,000 runs.
+            media = TestGrpc._create_block(100 * 2 * CHUNK).encode("utf-8")
+            request = testbench.common.FakeRequest(
+                args={"name": f"object-name"}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
 
-        # Test n ranges in 1 stream, where n=3. Test range requests offsets are out of order.
-        offset_1 = 0
-        limit_1 = 3 * 1024 * 1024
-        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
-        offset_2 = 4 * 1024 * 1024
-        limit_2 = 1024
-        read_id_2 = read_id_1 - 1
-        offset_3 = 5 * 1024 * 1024
-        limit_3 = 1
-        read_id_3 = read_id_1 + 1
+            def make_2_chunk_range(i):
+                return storage_pb2.ReadRange(
+                    read_offset=2 * CHUNK * i,
+                    read_limit=2 * CHUNK,
+                    read_id=i,
+                )
 
-        r1 = storage_pb2.BidiReadObjectRequest(
-            read_object_spec=storage_pb2.BidiReadObjectSpec(
-                bucket="projects/_/buckets/bucket-name",
-                object="object-name",
-            ),
-            read_ranges=[
-                storage_pb2.ReadRange(
-                    read_offset=offset_1,
-                    read_limit=limit_1,
-                    read_id=read_id_1,
-                ),
-                storage_pb2.ReadRange(
-                    read_offset=offset_3,
-                    read_limit=limit_3,
-                    read_id=read_id_3,
-                ),
-            ],
-        )
-        r2 = storage_pb2.BidiReadObjectRequest(
-            read_ranges=[
-                storage_pb2.ReadRange(
-                    read_offset=offset_2,
-                    read_limit=limit_2,
-                    read_id=read_id_2,
-                ),
-            ],
-        )
+            first_read_ranges = [make_2_chunk_range(i) for i in range(50)]
+            second_read_ranges = [make_2_chunk_range(i) for i in range(50, 100)]
 
-        streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
-        responses = list(streamer)
-        read_range_1 = responses[0].object_data_ranges[0].read_range
-        data_1 = responses[0].object_data_ranges[0].checksummed_data
-        self.assertEqual(read_id_1, read_range_1.read_id)
-        self.assertEqual(offset_1, read_range_1.read_offset)
-        self.assertEqual(limit_1, read_range_1.read_limit)
-        self.assertEqual(crc32c.crc32c(data_1.content), data_1.crc32c)
-        read_range_last = responses[-1].object_data_ranges[-1].read_range
-        data_last = responses[-1].object_data_ranges[-1].checksummed_data
-        self.assertEqual(read_id_3, read_range_last.read_id)
-        self.assertEqual(offset_3, read_range_last.read_offset)
-        self.assertEqual(limit_3, read_range_last.read_limit)
-        self.assertEqual(crc32c.crc32c(data_last.content), data_last.crc32c)
+            r1 = storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                ),
+                read_ranges=first_read_ranges,
+            )
+            r2 = storage_pb2.BidiReadObjectRequest(
+                read_ranges=second_read_ranges,
+            )
+
+            def response_to_ranges(resp):
+                return [
+                    (range.read_range.read_id, range.read_range.read_offset)
+                    for range in resp.object_data_ranges
+                ]
+
+            streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
+            response_ranges = [response_to_ranges(resp) for resp in list(streamer)]
+            self.assertNotEqual(sorted(response_ranges), response_ranges)
+        finally:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = OLD_CHUNK
+
+    def test_bidi_read_no_messages_sent(self):
+        streamer = self.grpc.BidiReadObject([], context=self.mock_context())
+        self.assertEqual(len(list(streamer)), 0)  # No responses, does not raise
 
     def test_bidi_read_out_of_range_error(self):
         # Create object in database to read.

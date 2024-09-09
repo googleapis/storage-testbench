@@ -21,7 +21,8 @@ import types
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
-from queue import PriorityQueue
+from queue import Queue
+from threading import Thread
 
 import crc32c
 import google.protobuf.any_pb2 as any_pb2
@@ -582,16 +583,46 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             start = start + size
 
     def BidiReadObject(self, request_iterator, context):
-        # A PriorityQueue holds tuples (offset, response) where the offset serves as the priority predicate.
-        # A response is removed from the queue with the lowest offset. This will help guarantee that
-        # responses with the same read_id will be delivered in increasing offset order.
-        responses = PriorityQueue()
-        # TBD: yield_size is configurable and is used to emulate interleaved responses.
-        yield_size = 1
+        # handle first message
+        try:
+            first_message = next(request_iterator)
+        except StopIteration:
+            # ok if no messages arrive from the client.
+            return
 
-        # Helper function that processes ReadRange. This could potentially become the target function
-        # when we introduce multiple workers.
-        def process_read_range(range, metadata=None):
+        obj_spec = first_message.read_object_spec
+        blob = self.db.get_object(
+            obj_spec.bucket,
+            obj_spec.object,
+            context=context,
+            generation=obj_spec.generation,
+            preconditions=testbench.common.make_grpc_preconditions(obj_spec),
+        )
+        metadata = blob.metadata
+
+        # first_response is protected by GIL
+        first_response = True
+
+        def response(resp):
+            nonlocal first_response
+            if first_response:
+                first_response = False
+                resp.metadata.CopyFrom(metadata)
+                resp.read_handle.handle = b"an-opaque-handle"
+            # We ignore the read_mask for this test server
+            return resp
+
+        if not first_message.read_ranges:
+            # always emit a response to the first request.
+            yield response(storage_pb2.BidiReadObjectResponse())
+
+        # Start handling async requests. maxsize=1 means that concurrent
+        # requests have a chance of blocking and therefore interleaving with one
+        # another.
+        responses = Queue(maxsize=1)
+
+        def process_read_range(range):
+            nonlocal responses
             size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
             # A read range corresponds to a unique read_id.
             # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
@@ -604,74 +635,65 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     range, grpc.StatusCode.OUT_OF_RANGE
                 )
                 grpc_status = rpc_status.to_status(status_msg)
-                return context.abort(grpc_status)
+                responses.put(("abort", grpc_status))
+                return
 
             if range.read_limit > 0:
                 # read_limit is the maximum number of data bytes the server is allowed to return across all response messages with the same read_id.
                 read_end = min(read_end, start + range.read_limit)
 
-            while start <= read_end:
+            while start < read_end:
                 end = min(start + size, read_end)
                 chunk = blob.media[start:end]
                 # Verify if there are no more bytes to read for the given ReadRange.
-                range_end = True if end == read_end else False
-                res = storage_pb2.BidiReadObjectResponse(
-                    object_data_ranges=[
-                        storage_pb2.ObjectRangeData(
-                            checksummed_data=storage_pb2.ChecksummedData(
-                                content=chunk,
-                                crc32c=crc32c.crc32c(chunk),
+                range_end = end == read_end
+                res = response(
+                    storage_pb2.BidiReadObjectResponse(
+                        object_data_ranges=[
+                            storage_pb2.ObjectRangeData(
+                                checksummed_data=storage_pb2.ChecksummedData(
+                                    content=chunk,
+                                    crc32c=crc32c.crc32c(chunk),
+                                ),
+                                read_range=storage_pb2.ReadRange(
+                                    read_offset=start,
+                                    read_limit=range.read_limit,
+                                    read_id=read_id,
+                                ),
+                                range_end=range_end,
                             ),
-                            read_range=storage_pb2.ReadRange(
-                                read_offset=start,
-                                read_limit=range.read_limit,
-                                read_id=read_id,
-                            ),
-                            range_end=range_end,
-                        ),
-                    ],
-                    metadata=metadata,
+                        ],
+                    )
                 )
-                # Put tuple (offset, response) into the priority queue.
-                responses.put((start, res))
-                start = end + 1
+                responses.put(("respond", res))
+                start = end
 
-        # Handle first request message.
-        first_message = next(request_iterator)
-        obj_spec = first_message.read_object_spec
-        blob = self.db.get_object(
-            obj_spec.bucket,
-            obj_spec.object,
-            context=context,
-            generation=obj_spec.generation,
-            preconditions=testbench.common.make_grpc_preconditions(obj_spec),
+        def gather_requests(initial_ranges):
+            nonlocal responses
+            with futures.ThreadPoolExecutor() as readers:
+                for range in initial_ranges:
+                    readers.submit(process_read_range, range)
+                for request in request_iterator:
+                    for range in request.read_ranges:
+                        readers.submit(process_read_range, range)
+            responses.put(("terminate", None))
+
+        gather_thread = Thread(
+            target=gather_requests, args=(first_message.read_ranges,)
         )
-        metadata = blob.metadata
-        for range in first_message.read_ranges:
-            process_read_range(range, metadata=metadata)
-            # Let's start returning some responses.
-            while responses.qsize() > yield_size:
-                item = responses.get()
-                yield item[1]
+        try:
+            gather_thread.start()
 
-        # Handle incoming requests, after finshing processing the first message.
-        for request in request_iterator:
-            for range in request.read_ranges:
-                process_read_range(range)
-                # Let's start returning some responses. Response messages per read_id are put into
-                # the priority queue altogether before yielding.
-                # Not all responses are dequeued, and will result in interleaved responses.
-                while responses.qsize() > yield_size:
-                    item = responses.get()
-                    yield item[1]
-            while responses.qsize() > yield_size:
-                item = responses.get()
-                yield item[1]
-
-        # Finally, let's make sure all responses in the priority queue are returned.
-        while not responses.empty():
-            item = responses.get()
-            yield item[1]
+            while True:
+                action, resp = responses.get()
+                if action == "terminate":
+                    break
+                elif action == "respond":
+                    yield response(resp)
+                elif action == "abort":
+                    context.abort(resp)
+        finally:
+            gather_thread.join()
 
     def _to_read_range_error_proto(self, range, status_code):
         return storage_pb2.ReadRangeError(
