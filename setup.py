@@ -45,6 +45,7 @@ setuptools.setup(
     install_requires=[
         "grpcio==1.62.2",
         "grpcio-status==1.62.2",
+        "grpcio-tools==1.62.2",
         "googleapis-common-protos==1.63.0",
         "protobuf==4.25.3",
         "flask==3.0.3",

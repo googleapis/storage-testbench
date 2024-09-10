@@ -16,13 +16,16 @@
 
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: $(basename "$0") <googleapis-root-directory>"
+if [[ $# -eq 0 ]]; then
+  readonly GOOGLEAPIS_ROOT=".googleapis"
+elif [[ $# -eq 1 ]]; then
+  readonly GOOGLEAPIS_ROOT="$1"
+else
+  echo "Usage: $(basename "$0") [googleapis-root-directory]"
   exit 1
 fi
 
 readonly PROGRAM_PATH="$0"
-readonly GOOGLEAPIS_ROOT="$1"
 readonly INPUTS=(
     google/iam/v1/iam_policy.proto
     google/iam/v1/options.proto
@@ -39,7 +42,8 @@ else
   git -C "${GOOGLEAPIS_ROOT}" checkout master
   git -C "${GOOGLEAPIS_ROOT}" pull
 fi
-env -C .googleapis patch -p1 <$PWD/bidi-streaming-read.patch
+env -C "${GOOGLEAPIS_ROOT}" patch -p1 <$PWD/bidi-streaming-read.patch
+env -C "${GOOGLEAPIS_ROOT}" patch -p1 <$PWD/bidi-appendable-write.patch
 
 for input in "${INPUTS[@]}"; do
   python -m grpc_tools.protoc -I"${GOOGLEAPIS_ROOT}" \
