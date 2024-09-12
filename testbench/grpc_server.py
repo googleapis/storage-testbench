@@ -473,7 +473,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -688,16 +691,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata
-    
+
     @retry_test(method="storage.objects.restore")
     def RestoreObject(self, request, context):
         preconditions = testbench.common.make_grpc_preconditions(request)
         blob = self.db.restore_object(
-            request.bucket,
-            request.object,
-            request.generation,
-            preconditions,
-            context
+            request.bucket, request.object, request.generation, preconditions, context
         )
         return blob.metadata
 

@@ -1395,12 +1395,17 @@ class TestGrpc(unittest.TestCase):
         context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
         self.grpc.WriteObject([r1], context=context)
         context.abort.assert_called_once()
-    
+
     def test_restore_object(self):
         # Create a bucket with a soft delete policy
         request = testbench.common.FakeRequest(
             args={},
-            data=json.dumps({"name": "sd-bucket-name", "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60}}),
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
         )
         sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.db.insert_bucket(sd_bucket, None)
@@ -1423,9 +1428,9 @@ class TestGrpc(unittest.TestCase):
             storage_pb2.RestoreObjectRequest(
                 bucket="projects/_/buckets/sd-bucket-name",
                 object="object-to-restore",
-                generation=initial_generation
+                generation=initial_generation,
             ),
-            context
+            context,
         )
         context.abort.assert_not_called()
         self.assertIsNotNone(response)

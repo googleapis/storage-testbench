@@ -111,10 +111,9 @@ def mismatch(
     )
     generic(_simple_json_error(msg), rest_code, grpc_code, context)
 
+
 def not_soft_deleted(
-        context,
-        rest_code=412,
-        grpc_code=grpc.StatusCode.FAILED_PRECONDITION
+    context, rest_code=412, grpc_code=grpc.StatusCode.FAILED_PRECONDITION
 ):
     """This error is returned when object is not soft deleted but is either live or noncurrent"""
     msg = "objectNotSoftDeleted"

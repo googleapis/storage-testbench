@@ -213,15 +213,19 @@ class Database:
     def __del_live_generation(self, bucket_name, object_name, context):
         bucket_key = self.__bucket_key(bucket_name, context)
         self._live_generations[bucket_key].pop(object_name, None)
-    
+
     def __soft_delete_object(self, bucket_name, object_name, blob, context):
         bucket_key = self.__bucket_key(bucket_name, context)
         if self._soft_deleted_objects[bucket_key].get(object_name) is None:
             self._soft_deleted_objects[bucket_key][object_name] = []
-        blob.metadata.soft_delete_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+        blob.metadata.soft_delete_time.FromDatetime(
+            datetime.datetime.now(datetime.timezone.utc)
+        )
         self._soft_deleted_objects[bucket_key][object_name].append(blob)
-    
-    def __remove_expired_objects_from_soft_delete(self, bucket_name, object_name, retention_duration, context):
+
+    def __remove_expired_objects_from_soft_delete(
+        self, bucket_name, object_name, retention_duration, context
+    ):
         bucket_key = self.__bucket_key(bucket_name, context)
         now = datetime.datetime.now()
 
@@ -233,7 +237,7 @@ class Database:
             self._soft_deleted_objects[bucket_key][object_name] = list(
                 filter(
                     soft_delete_filter,
-                    self._soft_deleted_objects[bucket_key][object_name]
+                    self._soft_deleted_objects[bucket_key][object_name],
                 )
             )
 
@@ -242,7 +246,9 @@ class Database:
         blobs = self._soft_deleted_objects[bucket_key].get(object_name)
         if blobs is None:
             return testbench.error.notfound(object_name, context)
-        blob = next((blob for blob in blobs if blob.metadata.generation == generation), None)
+        blob = next(
+            (blob for blob in blobs if blob.metadata.generation == generation), None
+        )
         if blob is None:
             return testbench.error.notfound(object_name, context)
         return blob
@@ -395,14 +401,14 @@ class Database:
                 bucket_name, object_name, context, generation, preconditions
             )
             return update_fn(blob, live_generation)
-    
+
     def restore_object(
-            self,
-            bucket_name: str,
-            object_name: str,
-            generation: int,
-            preconditions=[],
-            context = None
+        self,
+        bucket_name: str,
+        object_name: str,
+        generation: int,
+        preconditions=[],
+        context=None,
     ) -> T:
         with self._resources_lock:
             bucket_with_metadata = self.get_bucket(bucket_name, context)
@@ -412,23 +418,27 @@ class Database:
             blob = bucket.get("%s#%d" % (object_name, generation), None)
             if blob is not None:
                 testbench.error.not_soft_deleted(context)
-            
+
             self.__remove_expired_objects_from_soft_delete(
                 bucket_name,
                 object_name,
                 bucket_with_metadata.metadata.soft_delete_policy.retention_duration.seconds,
-                context
+                context,
             )
-            blob = self.__get_soft_deleted_object(bucket_name, object_name, generation, context)
+            blob = self.__get_soft_deleted_object(
+                bucket_name, object_name, generation, context
+            )
             if blob is not None:
-                blob.metadata.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+                blob.metadata.create_time.FromDatetime(
+                    datetime.datetime.now(datetime.timezone.utc)
+                )
                 blob.metadata.ClearField("soft_delete_time")
                 blob.metadata.metageneration = 1
-                blob.metadata.generation =  blob.metadata.generation + 1
+                blob.metadata.generation = blob.metadata.generation + 1
                 if bucket_with_metadata.metadata.autoclass.enabled is True:
                     blob.metadata.storage_class = "STANDARD"
                 self.insert_object(bucket_name, blob, context, preconditions)
-            
+
             return blob
 
     # === UPLOAD === #
