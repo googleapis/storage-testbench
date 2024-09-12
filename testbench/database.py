@@ -14,6 +14,7 @@
 
 import collections
 import copy
+import datetime
 import json
 import os
 import pathlib
@@ -37,11 +38,13 @@ class Database:
         rewrites,
         retry_tests,
         supported_methods,
+        soft_deleted_objects,
     ):
         self._resources_lock = threading.RLock()
         self._buckets = buckets
         self._objects = objects
         self._live_generations = live_generations
+        self._soft_deleted_objects = soft_deleted_objects
 
         self._uploads_lock = threading.RLock()
         self._uploads = uploads
@@ -58,7 +61,7 @@ class Database:
 
     @classmethod
     def init(cls):
-        return cls({}, {}, {}, {}, {}, {}, [])
+        return cls({}, {}, {}, {}, {}, {}, [], {})
 
     def clear(self):
         """Clear all data except for the supported method list."""
@@ -66,6 +69,7 @@ class Database:
             self._buckets = {}
             self._objects = {}
             self._live_generations = {}
+            self._soft_deleted_objects = {}
         with self._uploads_lock:
             self._uploads = {}
         with self._rewrites_lock:
@@ -101,6 +105,7 @@ class Database:
             self._buckets[bucket.metadata.name] = bucket
             self._objects[bucket.metadata.name] = {}
             self._live_generations[bucket.metadata.name] = {}
+            self._soft_deleted_objects[bucket.metadata.name] = {}
 
     def list_bucket(self, project_id, prefix, context):
         with self._resources_lock:
@@ -133,6 +138,7 @@ class Database:
             del self._buckets[bucket.metadata.name]
             del self._objects[bucket.metadata.name]
             del self._live_generations[bucket.metadata.name]
+            del self._soft_deleted_objects[bucket.metadata.name]
 
     def insert_test_bucket(self):
         """Automatically create a bucket if needed.
@@ -207,6 +213,37 @@ class Database:
     def __del_live_generation(self, bucket_name, object_name, context):
         bucket_key = self.__bucket_key(bucket_name, context)
         self._live_generations[bucket_key].pop(object_name, None)
+    
+    def __soft_delete_object(self, bucket_name, object_name, blob, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        if self._soft_deleted_objects[bucket_key].get(object_name) is None:
+            self._soft_deleted_objects[bucket_key][object_name] = []
+        blob.metadata.soft_delete_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+        self._soft_deleted_objects[bucket_key][object_name].append(blob)
+    
+    def __remove_expired_objects_from_soft_delete(self, bucket_name, object_name, retention_duration, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        now = datetime.datetime.now()
+
+        def soft_delete_filter(blob):
+            delta = now - blob.metadata.soft_delete_time.ToDatetime()
+            return delta.total_seconds() < retention_duration
+
+        if self._soft_deleted_objects[bucket_key].get(object_name) is not None:
+            self._soft_deleted_objects[bucket_key][object_name] = list(
+                filter(
+                    soft_delete_filter,
+                    self._soft_deleted_objects[bucket_key][object_name]
+                )
+            )
+
+    def __get_soft_deleted_object(self, bucket_name, object_name, generation, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        blobs = self._soft_deleted_objects[bucket_key].get(object_name)
+        blob = next((blob for blob in blobs if blob.metadata.generation == generation), None)
+        if blob is None:
+            testbench.error.notfound(object_name, context)
+        return blob
 
     def list_object(self, request, bucket_name, context):
         with self._resources_lock:
@@ -336,6 +373,9 @@ class Database:
             if generation == 0 or live_generation == generation:
                 self.__del_live_generation(bucket_name, object_name, context)
             bucket = self.__get_bucket_for_object(bucket_name, context)
+            bucket_with_metadata = self.get_bucket(bucket_name, context)
+            if bucket_with_metadata.metadata.soft_delete_policy is not None:
+                self.__soft_delete_object(bucket_name, object_name, blob, context)
             bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
     def do_update_object(
@@ -353,6 +393,40 @@ class Database:
                 bucket_name, object_name, context, generation, preconditions
             )
             return update_fn(blob, live_generation)
+    
+    def restore_object(
+            self,
+            bucket_name: str,
+            object_name: str,
+            generation: int,
+            preconditions=[],
+            context = None
+    ) -> T:
+        with self._resources_lock:
+            bucket_with_metadata = self.get_bucket(bucket_name, context)
+            if bucket_with_metadata.metadata.soft_delete_policy is None:
+                testbench.error.invalid("SoftDeletePolicyRequired", context)
+            bucket = self.__get_bucket_for_object(bucket_name, context)
+            blob = bucket.get("%s#%d" % (object_name, generation), None)
+            if blob is not None:
+                testbench.error.not_soft_deleted(context)
+            
+            self.__remove_expired_objects_from_soft_delete(
+                bucket_name,
+                object_name,
+                bucket_with_metadata.metadata.soft_delete_policy.retention_duration.seconds,
+                context
+            )
+            blob = self.__get_soft_deleted_object(bucket_name, object_name, generation, context)
+            blob.metadata.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+            blob.metadata.ClearField("soft_delete_time")
+            blob.metadata.metageneration = 1
+            blob.metadata.generation =  blob.metadata.generation + 1
+            if bucket_with_metadata.metadata.autoclass.enabled is True:
+                blob.metadata.storage_class = "STANDARD"
+            self.insert_object(bucket_name, blob, context, preconditions)
+            
+            return blob
 
     # === UPLOAD === #
 

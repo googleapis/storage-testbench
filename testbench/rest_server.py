@@ -772,6 +772,21 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
         response["rewriteToken"] = rewrite.token
     return response
 
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/restore", methods=["POST"])
+@retry_test(method="storage.objects.restore")
+def object_restore(bucket_name, object_name):
+    if flask.request.args["generation"] is None:
+        testbench.error.invalid('generation')
+    blob = db.restore_object(
+        bucket_name,
+        object_name,
+        int(flask.request.args.get("generation")),
+        testbench.common.make_json_preconditions(flask.request)
+    )
+    projection = testbench.common.extract_projection(flask.request, "noAcl", None)
+    return testbench.common.filter_response_rest(
+        blob.rest_metadata(), projection, None
+    )
 
 # === OBJECT ACCESS CONTROL === #
 

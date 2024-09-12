@@ -1395,6 +1395,20 @@ class TestGrpc(unittest.TestCase):
         context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
         self.grpc.WriteObject([r1], context=context)
         context.abort.assert_called_once()
+    
+    def test_restore_object(self):
+        context = unittest.mock.Mock()
+        response = self.grpc.RestoreObject(
+            storage_pb2.RestoreObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-to-restore",
+                generation=123
+            ),
+            context
+        )
+        context.abort.assert_not_called()
+        done = response.done
+        self.assertTrue(done)
 
     def test_rewrite_object(self):
         # We need a large enough payload to make sure the first rewrite does
