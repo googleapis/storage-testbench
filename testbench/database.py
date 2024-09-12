@@ -240,9 +240,11 @@ class Database:
     def __get_soft_deleted_object(self, bucket_name, object_name, generation, context):
         bucket_key = self.__bucket_key(bucket_name, context)
         blobs = self._soft_deleted_objects[bucket_key].get(object_name)
+        if blobs is None:
+            return testbench.error.notfound(object_name, context)
         blob = next((blob for blob in blobs if blob.metadata.generation == generation), None)
         if blob is None:
-            testbench.error.notfound(object_name, context)
+            return testbench.error.notfound(object_name, context)
         return blob
 
     def list_object(self, request, bucket_name, context):
@@ -418,13 +420,14 @@ class Database:
                 context
             )
             blob = self.__get_soft_deleted_object(bucket_name, object_name, generation, context)
-            blob.metadata.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
-            blob.metadata.ClearField("soft_delete_time")
-            blob.metadata.metageneration = 1
-            blob.metadata.generation =  blob.metadata.generation + 1
-            if bucket_with_metadata.metadata.autoclass.enabled is True:
-                blob.metadata.storage_class = "STANDARD"
-            self.insert_object(bucket_name, blob, context, preconditions)
+            if blob is not None:
+                blob.metadata.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+                blob.metadata.ClearField("soft_delete_time")
+                blob.metadata.metageneration = 1
+                blob.metadata.generation =  blob.metadata.generation + 1
+                if bucket_with_metadata.metadata.autoclass.enabled is True:
+                    blob.metadata.storage_class = "STANDARD"
+                self.insert_object(bucket_name, blob, context, preconditions)
             
             return blob
 

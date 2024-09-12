@@ -693,8 +693,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
     def RestoreObject(self, request, context):
         preconditions = testbench.common.make_grpc_preconditions(request)
         blob = self.db.restore_object(
-            request.bucket.name,
-            request.object.name,
+            request.bucket,
+            request.object,
             request.generation,
             preconditions,
             context
