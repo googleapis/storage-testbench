@@ -105,7 +105,7 @@ class TestError(unittest.TestCase):
             context, rest_code=503, grpc_code=grpc.StatusCode.UNAVAILABLE
         )
         context.abort.assert_called_once_with(grpc.StatusCode.UNAVAILABLE, ANY)
-    
+
     def test_not_soft_deleted_error(self):
         with self.assertRaises(error.RestException) as rest:
             error.not_soft_deleted(None)
