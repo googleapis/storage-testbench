@@ -15,9 +15,29 @@
 
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
+import warnings
 
 from google.iam.v1 import iam_policy_pb2 as google_dot_iam_dot_v1_dot_iam__policy__pb2
 from google.iam.v1 import policy_pb2 as google_dot_iam_dot_v1_dot_policy__pb2
+
+GRPC_GENERATED_VERSION = '1.66.1'
+GRPC_VERSION = grpc.__version__
+_version_not_supported = False
+
+try:
+    from grpc._utilities import first_version_is_lower
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
+except ImportError:
+    _version_not_supported = True
+
+if _version_not_supported:
+    raise RuntimeError(
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + f' but the generated code in google/iam/v1/iam_policy_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
+    )
 
 
 class IAMPolicyStub(object):
@@ -59,17 +79,17 @@ class IAMPolicyStub(object):
                 '/google.iam.v1.IAMPolicy/SetIamPolicy',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.SetIamPolicyRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-                )
+                _registered_method=True)
         self.GetIamPolicy = channel.unary_unary(
                 '/google.iam.v1.IAMPolicy/GetIamPolicy',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.GetIamPolicyRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-                )
+                _registered_method=True)
         self.TestIamPermissions = channel.unary_unary(
                 '/google.iam.v1.IAMPolicy/TestIamPermissions',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsResponse.FromString,
-                )
+                _registered_method=True)
 
 
 class IAMPolicyServicer(object):
@@ -155,6 +175,7 @@ def add_IAMPolicyServicer_to_server(servicer, server):
     generic_handler = grpc.method_handlers_generic_handler(
             'google.iam.v1.IAMPolicy', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('google.iam.v1.IAMPolicy', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -198,11 +219,21 @@ class IAMPolicy(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.iam.v1.IAMPolicy/SetIamPolicy',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.iam.v1.IAMPolicy/SetIamPolicy',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.SetIamPolicyRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetIamPolicy(request,
@@ -215,11 +246,21 @@ class IAMPolicy(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.iam.v1.IAMPolicy/GetIamPolicy',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.iam.v1.IAMPolicy/GetIamPolicy',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.GetIamPolicyRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def TestIamPermissions(request,
@@ -232,8 +273,18 @@ class IAMPolicy(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.iam.v1.IAMPolicy/TestIamPermissions',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.iam.v1.IAMPolicy/TestIamPermissions',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
