@@ -15,11 +15,31 @@
 
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
+import warnings
 
 from google.iam.v1 import iam_policy_pb2 as google_dot_iam_dot_v1_dot_iam__policy__pb2
 from google.iam.v1 import policy_pb2 as google_dot_iam_dot_v1_dot_policy__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.storage.v2 import storage_pb2 as google_dot_storage_dot_v2_dot_storage__pb2
+
+GRPC_GENERATED_VERSION = '1.66.1'
+GRPC_VERSION = grpc.__version__
+_version_not_supported = False
+
+try:
+    from grpc._utilities import first_version_is_lower
+    _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
+except ImportError:
+    _version_not_supported = True
+
+if _version_not_supported:
+    raise RuntimeError(
+        f'The grpc package installed is at version {GRPC_VERSION},'
+        + f' but the generated code in google/storage/v2/storage_pb2_grpc.py depends on'
+        + f' grpcio>={GRPC_GENERATED_VERSION}.'
+        + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
+        + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
+    )
 
 
 class StorageStub(object):
@@ -56,162 +76,162 @@ class StorageStub(object):
                 '/google.storage.v2.Storage/DeleteBucket',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteBucketRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
+                _registered_method=True)
         self.GetBucket = channel.unary_unary(
                 '/google.storage.v2.Storage/GetBucket',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetBucketRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-                )
+                _registered_method=True)
         self.CreateBucket = channel.unary_unary(
                 '/google.storage.v2.Storage/CreateBucket',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateBucketRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-                )
+                _registered_method=True)
         self.ListBuckets = channel.unary_unary(
                 '/google.storage.v2.Storage/ListBuckets',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListBucketsRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListBucketsResponse.FromString,
-                )
+                _registered_method=True)
         self.LockBucketRetentionPolicy = channel.unary_unary(
                 '/google.storage.v2.Storage/LockBucketRetentionPolicy',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.LockBucketRetentionPolicyRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-                )
+                _registered_method=True)
         self.GetIamPolicy = channel.unary_unary(
                 '/google.storage.v2.Storage/GetIamPolicy',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.GetIamPolicyRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-                )
+                _registered_method=True)
         self.SetIamPolicy = channel.unary_unary(
                 '/google.storage.v2.Storage/SetIamPolicy',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.SetIamPolicyRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-                )
+                _registered_method=True)
         self.TestIamPermissions = channel.unary_unary(
                 '/google.storage.v2.Storage/TestIamPermissions',
                 request_serializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsRequest.SerializeToString,
                 response_deserializer=google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsResponse.FromString,
-                )
+                _registered_method=True)
         self.UpdateBucket = channel.unary_unary(
                 '/google.storage.v2.Storage/UpdateBucket',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-                )
+                _registered_method=True)
         self.DeleteNotificationConfig = channel.unary_unary(
                 '/google.storage.v2.Storage/DeleteNotificationConfig',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
+                _registered_method=True)
         self.GetNotificationConfig = channel.unary_unary(
                 '/google.storage.v2.Storage/GetNotificationConfig',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-                )
+                _registered_method=True)
         self.CreateNotificationConfig = channel.unary_unary(
                 '/google.storage.v2.Storage/CreateNotificationConfig',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-                )
+                _registered_method=True)
         self.ListNotificationConfigs = channel.unary_unary(
                 '/google.storage.v2.Storage/ListNotificationConfigs',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
-                )
+                _registered_method=True)
         self.ComposeObject = channel.unary_unary(
                 '/google.storage.v2.Storage/ComposeObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ComposeObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-                )
+                _registered_method=True)
         self.DeleteObject = channel.unary_unary(
                 '/google.storage.v2.Storage/DeleteObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteObjectRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
+                _registered_method=True)
         self.RestoreObject = channel.unary_unary(
                 '/google.storage.v2.Storage/RestoreObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.RestoreObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-                )
+                _registered_method=True)
         self.CancelResumableWrite = channel.unary_unary(
                 '/google.storage.v2.Storage/CancelResumableWrite',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteResponse.FromString,
-                )
+                _registered_method=True)
         self.GetObject = channel.unary_unary(
                 '/google.storage.v2.Storage/GetObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-                )
+                _registered_method=True)
         self.ReadObject = channel.unary_stream(
                 '/google.storage.v2.Storage/ReadObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectResponse.FromString,
-                )
+                _registered_method=True)
         self.UpdateObject = channel.unary_unary(
                 '/google.storage.v2.Storage/UpdateObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-                )
+                _registered_method=True)
         self.WriteObject = channel.stream_unary(
                 '/google.storage.v2.Storage/WriteObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.WriteObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.WriteObjectResponse.FromString,
-                )
+                _registered_method=True)
         self.BidiWriteObject = channel.stream_stream(
                 '/google.storage.v2.Storage/BidiWriteObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiWriteObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.BidiWriteObjectResponse.FromString,
-                )
+                _registered_method=True)
         self.ListObjects = channel.unary_unary(
                 '/google.storage.v2.Storage/ListObjects',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListObjectsRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListObjectsResponse.FromString,
-                )
+                _registered_method=True)
         self.RewriteObject = channel.unary_unary(
                 '/google.storage.v2.Storage/RewriteObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.RewriteObjectRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.RewriteResponse.FromString,
-                )
+                _registered_method=True)
         self.StartResumableWrite = channel.unary_unary(
                 '/google.storage.v2.Storage/StartResumableWrite',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.StartResumableWriteRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.StartResumableWriteResponse.FromString,
-                )
+                _registered_method=True)
         self.QueryWriteStatus = channel.unary_unary(
                 '/google.storage.v2.Storage/QueryWriteStatus',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
-                )
+                _registered_method=True)
         self.GetServiceAccount = channel.unary_unary(
                 '/google.storage.v2.Storage/GetServiceAccount',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetServiceAccountRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ServiceAccount.FromString,
-                )
+                _registered_method=True)
         self.CreateHmacKey = channel.unary_unary(
                 '/google.storage.v2.Storage/CreateHmacKey',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyResponse.FromString,
-                )
+                _registered_method=True)
         self.DeleteHmacKey = channel.unary_unary(
                 '/google.storage.v2.Storage/DeleteHmacKey',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteHmacKeyRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
+                _registered_method=True)
         self.GetHmacKey = channel.unary_unary(
                 '/google.storage.v2.Storage/GetHmacKey',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetHmacKeyRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-                )
+                _registered_method=True)
         self.ListHmacKeys = channel.unary_unary(
                 '/google.storage.v2.Storage/ListHmacKeys',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysResponse.FromString,
-                )
+                _registered_method=True)
         self.UpdateHmacKey = channel.unary_unary(
                 '/google.storage.v2.Storage/UpdateHmacKey',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateHmacKeyRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-                )
+                _registered_method=True)
 
 
 class StorageServicer(object):
@@ -741,6 +761,7 @@ def add_StorageServicer_to_server(servicer, server):
     generic_handler = grpc.method_handlers_generic_handler(
             'google.storage.v2.Storage', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('google.storage.v2.Storage', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -779,11 +800,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteBucket',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/DeleteBucket',
             google_dot_storage_dot_v2_dot_storage__pb2.DeleteBucketRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetBucket(request,
@@ -796,11 +827,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetBucket',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetBucket',
             google_dot_storage_dot_v2_dot_storage__pb2.GetBucketRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def CreateBucket(request,
@@ -813,11 +854,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CreateBucket',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/CreateBucket',
             google_dot_storage_dot_v2_dot_storage__pb2.CreateBucketRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ListBuckets(request,
@@ -830,11 +881,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListBuckets',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/ListBuckets',
             google_dot_storage_dot_v2_dot_storage__pb2.ListBucketsRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ListBucketsResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def LockBucketRetentionPolicy(request,
@@ -847,11 +908,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/LockBucketRetentionPolicy',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/LockBucketRetentionPolicy',
             google_dot_storage_dot_v2_dot_storage__pb2.LockBucketRetentionPolicyRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetIamPolicy(request,
@@ -864,11 +935,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetIamPolicy',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetIamPolicy',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.GetIamPolicyRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def SetIamPolicy(request,
@@ -881,11 +962,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/SetIamPolicy',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/SetIamPolicy',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.SetIamPolicyRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_policy__pb2.Policy.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def TestIamPermissions(request,
@@ -898,11 +989,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/TestIamPermissions',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/TestIamPermissions',
             google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsRequest.SerializeToString,
             google_dot_iam_dot_v1_dot_iam__policy__pb2.TestIamPermissionsResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def UpdateBucket(request,
@@ -915,11 +1016,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/UpdateBucket',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/UpdateBucket',
             google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def DeleteNotificationConfig(request,
@@ -932,11 +1043,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteNotificationConfig',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/DeleteNotificationConfig',
             google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetNotificationConfig(request,
@@ -949,11 +1070,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetNotificationConfig',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetNotificationConfig',
             google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def CreateNotificationConfig(request,
@@ -966,11 +1097,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CreateNotificationConfig',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/CreateNotificationConfig',
             google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ListNotificationConfigs(request,
@@ -983,11 +1124,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListNotificationConfigs',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/ListNotificationConfigs',
             google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ComposeObject(request,
@@ -1000,11 +1151,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ComposeObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/ComposeObject',
             google_dot_storage_dot_v2_dot_storage__pb2.ComposeObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def DeleteObject(request,
@@ -1017,11 +1178,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/DeleteObject',
             google_dot_storage_dot_v2_dot_storage__pb2.DeleteObjectRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def RestoreObject(request,
@@ -1034,11 +1205,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/RestoreObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/RestoreObject',
             google_dot_storage_dot_v2_dot_storage__pb2.RestoreObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def CancelResumableWrite(request,
@@ -1051,11 +1232,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CancelResumableWrite',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/CancelResumableWrite',
             google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.CancelResumableWriteResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetObject(request,
@@ -1068,11 +1259,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetObject',
             google_dot_storage_dot_v2_dot_storage__pb2.GetObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ReadObject(request,
@@ -1085,11 +1286,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/google.storage.v2.Storage/ReadObject',
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/google.storage.v2.Storage/ReadObject',
             google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ReadObjectResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def UpdateObject(request,
@@ -1102,11 +1313,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/UpdateObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/UpdateObject',
             google_dot_storage_dot_v2_dot_storage__pb2.UpdateObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def WriteObject(request_iterator,
@@ -1119,11 +1340,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_unary(request_iterator, target, '/google.storage.v2.Storage/WriteObject',
+        return grpc.experimental.stream_unary(
+            request_iterator,
+            target,
+            '/google.storage.v2.Storage/WriteObject',
             google_dot_storage_dot_v2_dot_storage__pb2.WriteObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.WriteObjectResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def BidiWriteObject(request_iterator,
@@ -1136,11 +1367,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/google.storage.v2.Storage/BidiWriteObject',
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/google.storage.v2.Storage/BidiWriteObject',
             google_dot_storage_dot_v2_dot_storage__pb2.BidiWriteObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.BidiWriteObjectResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ListObjects(request,
@@ -1153,11 +1394,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListObjects',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/ListObjects',
             google_dot_storage_dot_v2_dot_storage__pb2.ListObjectsRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ListObjectsResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def RewriteObject(request,
@@ -1170,11 +1421,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/RewriteObject',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/RewriteObject',
             google_dot_storage_dot_v2_dot_storage__pb2.RewriteObjectRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.RewriteResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def StartResumableWrite(request,
@@ -1187,11 +1448,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/StartResumableWrite',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/StartResumableWrite',
             google_dot_storage_dot_v2_dot_storage__pb2.StartResumableWriteRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.StartResumableWriteResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def QueryWriteStatus(request,
@@ -1204,11 +1475,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/QueryWriteStatus',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/QueryWriteStatus',
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetServiceAccount(request,
@@ -1221,11 +1502,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetServiceAccount',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetServiceAccount',
             google_dot_storage_dot_v2_dot_storage__pb2.GetServiceAccountRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ServiceAccount.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def CreateHmacKey(request,
@@ -1238,11 +1529,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/CreateHmacKey',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/CreateHmacKey',
             google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def DeleteHmacKey(request,
@@ -1255,11 +1556,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/DeleteHmacKey',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/DeleteHmacKey',
             google_dot_storage_dot_v2_dot_storage__pb2.DeleteHmacKeyRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetHmacKey(request,
@@ -1272,11 +1583,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/GetHmacKey',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/GetHmacKey',
             google_dot_storage_dot_v2_dot_storage__pb2.GetHmacKeyRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def ListHmacKeys(request,
@@ -1289,11 +1610,21 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/ListHmacKeys',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/ListHmacKeys',
             google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def UpdateHmacKey(request,
@@ -1306,8 +1637,18 @@ class Storage(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/google.storage.v2.Storage/UpdateHmacKey',
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/UpdateHmacKey',
             google_dot_storage_dot_v2_dot_storage__pb2.UpdateHmacKeyRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
