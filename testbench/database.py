@@ -243,9 +243,7 @@ class Database:
 
     def __get_soft_deleted_object(self, bucket_name, object_name, generation, context):
         bucket_key = self.__bucket_key(bucket_name, context)
-        blobs = self._soft_deleted_objects[bucket_key].get(object_name)
-        if blobs is None:
-            return testbench.error.notfound(object_name, context)
+        blobs = self._soft_deleted_objects[bucket_key].get(object_name, [])
         blob = next(
             (blob for blob in blobs if blob.metadata.generation == generation), None
         )

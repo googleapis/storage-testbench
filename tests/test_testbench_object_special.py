@@ -304,6 +304,12 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
         restored_blob = json.loads(response.data)
         self.assertNotEqual(blob.get("generation"), restored_blob.get("generation"))
 
+    def test_object_restore_no_generation(self):
+        response = self.client.post(
+            "/storage/v1/b/sd-bucket-name/o/sd-restore-obj/restore"
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
