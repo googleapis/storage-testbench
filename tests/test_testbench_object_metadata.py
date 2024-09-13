@@ -293,7 +293,9 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        response = self.client.get("/storage/v1/b/bucket-name/o/some-object?softDeleted=true")
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/some-object?softDeleted=true"
+        )
         self.assertEqual(response.status_code, 400)
 
         response = self.client.post(
@@ -315,9 +317,7 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
-        response = self.client.get(
-            "/storage/v1/b/sd-bucket-name/o/fox.txt"
-        )
+        response = self.client.get("/storage/v1/b/sd-bucket-name/o/fox.txt")
         self.assertEqual(response.status_code, 200)
         generation = json.loads(response.data).get("generation")
 
@@ -329,10 +329,15 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-        response = self.client.get("/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true")
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true"
+        )
         self.assertEqual(response.status_code, 400)
 
-        response = self.client.get("/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true&generation=" + generation)
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true&generation="
+            + generation
+        )
         self.assertEqual(response.status_code, 200)
 
 
