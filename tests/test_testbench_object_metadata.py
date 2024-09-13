@@ -298,6 +298,11 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/some-object?softDeleted=true&generation=12345678"
+        )
+        self.assertEqual(response.status_code, 400)
+
         response = self.client.post(
             "/storage/v1/b",
             data=json.dumps(
