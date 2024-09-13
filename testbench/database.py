@@ -412,7 +412,7 @@ class Database:
     ) -> T:
         with self._resources_lock:
             bucket_with_metadata = self.get_bucket(bucket_name, context)
-            if bucket_with_metadata.metadata.soft_delete_policy is None:
+            if not bucket_with_metadata.metadata.HasField("soft_delete_policy"):
                 testbench.error.invalid("SoftDeletePolicyRequired", context)
             bucket = self.__get_bucket_for_object(bucket_name, context)
             blob = bucket.get("%s#%d" % (object_name, generation), None)
