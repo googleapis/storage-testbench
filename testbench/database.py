@@ -214,29 +214,28 @@ class Database:
         bucket_key = self.__bucket_key(bucket_name, context)
         self._live_generations[bucket_key].pop(object_name, None)
 
-    def __soft_delete_object(self, bucket_name, object_name, blob, context):
+    def __soft_delete_object(
+        self, bucket_name, object_name, blob, retention_duration, context
+    ):
         bucket_key = self.__bucket_key(bucket_name, context)
         if self._soft_deleted_objects[bucket_key].get(object_name) is None:
             self._soft_deleted_objects[bucket_key][object_name] = []
-        blob.metadata.soft_delete_time.FromDatetime(
-            datetime.datetime.now(datetime.timezone.utc)
-        )
+        soft_delete_time = datetime.datetime.now(datetime.timezone.utc)
+        hard_delete_time = soft_delete_time + datetime.timedelta(0, retention_duration)
+        blob.metadata.soft_delete_time.FromDatetime(soft_delete_time)
+        blob.metadata.hard_delete_time.FromDatetime(hard_delete_time)
         self._soft_deleted_objects[bucket_key][object_name].append(blob)
 
     def __remove_expired_objects_from_soft_delete(
-        self, bucket_name, object_name, retention_duration, context
+        self, bucket_name, object_name, context
     ):
         bucket_key = self.__bucket_key(bucket_name, context)
         now = datetime.datetime.now()
 
-        def soft_delete_filter(blob):
-            delta = now - blob.metadata.soft_delete_time.ToDatetime()
-            return delta.total_seconds() < retention_duration
-
         if self._soft_deleted_objects[bucket_key].get(object_name) is not None:
             self._soft_deleted_objects[bucket_key][object_name] = list(
                 filter(
-                    soft_delete_filter,
+                    lambda blob: now < blob.metadata.hard_delete_time.ToDatetime(),
                     self._soft_deleted_objects[bucket_key][object_name],
                 )
             )
@@ -380,8 +379,15 @@ class Database:
                 self.__del_live_generation(bucket_name, object_name, context)
             bucket = self.__get_bucket_for_object(bucket_name, context)
             bucket_with_metadata = self.get_bucket(bucket_name, context)
-            if bucket_with_metadata.metadata.soft_delete_policy is not None:
-                self.__soft_delete_object(bucket_name, object_name, blob, context)
+            if bucket_with_metadata.metadata.HasField("soft_delete_policy"):
+                print(bucket_with_metadata.metadata)
+                self.__soft_delete_object(
+                    bucket_name,
+                    object_name,
+                    blob,
+                    bucket_with_metadata.metadata.soft_delete_policy.retention_duration.seconds,
+                    context,
+                )
             bucket.pop("%s#%d" % (blob.metadata.name, blob.metadata.generation), None)
 
     def do_update_object(
@@ -420,7 +426,6 @@ class Database:
             self.__remove_expired_objects_from_soft_delete(
                 bucket_name,
                 object_name,
-                bucket_with_metadata.metadata.soft_delete_policy.retention_duration.seconds,
                 context,
             )
             blob = self.__get_soft_deleted_object(
