@@ -290,20 +290,20 @@ class Database:
             prefixes = set()
 
             if (
-                soft_deleted.lower() == "true"
+                soft_deleted
                 and not bucket_with_metadata.metadata.HasField("soft_delete_policy")
-            ) or (soft_deleted.lower() == "true" and versions):
+            ) or (soft_deleted and versions):
                 return testbench.error.invalid("bad request", context)
 
             objects = bucket.values()
-            if soft_deleted.lower() == "true":
+            if soft_deleted:
                 objects = self.__get_all_soft_deleted_objects(bucket_name, context)
 
             for obj in objects:
                 generation = obj.metadata.generation
                 name = obj.metadata.name
                 if (
-                    soft_deleted.lower() == "false"
+                    not soft_deleted
                     and not versions
                     and generation
                     != self.__get_live_generation(bucket_name, name, context)
