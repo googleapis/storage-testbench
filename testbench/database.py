@@ -179,6 +179,7 @@ class Database:
             request.lexicographic_end,
             request.include_trailing_delimiter,
             request.match_glob,
+            request.soft_deleted,
         )
 
     @classmethod
@@ -192,6 +193,7 @@ class Database:
         end_offset = request.args.get("endOffset")
         include_trailing_delimiter = request.args.get("includeTrailingDelimiter", False)
         match_glob = request.args.get("matchGlob", None)
+        soft_deleted = request.args.get("softDeleted", False)
         return (
             delimiter,
             prefix,
@@ -200,6 +202,7 @@ class Database:
             end_offset,
             include_trailing_delimiter,
             match_glob,
+            soft_deleted,
         )
 
     def __get_live_generation(self, bucket_name, object_name, context):
@@ -250,9 +253,17 @@ class Database:
             return testbench.error.notfound(object_name, context)
         return blob
 
+    def __get_all_soft_deleted_objects(self, bucket_name, context):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        all_soft_deleted = []
+        for soft_deleted_list in self._soft_deleted_objects[bucket_key].values():
+            all_soft_deleted.extend(soft_deleted_list)
+        return all_soft_deleted
+
     def list_object(self, request, bucket_name, context):
         with self._resources_lock:
             bucket = self.__get_bucket_for_object(bucket_name, context)
+            bucket_with_metadata = self.get_bucket(bucket_name, context)
             (
                 delimiter,
                 prefix,
@@ -261,14 +272,29 @@ class Database:
                 end_offset,
                 include_trailing_delimiter,
                 match_glob,
+                soft_deleted,
             ) = self.__extract_list_object_request(request, context)
             items = []
             prefixes = set()
-            for obj in bucket.values():
+
+            if (
+                soft_deleted
+                and not bucket_with_metadata.metadata.HasField("soft_delete_policy")
+            ) or (soft_deleted and versions):
+                return testbench.error.invalid("bad request", context)
+
+            objects = bucket.values()
+            if soft_deleted:
+                objects = self.__get_all_soft_deleted_objects(bucket_name, context)
+
+            for obj in objects:
                 generation = obj.metadata.generation
                 name = obj.metadata.name
-                if not versions and generation != self.__get_live_generation(
-                    bucket_name, name, context
+                if (
+                    not soft_deleted
+                    and not versions
+                    and generation
+                    != self.__get_live_generation(bucket_name, name, context)
                 ):
                     continue
                 if name.find(prefix) != 0:
@@ -380,7 +406,6 @@ class Database:
             bucket = self.__get_bucket_for_object(bucket_name, context)
             bucket_with_metadata = self.get_bucket(bucket_name, context)
             if bucket_with_metadata.metadata.HasField("soft_delete_policy"):
-                print(bucket_with_metadata.metadata)
                 self.__soft_delete_object(
                     bucket_name,
                     object_name,
