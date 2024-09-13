@@ -270,6 +270,7 @@ class Database:
         all_soft_deleted = []
         for soft_deleted_list in self._soft_deleted_objects[bucket_key].values():
             all_soft_deleted.extend(soft_deleted_list)
+        all_soft_deleted.sort(key=lambda blob: blob.metadata.generation)
         return all_soft_deleted
 
     def list_object(self, request, bucket_name, context):
