@@ -776,8 +776,8 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
 @gcs.route("/b/<bucket_name>/o/<path:object_name>/restore", methods=["POST"])
 @retry_test(method="storage.objects.restore")
 def object_restore(bucket_name, object_name):
-    if flask.request.args["generation"] is None:
-        testbench.error.invalid("generation")
+    if flask.request.args.get("generation") is None:
+        return testbench.error.invalid("generation", None)
     blob = db.restore_object(
         bucket_name,
         object_name,
