@@ -1434,7 +1434,7 @@ class TestGrpc(unittest.TestCase):
         )
         context.abort.assert_not_called()
         self.assertIsNotNone(response)
-        self.assertNotEqual(initial_generation, blob.metadata.generation)
+        self.assertNotEqual(initial_generation, response.generation)
 
     def test_rewrite_object(self):
         # We need a large enough payload to make sure the first rewrite does

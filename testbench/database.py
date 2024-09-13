@@ -243,6 +243,18 @@ class Database:
                 )
             )
 
+    def __remove_restored_soft_deleted_object(
+        self, bucket_name, object_name, generation, context
+    ):
+        bucket_key = self.__bucket_key(bucket_name, context)
+        if self._soft_deleted_objects[bucket_key].get(object_name) is not None:
+            self._soft_deleted_objects[bucket_key][object_name] = list(
+                filter(
+                    lambda blob: blob.metadata.generation == generation,
+                    self._soft_deleted_objects[bucket_key][object_name],
+                )
+            )
+
     def __get_soft_deleted_object(self, bucket_name, object_name, generation, context):
         bucket_key = self.__bucket_key(bucket_name, context)
         blobs = self._soft_deleted_objects[bucket_key].get(object_name, [])
@@ -466,6 +478,9 @@ class Database:
                 if bucket_with_metadata.metadata.autoclass.enabled is True:
                     blob.metadata.storage_class = "STANDARD"
                 self.insert_object(bucket_name, blob, context, preconditions)
+                self.__remove_restored_soft_deleted_object(
+                    bucket_name, object_name, generation, context
+                )
 
             return blob
 
