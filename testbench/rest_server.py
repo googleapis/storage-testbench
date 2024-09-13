@@ -571,9 +571,7 @@ def object_get(bucket_name, object_name):
     soft_deleted = flask.request.args.get("softDeleted", False, bool)
     media = flask.request.args.get("alt", None)
     generation = flask.request.args.get("generation", None)
-    if (soft_deleted and generation is None) or (
-        soft_deleted and media == "media"
-    ):
+    if (soft_deleted and generation is None) or (soft_deleted and media == "media"):
         return testbench.error.invalid("invalid request", None)
 
     blob = db.get_object(
