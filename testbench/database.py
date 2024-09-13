@@ -368,11 +368,11 @@ class Database:
         context=None,
         generation=None,
         preconditions=[],
-        soft_deleted="false",
+        soft_deleted=False,
     ):
         with self._resources_lock:
             blob = None
-            if soft_deleted.lower() == "false":
+            if not soft_deleted:
                 blob, _ = self.__get_object(
                     bucket_name, object_name, context, generation, preconditions
                 )
