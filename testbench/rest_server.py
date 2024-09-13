@@ -568,14 +568,22 @@ def object_delete(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
 def object_get(bucket_name, object_name):
+    soft_deleted = flask.request.args.get("softDeleted", "false")
+    media = flask.request.args.get("alt", None)
+    generation = flask.request.args.get("generation", None)
+    if (soft_deleted.lower() == "true" and generation is None) or (
+        soft_deleted.lower() == "true" and media == "media"
+    ):
+        return testbench.error.invalid("invalid request", None)
+
     blob = db.get_object(
         bucket_name,
         object_name,
-        generation=flask.request.args.get("generation", None),
+        generation=generation,
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        soft_deleted=soft_deleted,
     )
-    media = flask.request.args.get("alt", None)
     if media is None or media == "json":
         projection = testbench.common.extract_projection(flask.request, "noAcl", None)
         fields = flask.request.args.get("fields", None)

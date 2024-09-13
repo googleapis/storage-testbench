@@ -290,20 +290,20 @@ class Database:
             prefixes = set()
 
             if (
-                soft_deleted
+                soft_deleted.lower() == "true"
                 and not bucket_with_metadata.metadata.HasField("soft_delete_policy")
-            ) or (soft_deleted and versions):
+            ) or (soft_deleted.lower() == "true" and versions):
                 return testbench.error.invalid("bad request", context)
 
             objects = bucket.values()
-            if soft_deleted:
+            if soft_deleted.lower() == "true":
                 objects = self.__get_all_soft_deleted_objects(bucket_name, context)
 
             for obj in objects:
                 generation = obj.metadata.generation
                 name = obj.metadata.name
                 if (
-                    not soft_deleted
+                    soft_deleted.lower() == "false"
                     and not versions
                     and generation
                     != self.__get_live_generation(bucket_name, name, context)
@@ -362,12 +362,27 @@ class Database:
         return blob, live_generation
 
     def get_object(
-        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+        self,
+        bucket_name,
+        object_name,
+        context=None,
+        generation=None,
+        preconditions=[],
+        soft_deleted="false",
     ):
         with self._resources_lock:
-            blob, _ = self.__get_object(
-                bucket_name, object_name, context, generation, preconditions
-            )
+            blob = None
+            if soft_deleted.lower() == "false":
+                blob, _ = self.__get_object(
+                    bucket_name, object_name, context, generation, preconditions
+                )
+            else:
+                bucket_with_metadata = self.get_bucket(bucket_name, context)
+                if not bucket_with_metadata.metadata.HasField("soft_delete_policy"):
+                    testbench.error.invalid("SoftDeletePolicyRequired", context)
+                blob = self.__get_soft_deleted_object(
+                    bucket_name, object_name, int(generation), context
+                )
             # return a snapshot copy of the blob/blob.metadata
             if blob is None:
                 return None
