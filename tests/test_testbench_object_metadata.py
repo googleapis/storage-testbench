@@ -248,6 +248,103 @@ class TestTestbenchObjectMetadata(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_list_with_soft_deleted(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/storage/v1/b/bucket-name/o?softDeleted=true")
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(
+            "/storage/v1/b",
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = "The quick brown fox jumps over the lazy dog"
+        response = self.client.put(
+            "/sd-bucket-name/fox.txt",
+            content_type="text/plain",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.delete("/storage/v1/b/sd-bucket-name/o/fox.txt")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o?softDeleted=true&versions=true"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get("/storage/v1/b/sd-bucket-name/o?softDeleted=true")
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_with_soft_deleted(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/some-object?softDeleted=true"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get(
+            "/storage/v1/b/bucket-name/o/some-object?softDeleted=true&generation=12345678"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(
+            "/storage/v1/b",
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = "The quick brown fox jumps over the lazy dog"
+        response = self.client.put(
+            "/sd-bucket-name/fox.txt",
+            content_type="text/plain",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/storage/v1/b/sd-bucket-name/o/fox.txt")
+        self.assertEqual(response.status_code, 200)
+        generation = json.loads(response.data).get("generation")
+
+        response = self.client.delete("/storage/v1/b/sd-bucket-name/o/fox.txt")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true&alt=media"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true"
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get(
+            "/storage/v1/b/sd-bucket-name/o/fox.txt?softDeleted=true&generation="
+            + generation
+        )
+        self.assertEqual(response.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
