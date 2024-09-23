@@ -507,6 +507,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context=context,
             generation=request.generation,
             preconditions=testbench.common.make_grpc_preconditions(request),
+            soft_deleted=request.soft_deleted,
         )
         return blob.metadata
 

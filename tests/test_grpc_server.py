@@ -1005,6 +1005,43 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(0, response.generation)
         self.assertEqual(response.size, len(media))
 
+    def test_get_object_soft_deleted(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.db.insert_bucket(sd_bucket, None)
+
+        media = b"The quick brown fox jumps over the lazy dog"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-to-delete"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, sd_bucket.metadata)
+        self.db.insert_object("sd-bucket-name", blob, None)
+
+        self.db.delete_object("sd-bucket-name", "object-to-delete")
+
+        context = unittest.mock.Mock()
+        response = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/sd-bucket-name",
+                object="object-to-delete",
+                soft_deleted=True,
+                generation=blob.metadata.generation,
+            ),
+            context,
+        )
+        self.assertEqual(response.bucket, "projects/_/buckets/sd-bucket-name")
+        self.assertEqual(response.name, "object-to-delete")
+        self.assertNotEqual(0, response.generation)
+        self.assertEqual(response.size, len(media))
+
     @staticmethod
     def _create_block(desired_bytes):
         line = "A" * 127 + "\n"
