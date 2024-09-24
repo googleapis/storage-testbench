@@ -635,7 +635,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     range, grpc.StatusCode.OUT_OF_RANGE
                 )
                 grpc_status = rpc_status.to_status(status_msg)
-                responses.put(("abort", grpc_status))
+                responses.put(("abort_with_status", grpc_status))
                 return
 
             if range.read_limit > 0:
@@ -681,18 +681,24 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         gather_thread = Thread(
             target=gather_requests, args=(first_message.read_ranges,)
         )
+
+        poll_queue = True
         try:
             gather_thread.start()
 
-            while True:
+            while poll_queue:
                 action, resp = responses.get()
                 if action == "terminate":
-                    break
+                    poll_queue = False
                 elif action == "respond":
                     yield response(resp)
-                elif action == "abort":
-                    context.abort(resp)
+                elif action == "abort_with_status":
+                    context.abort_with_status(resp)
         finally:
+            while poll_queue:
+                action, _ = responses.get()
+                if action == "terminate":
+                    poll_queue = False
             gather_thread.join()
 
     def _to_read_range_error_proto(self, range, status_code):

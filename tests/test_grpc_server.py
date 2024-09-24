@@ -2483,18 +2483,76 @@ class TestGrpc(unittest.TestCase):
 
         for request in [r1, r2]:
             context = unittest.mock.Mock()
-            context.abort = unittest.mock.MagicMock()
-            context.abort.side_effect = grpc.RpcError()
+            context.abort_with_status = unittest.mock.MagicMock()
+            context.abort_with_status.side_effect = grpc.RpcError()
             with self.assertRaises(grpc.RpcError):
                 streamer = self.grpc.BidiReadObject([request], context=context)
                 list(streamer)
 
-            context.abort.assert_called_once()
-            abort_status = context.abort.call_args[0][0]
+            context.abort_with_status.assert_called_once()
+            abort_status = context.abort_with_status.call_args[0][0]
             grpc_status_details_bin = abort_status.trailing_metadata[0][1]
             self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
             self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
             self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
+
+    def test_bidi_read_one_out_of_range_one_in_range_error(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test out-of-range offset.
+        offset_1 = 8 * 1024 * 1024
+        limit_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_limit=limit_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # Test in-range offset.
+        offset_2 = 0
+        limit_2 = 10
+        read_id_2 = read_id_1 + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_limit=limit_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        context = unittest.mock.Mock()
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1, r2], context=context)
+            list(streamer)
+
+        context.abort_with_status.assert_called_once()
+        abort_status = context.abort_with_status.call_args[0][0]
+        grpc_status_details_bin = abort_status.trailing_metadata[0][1]
+        self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
+        self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
+        self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
 
 
 if __name__ == "__main__":
