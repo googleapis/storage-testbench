@@ -17,6 +17,7 @@ import datetime
 import functools
 import json
 import re
+import sys
 import types
 import uuid
 from collections.abc import Iterable
@@ -582,6 +583,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = None
             start = start + size
 
+    @retry_test(method="storage.objects.get")
     def BidiReadObject(self, request_iterator, context):
         # handle first message
         try:
@@ -644,28 +646,15 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
             while start < read_end:
                 end = min(start + size, read_end)
-                chunk = blob.media[start:end]
                 # Verify if there are no more bytes to read for the given ReadRange.
                 range_end = end == read_end
-                res = response(
-                    storage_pb2.BidiReadObjectResponse(
-                        object_data_ranges=[
-                            storage_pb2.ObjectRangeData(
-                                checksummed_data=storage_pb2.ChecksummedData(
-                                    content=chunk,
-                                    crc32c=crc32c.crc32c(chunk),
-                                ),
-                                read_range=storage_pb2.ReadRange(
-                                    read_offset=start,
-                                    read_limit=range.read_limit,
-                                    read_id=read_id,
-                                ),
-                                range_end=range_end,
-                            ),
-                        ],
-                    )
-                )
-                responses.put(("respond", res))
+                chunk = blob.media[start:end]
+                read_range = {
+                    "read_offset": start,
+                    "read_limit": range.read_limit,
+                    "read_id": read_id,
+                }
+                responses.put(("respond", (chunk, range_end, read_range)))
                 start = end
 
         def gather_requests(initial_ranges):
@@ -683,17 +672,62 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
 
         poll_queue = True
+
+        # Check retry test broken-stream instructions.
+        test_id = testbench.common.get_retry_test_id_from_context(context)
+        broken_stream_after_bytes = 0
+        method = "storage.objects.get"
+        if test_id and self.db.has_instructions_retry_test(
+            test_id, method, transport="GRPC"
+        ):
+            next_instruction = self.db.peek_next_instruction(test_id, method)
+            broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
+                next_instruction
+            )
+
+        returnable = (
+            broken_stream_after_bytes if broken_stream_after_bytes else sys.maxsize
+        )
         try:
             gather_thread.start()
 
             while poll_queue:
-                action, resp = responses.get()
+                action, arg = responses.get()
                 if action == "terminate":
                     poll_queue = False
                 elif action == "respond":
-                    yield response(resp)
+                    chunk, range_end, read_range = arg
+                    count = len(chunk)
+                    if returnable < count:
+                        count = returnable
+                        chunk = chunk[:count]
+                    returnable -= count
+                    yield response(
+                        storage_pb2.BidiReadObjectResponse(
+                            object_data_ranges=[
+                                storage_pb2.ObjectRangeData(
+                                    checksummed_data=storage_pb2.ChecksummedData(
+                                        content=chunk,
+                                        crc32c=crc32c.crc32c(chunk),
+                                    ),
+                                    read_range=read_range,
+                                    range_end=range_end,
+                                ),
+                            ],
+                        )
+                    )
+                    if not returnable:
+                        self.db.dequeue_next_instruction(test_id, method)
+                        context.abort(
+                            grpc.StatusCode.UNAVAILABLE,
+                            "Injected 'broken stream' fault",
+                        )
                 elif action == "abort_with_status":
-                    context.abort_with_status(resp)
+                    context.abort_with_status(arg)
+                elif action == "abort":
+                    context.abort(*arg)
+                else:
+                    raise f"Unexpected action {action}"
         finally:
             while poll_queue:
                 action, _ = responses.get()

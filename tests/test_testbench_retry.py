@@ -23,7 +23,7 @@ import unittest
 import unittest.mock
 
 import crc32c
-from grpc import StatusCode
+from grpc import RpcError, StatusCode
 
 import gcs
 import testbench
@@ -859,6 +859,91 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.assertEqual(blob.name, "object-name")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
+
+    def test_grpc_bidiread_retry_broken_stream(self):
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(5 * 1024 * 1024)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a return-broken-stream failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {"storage.objects.get": ["return-broken-stream"]},
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+
+        # Test one range in stream with limit more than 256kb.
+        offset_1 = 0
+        limit_1 = 4 * 1024 * 1024
+        read_id_1 = 1
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="512k.txt",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_limit=limit_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        with self.assertRaises(RpcError):
+            response = self.grpc.BidiReadObject([r1], context)
+            list(response)
+        context.abort.assert_called_with(
+            StatusCode.UNAVAILABLE, "Injected 'broken stream' fault"
+        )
+
+        # Setup a return-broken-stream-after-256K failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["return-broken-stream-after-256K"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+        with self.assertRaises(RpcError):
+            response = self.grpc.BidiReadObject([r1], context)
+            list(response)
+        context.abort.assert_called_with(
+            StatusCode.UNAVAILABLE, "Injected 'broken stream' fault"
+        )
 
 
 if __name__ == "__main__":
