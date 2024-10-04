@@ -660,11 +660,14 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         def gather_requests(initial_ranges):
             nonlocal responses
             with futures.ThreadPoolExecutor() as readers:
-                for range in initial_ranges:
-                    readers.submit(process_read_range, range)
-                for request in request_iterator:
-                    for range in request.read_ranges:
+                try:
+                    for range in initial_ranges:
                         readers.submit(process_read_range, range)
+                    for request in request_iterator:
+                        for range in request.read_ranges:
+                            readers.submit(process_read_range, range)
+                except Exception as e:
+                    responses.put(("raise", e))
             responses.put(("terminate", None))
 
         gather_thread = Thread(
@@ -724,8 +727,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                         )
                 elif action == "abort_with_status":
                     context.abort_with_status(arg)
-                elif action == "abort":
-                    context.abort(*arg)
+                elif action == "raise":
+                    raise arg
                 else:
                     raise f"Unexpected action {action}"
         finally:
