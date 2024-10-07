@@ -701,9 +701,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 elif action == "respond":
                     chunk, range_end, read_range = arg
                     count = len(chunk)
-                    if returnable < count:
-                        count = returnable
-                        chunk = chunk[:count]
+                    excess = count - returnable
+                    if excess > 0:
+                        chunk = chunk[:returnable]
+                        range_end = False
+                        read_range["read_limit"] -= excess
                     returnable -= count
                     yield response(
                         storage_pb2.BidiReadObjectResponse(
@@ -719,7 +721,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                             ],
                         )
                     )
-                    if not returnable:
+                    if returnable <= 0:
                         self.db.dequeue_next_instruction(test_id, method)
                         context.abort(
                             grpc.StatusCode.UNAVAILABLE,

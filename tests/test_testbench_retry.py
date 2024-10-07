@@ -893,7 +893,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
 
         # Test one range in stream with limit more than 256kb.
         offset_1 = 0
-        limit_1 = 4 * 1024 * 1024
+        limit_1 = 1 * 1024 * 1024
         read_id_1 = 1
 
         r1 = storage_pb2.BidiReadObjectRequest(
@@ -938,12 +938,26 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         context.invocation_metadata = unittest.mock.Mock(
             return_value=(("x-retry-test-id", create_rest.get("id")),)
         )
+        responses = []
         with self.assertRaises(RpcError):
             response = self.grpc.BidiReadObject([r1], context)
-            list(response)
+            # Gather all the responses that arrive before the context abort
+            for r in response:
+                responses.append(r)
         context.abort.assert_called_with(
             StatusCode.UNAVAILABLE, "Injected 'broken stream' fault"
         )
+        # Verify the early break occurred after exactly 256K
+        self.assertEqual(len(responses), 1)
+        self.assertEqual(len(responses[0].object_data_ranges), 1)
+        odr = responses[0].object_data_ranges[0]
+        EXPECTED_LEN = 256 * 1024
+        self.assertEqual(len(odr.checksummed_data.content), EXPECTED_LEN)
+        self.assertEqual(odr.read_range.read_id, read_id_1)
+        self.assertEqual(odr.read_range.read_offset, offset_1)
+        self.assertEqual(odr.read_range.read_limit, offset_1 + EXPECTED_LEN)
+        # Because we requested 1 MiB, but only got back 256KiB
+        self.assertFalse(odr.range_end)
 
 
 if __name__ == "__main__":
