@@ -102,7 +102,7 @@ than the HTTP server. To serve gRPC requests on port 8888, run:
 curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=8888"
 ```
 > ⚠️ The HTTP server must be kept running to start the gRPC server and to make calls to the testbench,
->  even if you start the gRPC server. Run this command in a different terminal window.
+>  even after you start the gRPC server. Run this command in a different terminal window.
 
 ### Check that the testbench is running
 
