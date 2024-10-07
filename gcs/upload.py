@@ -15,6 +15,7 @@
 """Helper class to hold data during an upload."""
 
 import hashlib
+import itertools
 import json
 import types
 import uuid
@@ -285,39 +286,83 @@ class Upload(types.SimpleNamespace):
     @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
-        upload, object_checksums, is_resumable = None, None, False
+        # Many tests use a list as the request_iterator
+        request_iterator = iter(request_iterator)
+        upload, object_checksums, is_resumable, is_appendable = None, None, False, False
+        appendable_metadata_in_first_response = False
+        try:
+            first_msg = next(request_iterator)
+        except StopIteration:
+            # At least one message is required. This function raises.
+            testbench.error.invalid("Missing BidiWriteObjectRequest", context)
+
+        write_type = first_msg.WhichOneof("first_message")
+        if write_type == "upload_id":  # resumable upload
+            upload = db.get_upload(first_msg.upload_id, context)
+            if upload.complete:
+                # Resuming an already finalized object will result with a response
+                # containing the uploaded object's metadata.
+                yield storage_pb2.BidiWriteObjectResponse(resource=upload.blob.metadata)
+                return
+            is_resumable = True
+        elif write_type == "write_object_spec":  # new object
+            bucket = db.get_bucket(
+                first_msg.write_object_spec.resource.bucket, context
+            ).metadata
+            upload = cls.__init_first_write_grpc(first_msg, bucket, context)
+            if first_msg.write_object_spec.appendable:
+                is_appendable = True
+                appendable_metadata_in_first_response = True
+                db.insert_upload(upload)
+        elif write_type == "append_object_spec":
+            is_appendable = True
+            upload = db.get_upload(
+                first_msg.append_object_spec.write_handle.handle.decode("utf-8"),
+                context,
+            )
+        else:
+            testbench.error.invalid("Upload missing a first_message field", context)
+
+        if first_msg.HasField("object_checksums"):
+            object_checksums = first_msg.object_checksums
+
+        # Treat the rest of the first message as a data request, then keep
+        # pulling from request_iterator
+        first_msg.ClearField("first_message")
+        first_msg.ClearField("object_checksums")
+        request_iterator = itertools.chain([first_msg], request_iterator)
+
+        first_response = True
+
+        def response(msg):
+            nonlocal first_response
+            if first_response:
+                first_response = False
+                if is_appendable and appendable_metadata_in_first_response:
+                    # For simplicity in the testbench implementation, just use
+                    # the database's upload_id as the appendable handle.
+                    msg.write_handle.handle = bytes(upload.upload_id, "utf-8")
+                    # Appendable objects also exist at creation time. That's not
+                    # fully supported in the testbench, but we can at least
+                    # return the object metadata.
+                    obj_len = msg.persisted_size
+                    msg.resource.CopyFrom(upload.metadata)
+                    msg.resource.size = obj_len
+            return msg
+
         for request in request_iterator:
-            first_message = request.WhichOneof("first_message")
-            if first_message == "upload_id":  # resumable upload
-                upload = db.get_upload(request.upload_id, context)
-                if upload.complete:
-                    # Resuming an already finalized object will result with a response
-                    # containing the uploaded object's metadata.
-                    yield storage_pb2.BidiWriteObjectResponse(
-                        resource=upload.blob.metadata
-                    )
-                is_resumable = True
-            elif (
-                first_message == "write_object_spec"
-            ):  # one shot upload (non-resumable)
-                bucket = db.get_bucket(
-                    request.write_object_spec.resource.bucket, context
-                ).metadata
-                upload = cls.__init_first_write_grpc(request, bucket, context)
-            elif upload is None:
-                return testbench.error.invalid(
-                    "Upload missing a first_message field", context
-                )
+            if request.HasField("first_message"):
+                testbench.error.invalid("Multiple first_message", context)
 
             if request.HasField("object_checksums"):
                 # The object checksums may appear only in the first message *or* the last message, but not both
-                if first_message is None and request.finish_write == False:
-                    return testbench.error.invalid(
+                if not request.finish_write:
+                    testbench.error.invalid(
                         "Object checksums can be included only in the first or last message",
                         context,
                     )
                 if object_checksums is not None:
-                    return testbench.error.invalid(
+                    testbench.error.invalid(
                         "Duplicate object checksums in upload",
                         context,
                     )
@@ -326,75 +371,75 @@ class Upload(types.SimpleNamespace):
             data = request.WhichOneof("data")
             if data == "checksummed_data":
                 checksummed_data = request.checksummed_data
-            elif data is None and request.finish_write:
-                # Handles final message with no data to insert.
-                upload.complete = True
-                continue
-            else:
-                return testbench.error.invalid("Invalid data field in upload", context)
+                content = checksummed_data.content
+                crc32c_hash = (
+                    checksummed_data.crc32c
+                    if checksummed_data.HasField("crc32c")
+                    else None
+                )
+                if crc32c_hash is not None:
+                    actual_crc32c = crc32c.crc32c(content)
+                    if actual_crc32c != crc32c_hash:
+                        testbench.error.mismatch(
+                            "crc32c in checksummed data",
+                            crc32c_hash,
+                            actual_crc32c,
+                            context,
+                        )
 
-            content = checksummed_data.content
-            crc32c_hash = (
-                checksummed_data.crc32c if checksummed_data.HasField("crc32c") else None
-            )
-            if crc32c_hash is not None:
-                actual_crc32c = crc32c.crc32c(content)
-                if actual_crc32c != crc32c_hash:
-                    return testbench.error.mismatch(
-                        "crc32c in checksummed data",
-                        crc32c_hash,
-                        actual_crc32c,
-                        context,
-                    )
-
-            # Handle retry test return-X-after-YK failures if applicable.
-            (
-                rest_code,
-                after_bytes,
-                test_id,
-            ) = testbench.common.get_retry_uploads_error_after_bytes(
-                db, request, context=context, transport="GRPC"
-            )
-            expected_persisted_size = request.write_offset + len(content)
-            if rest_code:
-                testbench.common.handle_grpc_retry_uploads_error_after_bytes(
-                    context,
-                    upload,
-                    content,
-                    db,
+                # Handle retry test return-X-after-YK failures if applicable.
+                (
                     rest_code,
                     after_bytes,
-                    write_offset=request.write_offset,
-                    persisted_size=len(upload.media),
-                    expected_persisted_size=expected_persisted_size,
-                    test_id=test_id,
+                    test_id,
+                ) = testbench.common.get_retry_uploads_error_after_bytes(
+                    db, request, context=context, transport="GRPC"
                 )
+                expected_persisted_size = request.write_offset + len(content)
+                if rest_code:
+                    testbench.common.handle_grpc_retry_uploads_error_after_bytes(
+                        context,
+                        upload,
+                        content,
+                        db,
+                        rest_code,
+                        after_bytes,
+                        write_offset=request.write_offset,
+                        persisted_size=len(upload.media),
+                        expected_persisted_size=expected_persisted_size,
+                        test_id=test_id,
+                    )
 
-            # The testbench should ignore any request bytes that have already been persisted,
-            # thus we validate write_offset against persisted_size.
-            # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-            if request.write_offset < len(upload.media):
-                range_start = len(upload.media) - request.write_offset
-                content = testbench.common.partial_media(
-                    content, range_end=len(content), range_start=range_start
-                )
-            # Currently, the testbench will always checkpoint and flush data for testing purposes,
-            # instead of the 15 seconds interval used in the GCS server.
-            # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
-            upload.media += content
+                # The testbench should ignore any request bytes that have already been persisted,
+                # thus we validate write_offset against persisted_size.
+                # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+                if request.write_offset < len(upload.media):
+                    range_start = len(upload.media) - request.write_offset
+                    content = testbench.common.partial_media(
+                        content, range_end=len(content), range_start=range_start
+                    )
+                # Currently, the testbench will always checkpoint and flush data for testing purposes,
+                # instead of the 15 seconds interval used in the GCS server.
+                # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
+                upload.media += content
+            elif not (data is None and request.finish_write):
+                # The only other allowed case is finish_write=True with no data.
+                testbench.error.invalid("Invalid data field in upload", context)
+
             if request.finish_write:
                 upload.complete = True
+                break
             elif request.state_lookup:
                 # For uploads not yet completed, yield response with persisted_size.
                 # For uploads that are complete, finalize the upload outside the request loop by
                 # storing full object checksums, creating new object, and yielding response with
                 # object metadata.
-                yield storage_pb2.BidiWriteObjectResponse(
-                    persisted_size=len(upload.media)
+                yield response(
+                    storage_pb2.BidiWriteObjectResponse(
+                        persisted_size=len(upload.media)
+                    )
                 )
 
-        if upload is None:
-            return testbench.error.invalid("Missing BidiWriteObjectRequest", context)
         if object_checksums is None:
             upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
@@ -432,10 +477,9 @@ class Upload(types.SimpleNamespace):
                 context=context,
                 preconditions=upload.preconditions,
             )
-            yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
-        else:
-            if not is_resumable:
-                return testbench.error.missing("finish_write in request", context)
+            yield response(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
+        elif not is_resumable and not is_appendable:
+            testbench.error.missing("finish_write in request", context)
 
     def resumable_status_rest(self, override_308=False):
         response = flask.make_response()
