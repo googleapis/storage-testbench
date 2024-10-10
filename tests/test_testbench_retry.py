@@ -498,7 +498,7 @@ class TestTestbenchRetry(unittest.TestCase):
         "/retry_test",
         data=json.dumps(
             {"instructions": {
-                "storage.objects.get": ["stall-for-1s-after-256K"]}}
+                "storage.objects.get": ["stall-for-1s-after-128K"]}}
         ),
     )
 
@@ -536,128 +536,6 @@ class TestTestbenchRetry(unittest.TestCase):
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     self.assertGreater(elapsed_time, 1)
-
-  def test_write_retry_test_stall_after_bytes(self):
-    response = self.client.post(
-        "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
-    )
-    self.assertEqual(response.status_code, 200)
-
-    # Setup a stall for reading back the object.
-    response = self.client.post(
-        "/retry_test",
-        data=json.dumps(
-            {"instructions": {
-                "storage.objects.insert": ["stall-for-1s-after-256K"]}}
-        ),
-    )
-
-    self.assertEqual(response.status_code, 200)
-    self.assertTrue(
-        response.headers.get("content-type").startswith("application/json")
-    )
-    create_rest = json.loads(response.data)
-    self.assertIn("id", create_rest)
-    id = create_rest.get("id")
-
-    response = self.client.post(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"uploadType": "resumable", "name": "stall"},
-        content_type="application/json",
-    )
-    self.assertEqual(response.status_code, 200)
-    location = response.headers.get("location")
-    self.assertIn("upload_id=", location)
-    match = re.search("[&?]upload_id=([^&]+)", location)
-    self.assertIsNotNone(match, msg=location)
-    upload_id = match.group(1)
-
-    # Upload the first 256KiB chunk of data and trigger error.
-    chunk = self._create_block(UPLOAD_QUANTUM)
-    self.assertEqual(len(chunk), UPLOAD_QUANTUM)
-    start_time = time.perf_counter()
-    response = self.client.put(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"upload_id": upload_id},
-        headers={
-            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
-                len=UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
-            ),
-            "x-retry-test-id": id,
-        },
-        data=chunk,
-    )
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    self.assertGreater(elapsed_time, 1)
-
-    # Check the status of a resumable upload.
-    start_time = time.perf_counter()
-    response = self.client.put(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"upload_id": upload_id},
-        headers={
-            "content-range": "bytes */*",
-            "x-retry-test-id": id,
-        },
-    )
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    self.assertLess(elapsed_time, 1)
-
-    # Send a full object upload here to verify testbench can
-    # (1) trigger error_after_bytes instructions,
-    # (2) ignore duplicate request bytes and
-    # (3) return a forced failure with partial data.
-    start_time = time.perf_counter()
-    chunk = self._create_block(2 * UPLOAD_QUANTUM)
-    self.assertEqual(len(chunk), 2 * UPLOAD_QUANTUM)
-    response = self.client.put(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"upload_id": upload_id},
-        headers={
-            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
-                len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
-            ),
-            "x-retry-test-id": id,
-        },
-        data=chunk,
-    )
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    self.assertLess(elapsed_time, 1)
-    self.assertEqual(response.status_code, 200, msg=response.data)
-
-    # Check the status of a resumable upload.
-    response = self.client.put(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"upload_id": upload_id},
-        headers={
-            "content-range": "bytes */*",
-            "x-retry-test-id": id,
-        },
-    )
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    self.assertLess(elapsed_time, 1)
-    self.assertEqual(response.status_code, 200, msg=response.data)
-
-    # Finally to complete the upload, resend a full object upload again.
-    response = self.client.put(
-        "/upload/storage/v1/b/bucket-name/o",
-        query_string={"upload_id": upload_id},
-        headers={
-            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
-                len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
-            ),
-            "x-retry-test-id": id,
-        },
-        data=chunk,
-    )
-    self.assertEqual(response.status_code, 200, msg=response.data)
-    create_rest = json.loads(response.data)
-    self.assertIn("size", create_rest)
-    self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
 
   def test_retry_test_return_error_after_bytes(self):
     response = self.client.post(
@@ -779,6 +657,118 @@ class TestTestbenchRetry(unittest.TestCase):
         },
         data=chunk,
     )
+    self.assertEqual(response.status_code, 200, msg=response.data)
+    create_rest = json.loads(response.data)
+    self.assertIn("size", create_rest)
+    self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
+
+  def test_write_retry_test_stall_after_bytes(self):
+    response = self.client.post(
+        "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+    )
+    self.assertEqual(response.status_code, 200)
+
+    # Setup a stall for reading back the object.
+    response = self.client.post(
+        "/retry_test",
+        data=json.dumps(
+            {"instructions": {
+                "storage.objects.insert": ["stall-for-1s-after-256K"]}}
+        ),
+    )
+
+    self.assertEqual(response.status_code, 200)
+    self.assertTrue(
+        response.headers.get("content-type").startswith("application/json")
+    )
+    create_rest = json.loads(response.data)
+    self.assertIn("id", create_rest)
+    id = create_rest.get("id")
+
+    response = self.client.post(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"uploadType": "resumable", "name": "stall"},
+        content_type="application/json",
+    )
+    self.assertEqual(response.status_code, 200)
+    location = response.headers.get("location")
+    self.assertIn("upload_id=", location)
+    match = re.search("[&?]upload_id=([^&]+)", location)
+    self.assertIsNotNone(match, msg=location)
+    upload_id = match.group(1)
+
+    # Upload the first 256KiB chunk of data and trigger error.
+    chunk = self._create_block(UPLOAD_QUANTUM)
+    self.assertEqual(len(chunk), UPLOAD_QUANTUM)
+    start_time = time.perf_counter()
+    response = self.client.put(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"upload_id": upload_id},
+        headers={
+            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                len=UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+            ),
+            "x-retry-test-id": id,
+        },
+        data=chunk,
+    )
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    self.assertGreater(elapsed_time, 1)
+
+    # Send a full object upload here to verify testbench can
+    # (1) trigger error_after_bytes instructions,
+    # (2) ignore duplicate request bytes and
+    # (3) return a forced failure with partial data.
+    start_time = time.perf_counter()
+    chunk = self._create_block(2 * UPLOAD_QUANTUM)
+    self.assertEqual(len(chunk), 2 * UPLOAD_QUANTUM)
+    response = self.client.put(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"upload_id": upload_id},
+        headers={
+            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+            ),
+            "x-retry-test-id": id,
+        },
+        data=chunk,
+    )
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    self.assertLess(elapsed_time, 1)
+    self.assertEqual(response.status_code, 200, msg=response.data)
+
+    start_time = time.perf_counter()
+    # Check the status of a resumable upload.
+    response = self.client.put(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"upload_id": upload_id},
+        headers={
+            "content-range": "bytes */*",
+            "x-retry-test-id": id,
+        },
+    )
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    self.assertLess(elapsed_time, 1)
+    self.assertEqual(response.status_code, 200, msg=response.data)
+
+    # Finally to complete the upload, resend a full object upload again.
+    response = self.client.put(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"upload_id": upload_id},
+        headers={
+            "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+            ),
+            "x-retry-test-id": id,
+        },
+        data=chunk,
+    )
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    self.assertLess(elapsed_time, 1)
     self.assertEqual(response.status_code, 200, msg=response.data)
     create_rest = json.loads(response.data)
     self.assertIn("size", create_rest)
