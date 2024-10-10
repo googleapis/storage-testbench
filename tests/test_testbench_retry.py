@@ -66,8 +66,7 @@ class TestTestbenchRetry(unittest.TestCase):
         for op in ["list", "insert", "get", "update", "patch", "delete"]
     }
     NOTIFICATION_OPERATIONS = {
-        "storage.notifications." + op for op in
-        ["list", "insert", "get", "delete"]
+        "storage.notifications." + op for op in ["list", "insert", "get", "delete"]
     }
     OBJECT_OPERATIONS = {
         "storage.objects." + op
@@ -121,8 +120,7 @@ class TestTestbenchRetry(unittest.TestCase):
     self.assertIn("storage.buckets.list", rest_server.db.supported_methods())
     response = self.client.post(
         "/retry_test",
-        data=json.dumps(
-            {"instructions": {"storage.buckets.list": ["return-429"]}}),
+        data=json.dumps({"instructions": {"storage.buckets.list": ["return-429"]}}),
     )
     self.assertEqual(response.status_code, 200, msg=response.data)
     self.assertTrue(
@@ -165,8 +163,7 @@ class TestTestbenchRetry(unittest.TestCase):
   def test_retry_test_return_error(self):
     response = self.client.post(
         "/retry_test",
-        data=json.dumps(
-            {"instructions": {"storage.buckets.list": ["return-429"]}}),
+        data=json.dumps({"instructions": {"storage.buckets.list": ["return-429"]}}),
     )
     self.assertEqual(response.status_code, 200)
     self.assertTrue(
@@ -205,8 +202,7 @@ class TestTestbenchRetry(unittest.TestCase):
     response = self.client.post(
         "/retry_test",
         data=json.dumps(
-            {"instructions": {
-                "storage.objects.get": ["return-reset-connection"]}}
+            {"instructions": {"storage.objects.get": ["return-reset-connection"]}}
         ),
     )
     self.assertEqual(response.status_code, 200)
@@ -278,8 +274,7 @@ class TestTestbenchRetry(unittest.TestCase):
     )
     self.assertEqual(len(response.data), bytes_returned)
 
-  def test_retry_test_return_no_metadata_on_resumable_multi_chunk_complete(
-      self):
+  def test_retry_test_return_no_metadata_on_resumable_multi_chunk_complete(self):
     response = self.client.post(
         "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
     )
@@ -449,8 +444,7 @@ class TestTestbenchRetry(unittest.TestCase):
     response = self.client.post(
         "/retry_test",
         data=json.dumps(
-            {"instructions": {
-                "storage.buckets.list": ["stall-for-1s-after-0K"]}}
+            {"instructions": {"storage.buckets.list": ["stall-for-1s-after-0K"]}}
         ),
     )
     self.assertEqual(response.status_code, 200)
@@ -497,8 +491,7 @@ class TestTestbenchRetry(unittest.TestCase):
     response = self.client.post(
         "/retry_test",
         data=json.dumps(
-            {"instructions": {
-                "storage.objects.get": ["stall-for-1s-after-128K"]}}
+            {"instructions": {"storage.objects.get": ["stall-for-1s-after-128K"]}}
         ),
     )
 
@@ -716,6 +709,20 @@ class TestTestbenchRetry(unittest.TestCase):
     elapsed_time = end_time - start_time
     self.assertGreater(elapsed_time, 1)
 
+    # Check the status of a resumable upload.
+    start_time = time.perf_counter()
+    response = self.client.put(
+        "/upload/storage/v1/b/bucket-name/o",
+        query_string={"upload_id": upload_id},
+        headers={
+            "content-range": "bytes */*",
+            "x-retry-test-id": id,
+        },
+    )
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    self.assertLess(elapsed_time, 1)
+
     # Send a full object upload here to verify testbench can
     # (1) trigger error_after_bytes instructions,
     # (2) ignore duplicate request bytes and
@@ -739,7 +746,6 @@ class TestTestbenchRetry(unittest.TestCase):
     self.assertLess(elapsed_time, 1)
     self.assertEqual(response.status_code, 200, msg=response.data)
 
-    start_time = time.perf_counter()
     # Check the status of a resumable upload.
     response = self.client.put(
         "/upload/storage/v1/b/bucket-name/o",
@@ -766,9 +772,6 @@ class TestTestbenchRetry(unittest.TestCase):
         },
         data=chunk,
     )
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    self.assertLess(elapsed_time, 1)
     self.assertEqual(response.status_code, 200, msg=response.data)
     create_rest = json.loads(response.data)
     self.assertIn("size", create_rest)
@@ -813,11 +816,9 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         return_value=(("x-retry-test-id", create_rest.get("id")),)
     )
     response = self.grpc.GetBucket(
-        storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"),
-        context
+        storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
     )
-    context.abort.assert_called_once_with(StatusCode.UNAVAILABLE,
-                                          unittest.mock.ANY)
+    context.abort.assert_called_once_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
 
   def test_grpc_retry_reset_connection(self):
     # Use the rest client to setup a failure for retrieving bucket metadata.
@@ -841,8 +842,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         return_value=(("x-retry-test-id", create_rest.get("id")),)
     )
     response = self.grpc.GetBucket(
-        storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"),
-        context
+        storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
     )
     context.abort.assert_called_once_with(
         StatusCode.UNAVAILABLE,
@@ -864,8 +864,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         "/retry_test",
         data=json.dumps(
             {
-                "instructions": {
-                    "storage.objects.get": ["return-broken-stream"]},
+                "instructions": {"storage.objects.get": ["return-broken-stream"]},
                 "transport": "GRPC",
             },
         ),
