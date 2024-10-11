@@ -999,6 +999,7 @@ def resumable_upload_chunk(bucket_name):
     if upload_id is None:
         testbench.error.missing("upload_id in resumable_upload_chunk", None)
     upload = db.get_upload(upload_id, None)
+    print("Upload complete: ", upload.complete)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
     last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
@@ -1025,6 +1026,7 @@ def resumable_upload_chunk(bucket_name):
         if items[0] == "*":
             if items[1] != "*" and int(items[1]) == len(upload.media):
                 upload.complete = True
+                print("Upload: ",upload.complete)
                 blob, _ = gcs_type.object.Object.init(
                     upload.request,
                     upload.metadata,
@@ -1124,9 +1126,6 @@ def resumable_upload_chunk(bucket_name):
                 stall_time,
                 after_bytes,
                 last_byte_persisted,
-                chunk_first_byte,
-                chunk_last_byte,
-                test_id,
             )
 
         # The testbench should ignore any request bytes that have already been persisted,
@@ -1150,6 +1149,7 @@ def resumable_upload_chunk(bucket_name):
     else:
         upload.media += data
         upload.complete = True
+
     if upload.complete:
         blob, _ = gcs_type.object.Object.init(
             upload.request, upload.metadata, upload.media, upload.bucket, False, None
@@ -1176,7 +1176,6 @@ def resumable_upload_chunk(bucket_name):
         # See more at go/scotty-faq
         override_308 = request.headers.get("X-Guploader-No-308") == "yes"
         return upload.resumable_status_rest(override_308=override_308)
-
 
 @upload.route("/b/<bucket_name>/o", methods=["DELETE"])
 @retry_test(method="storage.objects.delete")

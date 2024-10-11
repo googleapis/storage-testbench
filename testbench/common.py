@@ -954,36 +954,15 @@ def handle_stall_uploads_after_bytes(
     database,
     stall_time,
     after_bytes,
-    last_byte_persisted,
-    chunk_first_byte,
-    chunk_last_byte,
     test_id=0,
 ):
-    """
-    Handle stall-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
-    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
-    """
-    if after_bytes > last_byte_persisted and after_bytes <= (chunk_last_byte + 1):
-        range_start = 0
-        # Ignore request bytes that have already been persisted.
-        if last_byte_persisted != 0 and int(chunk_first_byte) <= last_byte_persisted:
-            range_start = last_byte_persisted - int(chunk_first_byte) + 1
-        range_end = len(data)
-        # Only partial data will be commited due to the instructed interruption.
-        if after_bytes <= chunk_last_byte:
-            range_end = len(data) - (chunk_last_byte - after_bytes + 1)
-        data = testbench.common.partial_media(
-            data, range_end=range_end, range_start=range_start
-        )
-        upload.media += data
-        upload.complete = False
-
-    if len(upload.media) >= after_bytes:
-        print("Upload data: ", after_bytes)
-        print("Stall time: ", stall_time)
+    if len(upload.media) + len(data) >= after_bytes:
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        print("Upload data: ", after_bytes)
+        print("Stall time: ", stall_time)
         time.sleep(stall_time)
+
 
 def handle_retry_uploads_error_after_bytes(
     upload,
@@ -1015,6 +994,7 @@ def handle_retry_uploads_error_after_bytes(
         upload.media += data
         upload.complete = False
     if len(upload.media) >= after_bytes:
+        print("Here", after_bytes)
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
         testbench.error.generic(
