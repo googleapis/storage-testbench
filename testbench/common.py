@@ -896,7 +896,7 @@ def gen_retry_test_decorator(db):
 def get_stall_uploads_after_bytes(
     database, request, context=None, transport="HTTP"
 ):
-    """Retrieve error code and #bytes corresponding to uploads from retry test instructions."""
+    """Retrieve stall time and #bytes corresponding to uploads from retry test instructions."""
     method = "storage.objects.insert"
     if context is not None:
         test_id = get_retry_test_id_from_context(context)
@@ -956,11 +956,13 @@ def handle_stall_uploads_after_bytes(
     after_bytes,
     test_id=0,
 ):
+    """
+    Handle stall-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
+    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
+    """
     if len(upload.media) + len(data) >= after_bytes:
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
-        print("Upload data: ", after_bytes)
-        print("Stall time: ", stall_time)
         time.sleep(stall_time)
 
 
@@ -994,7 +996,6 @@ def handle_retry_uploads_error_after_bytes(
         upload.media += data
         upload.complete = False
     if len(upload.media) >= after_bytes:
-        print("Here", after_bytes)
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
         testbench.error.generic(
