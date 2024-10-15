@@ -731,6 +731,8 @@ def __get_stream_and_stall_fn(
             instruction_dequed = False
             for r in range(0, len(d), chunk_size):
                 if bytes_yield >= limit and not instruction_dequed:
+                    print("sleep time: ", stall_time_sec)
+                    print("bytes: ", bytes_yield)
                     time.sleep(stall_time_sec)
                     database.dequeue_next_instruction(test_id, method)
                     instruction_dequed = True
@@ -960,7 +962,7 @@ def handle_stall_uploads_after_bytes(
     Handle stall-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
     This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
     """
-    if len(upload.media) + len(data) >= after_bytes:
+    if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
         time.sleep(stall_time)

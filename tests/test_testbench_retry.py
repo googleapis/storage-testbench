@@ -668,7 +668,7 @@ class TestTestbenchRetry(unittest.TestCase):
             data=json.dumps({
                 "instructions": {
                     "storage.objects.insert": [
-                        "stall-for-1s-after-256K",
+                        "stall-for-1s-after-250K",
                         "stall-for-1s-after-300K"
                     ]
                 }
@@ -715,13 +715,13 @@ class TestTestbenchRetry(unittest.TestCase):
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         self.assertGreater(elapsed_time, 1)
+        self.assertEqual(response.status_code, 308)
 
         # Upload the second 256KiB chunk of data and trigger the stall again.
         chunk = self._create_block(UPLOAD_QUANTUM)
         self.assertEqual(len(chunk), UPLOAD_QUANTUM)
 
         # Check the status of a resumable upload.
-        start_time = time.perf_counter()
         response = self.client.put(
             "/upload/storage/v1/b/bucket-name/o",
             query_string={"upload_id": upload_id},
@@ -730,15 +730,8 @@ class TestTestbenchRetry(unittest.TestCase):
                 "x-retry-test-id": test_id,
             },
         )
-        end_time = time.perf_counter()
-        elapsed_time = end_time - start_time
-        self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 308)
 
-        # Send a full object upload here to verify testbench can
-        # (1) trigger error_after_bytes instructions,
-        # (2) ignore duplicate request bytes and
-        # (3) return a forced failure with partial data.
         start_time = time.perf_counter()
         chunk = self._create_block(2 * UPLOAD_QUANTUM)
         self.assertEqual(len(chunk), 2 * UPLOAD_QUANTUM)
