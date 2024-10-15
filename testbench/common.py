@@ -959,12 +959,14 @@ def handle_stall_uploads_after_bytes(
     test_id=0,
 ):
     """
-    Handle stall-after-bytes instructions for resumable uploads and commit only partial data before forcing a testbench error.
-    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
+    Handle stall-after-bytes instructions for resumable uploads.
+    Stall happens after given value of bytes.
+    e.g. We are uploading 120K of data then, stall-2s-after-100K will stall the request.
     """
     if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        print("sleep time", stall_time)
         time.sleep(stall_time)
 
 
