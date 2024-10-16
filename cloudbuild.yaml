@@ -15,23 +15,13 @@
 timeout: 7200s # 2 hours
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME", "."]
+    args: ["build",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:latest",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-$SHORT_SHA",      
+      "."]
     dir: .
     id: storage-testbench-build
-  - name: gcr.io/cloud-builders/docker
-    args:
-      [
-        "tag",
-        "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
-        "gcr.io/cloud-devrel-public-resources/storage-testbench:latest",
-      ]
-  - name: gcr.io/cloud-builders/docker
-    args:
-      [
-        "tag",
-        "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
-        "gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-tb-latest",
-      ]
 
 images:
   - gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME
