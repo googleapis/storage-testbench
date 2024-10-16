@@ -999,7 +999,6 @@ def resumable_upload_chunk(bucket_name):
     if upload_id is None:
         testbench.error.missing("upload_id in resumable_upload_chunk", None)
     upload = db.get_upload(upload_id, None)
-    print("Upload complete: ", upload.complete)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
     last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
@@ -1026,7 +1025,6 @@ def resumable_upload_chunk(bucket_name):
         if items[0] == "*":
             if items[1] != "*" and int(items[1]) == len(upload.media):
                 upload.complete = True
-                print("Upload: ",upload.complete)
                 blob, _ = gcs_type.object.Object.init(
                     upload.request,
                     upload.metadata,

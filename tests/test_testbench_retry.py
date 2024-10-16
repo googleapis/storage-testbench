@@ -717,17 +717,6 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertGreater(elapsed_time, 1)
         self.assertEqual(response.status_code, 308)
 
-        # Check the status of a resumable upload.
-        response = self.client.put(
-            "/upload/storage/v1/b/bucket-name/o",
-            query_string={"upload_id": upload_id},
-            headers={
-                "content-range": "bytes */*",
-                "x-retry-test-id": test_id,
-            },
-        )
-        self.assertEqual(response.status_code, 308)
-
         # Upload the second 256KiB chunk of data and trigger the stall again.
         start_time = time.perf_counter()
         chunk = self._create_block(UPLOAD_QUANTUM)
@@ -746,6 +735,26 @@ class TestTestbenchRetry(unittest.TestCase):
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         self.assertGreater(elapsed_time, 1)
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+        # Upload the second 256KiB chunk of data and check that stall not happen
+        start_time = time.perf_counter()
+        chunk = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(chunk), UPLOAD_QUANTUM)
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                    len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+                ),
+                "x-retry-test-id": test_id,
+            },
+            data=chunk,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200, msg=response.data)
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
