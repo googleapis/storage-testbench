@@ -732,7 +732,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 elif action == "raise":
                     raise arg
                 else:
-                    raise f"Unexpected action {action}"
+                    raise RuntimeError(f"Unexpected action {action}")
         finally:
             while poll_queue:
                 action, _ = responses.get()
