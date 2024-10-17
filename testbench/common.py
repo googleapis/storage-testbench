@@ -731,8 +731,8 @@ def __get_stream_and_stall_fn(
             instruction_dequed = False
             for r in range(0, len(d), chunk_size):
                 if bytes_yield >= limit and not instruction_dequed:
-                    time.sleep(stall_time_sec)
                     database.dequeue_next_instruction(test_id, method)
+                    time.sleep(stall_time_sec)
                     instruction_dequed = True
                 chunk_end = min(r + chunk_size, len(d))
                 chunk_downloaded = chunk_end - r
