@@ -32,7 +32,7 @@ is expected to be used by Storage library maintainers.
     - [Delete a Retry Test resource](#delete-a-retry-test-resource)
     - [Causing a failure using x-retry-test-id header](#causing-a-failure-using-x-retry-test-id-header)
     - [Forced Failures Supported](#forced-failures-supported)
-  - [Releases for Tests](#releases-for-tests)
+  - [Releasing the testbench](#releasing-the-testbench)
 
 ## Issue Policy
 
@@ -254,7 +254,7 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
 | stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T second after reading YKiB of downloaded data, e.g. stall-for-10s-after-12K stalls after reading 12KiB of data <br> [GRPC] Not supported
 
-## Releases For Tests
+## Releasing the testbench
 
 The repository currently uses [Github Tags](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release)
 
