@@ -1046,39 +1046,6 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertTrue(upload.complete)
 
-    def test_process_bidi_write_grpc_message_invalid_data(self):
-        request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket-name"})
-        )
-        bucket, _ = gcs.bucket.Bucket.init(request, None)
-        request = storage_pb2.StartResumableWriteRequest(
-            write_object_spec=storage_pb2.WriteObjectSpec(
-                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
-            )
-        )
-        context = self.mock_context()
-        upload = gcs.upload.Upload.init_resumable_grpc(
-            request, bucket.metadata, context
-        )
-
-        r1 = storage_pb2.BidiWriteObjectRequest(
-            upload_id=upload.upload_id,
-            write_offset=0,
-            finish_write=False,
-        )
-        # The code depends on `context.abort()` raising an exception.
-        context = self.mock_context()
-        context.abort.side_effect = grpc.RpcError()
-        db = unittest.mock.Mock()
-        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
-        db.get_upload = unittest.mock.MagicMock(return_value=upload)
-        with self.assertRaises(grpc.RpcError):
-            list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
-        context.abort.assert_called_once_with(
-            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
-        )
-        self.assertFalse(upload.complete)
-
 
 if __name__ == "__main__":
     unittest.main()

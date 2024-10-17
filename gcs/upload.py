@@ -422,8 +422,7 @@ class Upload(types.SimpleNamespace):
                 # instead of the 15 seconds interval used in the GCS server.
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
                 upload.media += content
-            elif not (data is None and request.finish_write):
-                # The only other allowed case is finish_write=True with no data.
+            elif data is not None:
                 testbench.error.invalid("Invalid data field in upload", context)
 
             if request.finish_write:
