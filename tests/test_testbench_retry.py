@@ -675,7 +675,7 @@ class TestTestbenchRetry(unittest.TestCase):
                     }
                 }
             ),
-            content_type="application/json"
+            content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
@@ -760,6 +760,7 @@ class TestTestbenchRetry(unittest.TestCase):
         elapsed_time = end_time - start_time
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200, msg=response.data)
+
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
     def setUp(self):

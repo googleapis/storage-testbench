@@ -922,6 +922,7 @@ def get_stall_uploads_after_bytes(
 
     return 0, 0, ""
 
+
 def get_retry_uploads_error_after_bytes(
     database, request, context=None, transport="HTTP"
 ):
