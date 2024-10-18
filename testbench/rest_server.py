@@ -1112,10 +1112,7 @@ def resumable_upload_chunk(bucket_name):
             test_id,
         ) = testbench.common.get_stall_uploads_after_bytes(db, request)
 
-        if stall_time or instruction == "stall-10s-after-256K":
-            if instruction == "stall-10s-after-256K":
-                stall_time = 10
-                after_bytes = 262144
+        if stall_time:
             testbench.common.handle_stall_uploads_after_bytes(
                 upload,
                 data,

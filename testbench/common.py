@@ -853,7 +853,7 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
     retry_stall_after_bytes_matches = testbench.common.retry_stall_after_bytes.match(
         next_instruction
     )
-    if retry_stall_after_bytes_matches and method == "storage.objects.get":
+    if retry_stall_after_bytes_matches and method != "storage.objects.insert":
         items = list(retry_stall_after_bytes_matches.groups())
         stall_time = int(items[0])
         after_bytes = int(items[1]) * 1024
