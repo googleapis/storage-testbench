@@ -1170,7 +1170,6 @@ def resumable_upload_chunk(bucket_name):
         return upload.resumable_status_rest(override_308=override_308)
 
 
-
 @upload.route("/b/<bucket_name>/o", methods=["DELETE"])
 @retry_test(method="storage.objects.delete")
 def delete_resumable_upload(bucket_name):

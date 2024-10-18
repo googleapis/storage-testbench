@@ -893,6 +893,7 @@ def gen_retry_test_decorator(db):
 
     return retry_test
 
+
 def get_stall_uploads_after_bytes(
     database, request, context=None, transport="HTTP"
 ):
@@ -947,6 +948,7 @@ def get_retry_uploads_error_after_bytes(
         return error_code, after_bytes, test_id
 
     return 0, 0, ""
+
 
 def handle_stall_uploads_after_bytes(
     upload,

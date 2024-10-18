@@ -665,18 +665,22 @@ class TestTestbenchRetry(unittest.TestCase):
         # Setup a stall for reading back the object.
         response = self.client.post(
             "/retry_test",
-            data=json.dumps({
-                "instructions": {
-                    "storage.objects.insert": [
-                        "stall-for-1s-after-250K",
-                        "stall-for-1s-after-300K"
-                    ]
+            data=json.dumps(
+                {
+                     "instructions": {
+                        "storage.objects.insert": [
+                            "stall-for-1s-after-250K",
+                            "stall-for-1s-after-300K"
+                        ]
+                     }
                 }
-            }),
+            ),
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.headers.get("content-type").startswith("application/json"))
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
 
         create_rest = json.loads(response.data)
         self.assertIn("id", create_rest)
