@@ -667,15 +667,15 @@ class TestTestbenchRetry(unittest.TestCase):
             "/retry_test",
             data=json.dumps(
                 {
-                     "instructions": {
+                    "instructions": {
                         "storage.objects.insert": [
                             "stall-for-1s-after-250K",
-                            "stall-for-1s-after-300K"
+                            "stall-for-1s-after-300K",
                         ]
-                     }
+                    }
                 }
             ),
-            content_type='application/json'
+            content_type="application/json"
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(
