@@ -898,10 +898,7 @@ def gen_retry_test_decorator(db):
 def get_stall_uploads_after_bytes(database, request, context=None, transport="HTTP"):
     """Retrieve stall time and #bytes corresponding to uploads from retry test instructions."""
     method = "storage.objects.insert"
-    if context is not None:
-        test_id = get_retry_test_id_from_context(context)
-    else:
-        test_id = request.headers.get("x-retry-test-id", None)
+    test_id = request.headers.get("x-retry-test-id", None)
     if not test_id:
         return 0, 0, ""
     next_instruction = None
