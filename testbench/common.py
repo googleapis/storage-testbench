@@ -743,6 +743,7 @@ def __get_stream_and_stall_fn(
 
     return response_handler
 
+
 def __get_default_response_fn(data):
     return data
 
@@ -894,9 +895,7 @@ def gen_retry_test_decorator(db):
     return retry_test
 
 
-def get_stall_uploads_after_bytes(
-    database, request, context=None, transport="HTTP"
-):
+def get_stall_uploads_after_bytes(database, request, context=None, transport="HTTP"):
     """Retrieve stall time and #bytes corresponding to uploads from retry test instructions."""
     method = "storage.objects.insert"
     if context is not None:
