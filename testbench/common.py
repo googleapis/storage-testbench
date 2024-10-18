@@ -844,11 +844,17 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
+    if broken_stream_after_bytes and method == "storage.objects.get":
+        items = list(broken_stream_after_bytes.groups())
+        after_bytes = int(items[0]) * 1024
+        return __get_streamer_response_fn(
+            database, method, socket_closer, test_id, limit=after_bytes
+        )
 
     retry_stall_after_bytes_matches = testbench.common.retry_stall_after_bytes.match(
         next_instruction
     )
-    if retry_stall_after_bytes_matches:
+    if retry_stall_after_bytes_matches and method != "storage.objects.insert":
         items = list(retry_stall_after_bytes_matches.groups())
         stall_time = int(items[0])
         after_bytes = int(items[1]) * 1024
@@ -856,12 +862,6 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
             database, method, test_id, limit=after_bytes, stall_time_sec=stall_time
         )
 
-    if broken_stream_after_bytes and method == "storage.objects.get":
-        items = list(broken_stream_after_bytes.groups())
-        after_bytes = int(items[0]) * 1024
-        return __get_streamer_response_fn(
-            database, method, socket_closer, test_id, limit=after_bytes
-        )
     retry_return_short_response = testbench.common.retry_return_short_response.match(
         next_instruction
     )
@@ -895,6 +895,30 @@ def gen_retry_test_decorator(db):
     return retry_test
 
 
+def get_stall_uploads_after_bytes(database, request, context=None, transport="HTTP"):
+    """Retrieve stall time and #bytes corresponding to uploads from retry test instructions."""
+    method = "storage.objects.insert"
+    test_id = request.headers.get("x-retry-test-id", None)
+    if not test_id:
+        return 0, 0, ""
+    next_instruction = None
+    if database.has_instructions_retry_test(test_id, method, transport=transport):
+        next_instruction = database.peek_next_instruction(test_id, method)
+    if not next_instruction:
+        return 0, 0, ""
+
+    stall_after_byte_matches = testbench.common.retry_stall_after_bytes.match(
+        next_instruction
+    )
+    if stall_after_byte_matches:
+        items = list(stall_after_byte_matches.groups())
+        stall_time = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return stall_time, after_bytes, test_id
+
+    return 0, 0, ""
+
+
 def get_retry_uploads_error_after_bytes(
     database, request, context=None, transport="HTTP"
 ):
@@ -919,7 +943,27 @@ def get_retry_uploads_error_after_bytes(
         error_code = int(items[0])
         after_bytes = int(items[1]) * 1024
         return error_code, after_bytes, test_id
+
     return 0, 0, ""
+
+
+def handle_stall_uploads_after_bytes(
+    upload,
+    data,
+    database,
+    stall_time,
+    after_bytes,
+    test_id=0,
+):
+    """
+    Handle stall-after-bytes instructions for resumable uploads.
+    Stall happens after given value of bytes.
+    e.g. We are uploading 120K of data then, stall-2s-after-100K will stall the request.
+    """
+    if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
+        if test_id:
+            database.dequeue_next_instruction(test_id, "storage.objects.insert")
+        time.sleep(stall_time)
 
 
 def handle_retry_uploads_error_after_bytes(
