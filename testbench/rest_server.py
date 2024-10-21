@@ -986,7 +986,6 @@ def object_insert(bucket_name):
             after_bytes,
             test_id,
         ) = testbench.common.get_stall_uploads_after_bytes(db, request)
-        print("Req: ",  len(request.data))
         if stall_time:
             if test_id:
                 db.dequeue_next_instruction(test_id, "storage.objects.insert")
