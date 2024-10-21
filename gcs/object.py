@@ -172,7 +172,7 @@ class Object:
         return cls.init_dict(request, metadata, media, bucket, False)
 
     @classmethod
-    def init_multipart(cls, request, bucket):
+    def init_multipart(cls, request: object, bucket: object) -> object:
         metadata, media_headers, media = testbench.common.parse_multipart(request)
         metadata["name"] = request.args.get("name", metadata.get("name", None))
         if metadata["name"] is None:
