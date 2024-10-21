@@ -963,7 +963,6 @@ def handle_stall_uploads_after_bytes(
     if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
         if test_id:
             database.dequeue_next_instruction(test_id, "storage.objects.insert")
-        print("Stall for resumable uploads: ", stall_time)
         time.sleep(stall_time)
 
 
