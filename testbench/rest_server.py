@@ -980,7 +980,7 @@ def object_insert(bucket_name):
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
         # Handle stall for full uploads.
-        instruction = testbench.common.extract_instruction(request, context=None)
+        testbench.common.extract_instruction(request, context=None)
         (
             stall_time,
             after_bytes,
@@ -1119,7 +1119,7 @@ def resumable_upload_chunk(bucket_name):
                 test_id,
             )
 
-        instruction = testbench.common.extract_instruction(request, context=None)
+        testbench.common.extract_instruction(request, context=None)
         (
             stall_time,
             after_bytes,
