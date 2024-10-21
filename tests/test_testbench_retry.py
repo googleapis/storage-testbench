@@ -813,6 +813,7 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertGreater(elapsed_time, 1)
 
+        # Upload the data again and check that stall not happen.
         start_time = time.perf_counter()
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
