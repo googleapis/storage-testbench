@@ -29,8 +29,8 @@ from grpc import StatusCode
 import gcs
 import testbench
 from google.storage.v2 import storage_pb2
-from tests.format_multipart_upload import format_multipart_upload
 from testbench import rest_server
+from tests.format_multipart_upload import format_multipart_upload
 
 UPLOAD_QUANTUM = 256 * 1024
 
