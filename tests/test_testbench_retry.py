@@ -762,7 +762,6 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200, msg=response.data)
 
-
     def test_write_retry_test_stall_for_full_uploads(self):
         # Create a new bucket
         response = self.client.post(
@@ -828,6 +827,7 @@ class TestTestbenchRetry(unittest.TestCase):
         elapsed_time = end_time - start_time
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200)
+
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
     def setUp(self):
