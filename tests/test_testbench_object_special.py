@@ -270,6 +270,46 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data.decode("utf-8")), len(payload))
 
+    def test_object_restore(self):
+        response = self.client.post(
+            "/storage/v1/b",
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.put(
+            "/sd-bucket-name/sd-restore-obj",
+            content_type="text/plain",
+            data="The quick brown fox jumps over the lazy dog\n",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/storage/v1/b/sd-bucket-name/o/sd-restore-obj")
+        self.assertEqual(response.status_code, 200)
+        blob = json.loads(response.data)
+
+        response = self.client.delete("/storage/v1/b/sd-bucket-name/o/sd-restore-obj")
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(
+            "/storage/v1/b/sd-bucket-name/o/sd-restore-obj/restore?generation="
+            + blob.get("generation")
+        )
+        self.assertEqual(response.status_code, 200)
+        restored_blob = json.loads(response.data)
+        self.assertNotEqual(blob.get("generation"), restored_blob.get("generation"))
+
+    def test_object_restore_no_generation(self):
+        response = self.client.post(
+            "/storage/v1/b/sd-bucket-name/o/sd-restore-obj/restore"
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

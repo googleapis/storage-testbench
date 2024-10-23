@@ -32,6 +32,7 @@ is expected to be used by Storage library maintainers.
     - [Delete a Retry Test resource](#delete-a-retry-test-resource)
     - [Causing a failure using x-retry-test-id header](#causing-a-failure-using-x-retry-test-id-header)
     - [Forced Failures Supported](#forced-failures-supported)
+  - [Releasing the testbench](#releasing-the-testbench)
 
 ## Issue Policy
 
@@ -101,6 +102,8 @@ than the HTTP server. To serve gRPC requests on port 8888, run:
 ```bash
 curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=8888"
 ```
+> ⚠️ The HTTP server must be kept running to start the gRPC server and to make calls to the testbench,
+>  even after you start the gRPC server. Run this command in a different terminal window.
 
 ### Check that the testbench is running
 
@@ -243,3 +246,16 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | return-broken-stream                      | [HTTP] Testbench will fail after a few downloaded bytes <br> [GRPC] Testbench will fail with `UNAVAILABLE` after a few downloaded bytes
 | return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
 | return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
+| stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T second after reading YKiB of downloaded data, e.g. stall-for-10s-after-12K stalls after reading 12KiB of data <br> [GRPC] Not supported
+
+## Releasing the testbench
+
+The repository currently uses [Github Tags](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release)
+
+Steps:
+1. Go to https://github.com/googleapis/storage-testbench/releases/new
+1. Create a new tag v0.x.x
+1. Title "v0.x.x"
+1. Click Generate release notes
+1. Make sure "Set as the latest release" is checked
+1. Click "Publish Release" to release

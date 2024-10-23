@@ -513,6 +513,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context=context,
             generation=request.generation,
             preconditions=testbench.common.make_grpc_preconditions(request),
+            soft_deleted=request.soft_deleted,
         )
         return blob.metadata
 
@@ -876,6 +877,14 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     def __get_bucket(self, bucket_name, context) -> storage_pb2.Bucket:
         return self.db.get_bucket(bucket_name, context).metadata
+
+    @retry_test(method="storage.objects.restore")
+    def RestoreObject(self, request, context):
+        preconditions = testbench.common.make_grpc_preconditions(request)
+        blob = self.db.restore_object(
+            request.bucket, request.object, request.generation, preconditions, context
+        )
+        return blob.metadata
 
     @retry_test(method="storage.objects.insert")
     def WriteObject(self, request_iterator, context):

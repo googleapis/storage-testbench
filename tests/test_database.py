@@ -330,6 +330,115 @@ class TestDatabaseObject(unittest.TestCase):
             )
         self.assertEqual(rest.exception.code, 404)
 
+    def test_restore_object_no_soft_delete_policy(self):
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _, _, _ = self.database.restore_object(
+                "bucket-name",
+                "object-name",
+                12345678,
+            )
+        self.assertEqual(rest.exception.code, 400)
+
+    def test_restore_object_not_soft_deleted(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.database.insert_bucket(sd_bucket, None)
+
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, sd_bucket.metadata)
+        self.database.insert_object("sd-bucket-name", blob, context=None)
+
+        get_result = self.database.get_object(
+            "sd-bucket-name",
+            "object-name",
+            context=None,
+        )
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            _, _, _ = self.database.restore_object(
+                "sd-bucket-name",
+                "object-name",
+                get_result.metadata.generation,
+            )
+        self.assertEqual(rest.exception.code, 412)
+
+    def test_restore_object_generation_not_soft_deleted(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.database.insert_bucket(sd_bucket, None)
+
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, sd_bucket.metadata)
+        self.database.insert_object("sd-bucket-name", blob, context=None)
+
+        get_result = self.database.get_object(
+            "sd-bucket-name",
+            "object-name",
+            context=None,
+        )
+
+        self.database.delete_object("sd-bucket-name", "object-name")
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            blob = self.database.restore_object(
+                "sd-bucket-name", "object-name", get_result.metadata.generation + 1
+            )
+        self.assertEqual(rest.exception.code, 404)
+
+    def test_restore_object_standard_storage(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                    "autoclass": {"enabled": True, "terminalStorageClass": "NEARLINE"},
+                }
+            ),
+        )
+        sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.database.insert_bucket(sd_bucket, None)
+
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=b"12345678", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, sd_bucket.metadata)
+        self.database.insert_object("sd-bucket-name", blob, context=None)
+
+        get_result = self.database.get_object(
+            "sd-bucket-name",
+            "object-name",
+            context=None,
+        )
+
+        self.database.delete_object("sd-bucket-name", "object-name")
+        blob = self.database.restore_object(
+            "sd-bucket-name", "object-name", get_result.metadata.generation
+        )
+
+        self.assertNotEqual(get_result.metadata.generation, blob.metadata.generation)
+        self.assertEqual(blob.metadata.storage_class, "STANDARD")
+
 
 class TestDatabaseTemporaryResources(unittest.TestCase):
     """Test the Database class handling of uploads and rewrites."""

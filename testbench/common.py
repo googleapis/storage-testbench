@@ -23,6 +23,7 @@ import random
 import re
 import socket
 import struct
+import time
 import types
 from functools import wraps
 
@@ -46,6 +47,8 @@ retry_return_short_response = re.compile(
 retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
+retry_stall_after_bytes = re.compile(r"stall-for-([0-9]+)s-after-([0-9]+)K$")
+
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
 # === STR === #
@@ -718,6 +721,29 @@ def __get_streamer_response_fn(
     return response_handler
 
 
+def __get_stream_and_stall_fn(
+    database, method, test_id, limit=4, stall_time_sec=10, chunk_size=4
+):
+    def response_handler(data):
+        def streamer():
+            d = _extract_data(data)
+            bytes_yield = 0
+            instruction_dequed = False
+            for r in range(0, len(d), chunk_size):
+                if bytes_yield >= limit and not instruction_dequed:
+                    database.dequeue_next_instruction(test_id, method)
+                    time.sleep(stall_time_sec)
+                    instruction_dequed = True
+                chunk_end = min(r + chunk_size, len(d))
+                chunk_downloaded = chunk_end - r
+                bytes_yield += chunk_downloaded
+                yield d[r:chunk_end]
+
+        return flask.Response(streamer(), headers=_extract_headers(data))
+
+    return response_handler
+
+
 def __get_default_response_fn(data):
     return data
 
@@ -818,6 +844,18 @@ def handle_retry_test_instruction(database, request, socket_closer, method):
     broken_stream_after_bytes = (
         testbench.common.retry_return_broken_stream_after_bytes.match(next_instruction)
     )
+
+    retry_stall_after_bytes_matches = testbench.common.retry_stall_after_bytes.match(
+        next_instruction
+    )
+    if retry_stall_after_bytes_matches:
+        items = list(retry_stall_after_bytes_matches.groups())
+        stall_time = int(items[0])
+        after_bytes = int(items[1]) * 1024
+        return __get_stream_and_stall_fn(
+            database, method, test_id, limit=after_bytes, stall_time_sec=stall_time
+        )
+
     if broken_stream_after_bytes and method == "storage.objects.get":
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
@@ -1182,6 +1220,6 @@ def _grpc_forced_failure_from_http_instruction(http_code):
         "429": StatusCode.RESOURCE_EXHAUSTED,
         "500": StatusCode.INTERNAL,
         "503": StatusCode.UNAVAILABLE,
-        "504": StatusCode.UNAVAILABLE,  # TODO: Unresolved discussion on whether DEADLINE_EXCEEDED is retryable client-side based on AIP#194
+        "504": StatusCode.DEADLINE_EXCEEDED,
     }
     return status_map.get(http_code, None)

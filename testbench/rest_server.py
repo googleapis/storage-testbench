@@ -568,14 +568,20 @@ def object_delete(bucket_name, object_name):
 @gcs.route("/b/<bucket_name>/o/<path:object_name>")
 @retry_test(method="storage.objects.get")
 def object_get(bucket_name, object_name):
+    soft_deleted = flask.request.args.get("softDeleted", False, bool)
+    media = flask.request.args.get("alt", None)
+    generation = flask.request.args.get("generation", None)
+    if (soft_deleted and generation is None) or (soft_deleted and media == "media"):
+        return testbench.error.invalid("invalid request", None)
+
     blob = db.get_object(
         bucket_name,
         object_name,
-        generation=flask.request.args.get("generation", None),
+        generation=generation,
         preconditions=testbench.common.make_json_preconditions(flask.request),
         context=None,
+        soft_deleted=soft_deleted,
     )
-    media = flask.request.args.get("alt", None)
     if media is None or media == "json":
         projection = testbench.common.extract_projection(flask.request, "noAcl", None)
         fields = flask.request.args.get("fields", None)
@@ -771,6 +777,21 @@ def objects_rewrite(src_bucket_name, src_object_name, dst_bucket_name, dst_objec
     else:
         response["rewriteToken"] = rewrite.token
     return response
+
+
+@gcs.route("/b/<bucket_name>/o/<path:object_name>/restore", methods=["POST"])
+@retry_test(method="storage.objects.restore")
+def object_restore(bucket_name, object_name):
+    if flask.request.args.get("generation") is None:
+        return testbench.error.invalid("generation", None)
+    blob = db.restore_object(
+        bucket_name,
+        object_name,
+        int(flask.request.args.get("generation")),
+        testbench.common.make_json_preconditions(flask.request),
+    )
+    projection = testbench.common.extract_projection(flask.request, "noAcl", None)
+    return testbench.common.filter_response_rest(blob.rest_metadata(), projection, None)
 
 
 # === OBJECT ACCESS CONTROL === #

@@ -24,7 +24,7 @@ jobs:
     name: Format with psf-black
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
