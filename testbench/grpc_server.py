@@ -352,7 +352,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket.metadata.update_time.FromDatetime(now)
         return bucket.metadata
 
-
     @retry_test(method="storage.objects.compose")
     def ComposeObject(self, request, context):
         if len(request.source_objects) == 0:
@@ -749,6 +748,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         if upload.complete:
             return storage_pb2.QueryWriteStatusResponse(resource=upload.blob.metadata)
         return storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media))
+
 
 def run(port, database, echo_metadata=False):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
