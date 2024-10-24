@@ -30,6 +30,7 @@ import gcs
 import testbench
 from google.storage.v2 import storage_pb2
 from testbench import rest_server
+from tests.format_multipart_upload import format_multipart_upload
 
 UPLOAD_QUANTUM = 256 * 1024
 
@@ -654,6 +655,230 @@ class TestTestbenchRetry(unittest.TestCase):
         create_rest = json.loads(response.data)
         self.assertIn("size", create_rest)
         self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
+
+    def test_write_retry_test_stall_after_bytes(self):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "stall-for-1s-after-250K",
+                            "stall-for-1s-after-300K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Initiate resumable upload
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "stall"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        location = response.headers.get("location")
+        self.assertIn("upload_id=", location)
+        match = re.search(r"[&?]upload_id=([^&]+)", location)
+        self.assertIsNotNone(match, msg=location)
+        upload_id = match.group(1)
+
+        # Upload the first 256KiB chunk of data and trigger the stall.
+        chunk = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(chunk), UPLOAD_QUANTUM)
+
+        start_time = time.perf_counter()
+        response = self.client.put(
+            f"/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                    len=UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+                ),
+                "x-retry-test-id": test_id,
+            },
+            data=chunk,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertGreater(elapsed_time, 1)
+        self.assertEqual(response.status_code, 308)
+
+        # Upload the second 256KiB chunk of data and trigger the stall again.
+        start_time = time.perf_counter()
+        chunk = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(chunk), UPLOAD_QUANTUM)
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                    len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+                ),
+                "x-retry-test-id": test_id,
+            },
+            data=chunk,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertGreater(elapsed_time, 1)
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+        # Upload the second 256KiB chunk of data and check that stall not happen
+        start_time = time.perf_counter()
+        chunk = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(chunk), UPLOAD_QUANTUM)
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            headers={
+                "content-range": "bytes 0-{len:d}/{obj_size:d}".format(
+                    len=2 * UPLOAD_QUANTUM - 1, obj_size=2 * UPLOAD_QUANTUM
+                ),
+                "x-retry-test-id": test_id,
+            },
+            data=chunk,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertLess(elapsed_time, 1)
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+    def test_write_retry_test_stall_single_shot(self):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "stall-for-1s-after-250K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Upload the 256KiB of data and trigger the stall.
+        data = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(data), UPLOAD_QUANTUM)
+
+        start_time = time.perf_counter()
+        boundary, payload = format_multipart_upload({}, data)
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(elapsed_time, 1)
+
+        # Upload the data again and check that stall not happen.
+        start_time = time.perf_counter()
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertLess(elapsed_time, 1)
+        self.assertEqual(response.status_code, 200)
+
+    def test_write_retry_test_stall_single_shot_while_upload_size_less_than_stall_size(
+        self,
+    ):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "stall-for-1s-after-250K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Upload the 200KiB of data and check stall not happen.
+        data = self._create_block(200 * 1024)
+        self.assertEqual(len(data), 200 * 1024)
+
+        start_time = time.perf_counter()
+        boundary, payload = format_multipart_upload({}, data)
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(elapsed_time, 1)
 
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
