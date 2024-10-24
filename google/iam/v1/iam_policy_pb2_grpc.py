@@ -43,7 +43,6 @@ if _version_not_supported:
 class IAMPolicyStub(object):
     """API Overview
 
-
     Manages Identity and Access Management (IAM) policies.
 
     Any implementation of an API that offers access control features
@@ -94,7 +93,6 @@ class IAMPolicyStub(object):
 
 class IAMPolicyServicer(object):
     """API Overview
-
 
     Manages Identity and Access Management (IAM) policies.
 
@@ -181,7 +179,6 @@ def add_IAMPolicyServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class IAMPolicy(object):
     """API Overview
-
 
     Manages Identity and Access Management (IAM) policies.
 
