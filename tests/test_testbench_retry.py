@@ -828,7 +828,9 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200)
 
-    def test_write_retry_test_stall_single_shot_while_upload_size_less_than_stall_size(self):
+    def test_write_retry_test_stall_single_shot_while_upload_size_less_than_stall_size(
+        self,
+    ):
         # Create a new bucket
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
