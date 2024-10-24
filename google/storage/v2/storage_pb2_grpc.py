@@ -117,26 +117,6 @@ class StorageStub(object):
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
                 _registered_method=True)
-        self.DeleteNotificationConfig = channel.unary_unary(
-                '/google.storage.v2.Storage/DeleteNotificationConfig',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                _registered_method=True)
-        self.GetNotificationConfig = channel.unary_unary(
-                '/google.storage.v2.Storage/GetNotificationConfig',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-                _registered_method=True)
-        self.CreateNotificationConfig = channel.unary_unary(
-                '/google.storage.v2.Storage/CreateNotificationConfig',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-                _registered_method=True)
-        self.ListNotificationConfigs = channel.unary_unary(
-                '/google.storage.v2.Storage/ListNotificationConfigs',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
-                _registered_method=True)
         self.ComposeObject = channel.unary_unary(
                 '/google.storage.v2.Storage/ComposeObject',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ComposeObjectRequest.SerializeToString,
@@ -201,36 +181,6 @@ class StorageStub(object):
                 '/google.storage.v2.Storage/QueryWriteStatus',
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
-                _registered_method=True)
-        self.GetServiceAccount = channel.unary_unary(
-                '/google.storage.v2.Storage/GetServiceAccount',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetServiceAccountRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ServiceAccount.FromString,
-                _registered_method=True)
-        self.CreateHmacKey = channel.unary_unary(
-                '/google.storage.v2.Storage/CreateHmacKey',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyResponse.FromString,
-                _registered_method=True)
-        self.DeleteHmacKey = channel.unary_unary(
-                '/google.storage.v2.Storage/DeleteHmacKey',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteHmacKeyRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                _registered_method=True)
-        self.GetHmacKey = channel.unary_unary(
-                '/google.storage.v2.Storage/GetHmacKey',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.GetHmacKeyRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-                _registered_method=True)
-        self.ListHmacKeys = channel.unary_unary(
-                '/google.storage.v2.Storage/ListHmacKeys',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysResponse.FromString,
-                _registered_method=True)
-        self.UpdateHmacKey = channel.unary_unary(
-                '/google.storage.v2.Storage/UpdateHmacKey',
-                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateHmacKeyRequest.SerializeToString,
-                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
                 _registered_method=True)
 
 
@@ -312,11 +262,13 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def TestIamPermissions(self, request, context):
-        """Tests a set of permissions on the given bucket or object to see which, if
-        any, are held by the caller.
+        """Tests a set of permissions on the given bucket, object, or managed folder
+        to see which, if any, are held by the caller.
         The `resource` field in the request should be
-        `projects/_/buckets/{bucket}` for a bucket or
-        `projects/_/buckets/{bucket}/objects/{object}` for an object.
+        `projects/_/buckets/{bucket}` for a bucket,
+        `projects/_/buckets/{bucket}/objects/{object}` for an object, or
+        `projects/_/buckets/{bucket}/managedFolders/{managedFolder}`
+        for a managed folder.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -324,37 +276,6 @@ class StorageServicer(object):
 
     def UpdateBucket(self, request, context):
         """Updates a bucket. Equivalent to JSON API's storage.buckets.patch method.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def DeleteNotificationConfig(self, request, context):
-        """Permanently deletes a NotificationConfig.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetNotificationConfig(self, request, context):
-        """View a NotificationConfig.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CreateNotificationConfig(self, request, context):
-        """Creates a NotificationConfig for a given bucket.
-        These NotificationConfigs, when triggered, publish messages to the
-        specified Pub/Sub topics. See
-        https://cloud.google.com/storage/docs/pubsub-notifications.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ListNotificationConfigs(self, request, context):
-        """Retrieves a list of NotificationConfigs for a given bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -552,48 +473,6 @@ class StorageServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetServiceAccount(self, request, context):
-        """Retrieves the name of a project's Google Cloud Storage service account.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CreateHmacKey(self, request, context):
-        """Creates a new HMAC key for the given service account.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def DeleteHmacKey(self, request, context):
-        """Deletes a given HMAC key.  Key must be in an INACTIVE state.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetHmacKey(self, request, context):
-        """Gets an existing HMAC key metadata for the given id.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ListHmacKeys(self, request, context):
-        """Lists HMAC keys under a given project with the additional filters provided.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def UpdateHmacKey(self, request, context):
-        """Updates a given HMAC key state between ACTIVE and INACTIVE.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_StorageServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -641,26 +520,6 @@ def add_StorageServicer_to_server(servicer, server):
                     servicer.UpdateBucket,
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.FromString,
                     response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.Bucket.SerializeToString,
-            ),
-            'DeleteNotificationConfig': grpc.unary_unary_rpc_method_handler(
-                    servicer.DeleteNotificationConfig,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-            'GetNotificationConfig': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetNotificationConfig,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.SerializeToString,
-            ),
-            'CreateNotificationConfig': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateNotificationConfig,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.SerializeToString,
-            ),
-            'ListNotificationConfigs': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListNotificationConfigs,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.SerializeToString,
             ),
             'ComposeObject': grpc.unary_unary_rpc_method_handler(
                     servicer.ComposeObject,
@@ -726,36 +585,6 @@ def add_StorageServicer_to_server(servicer, server):
                     servicer.QueryWriteStatus,
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.FromString,
                     response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.SerializeToString,
-            ),
-            'GetServiceAccount': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetServiceAccount,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.GetServiceAccountRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ServiceAccount.SerializeToString,
-            ),
-            'CreateHmacKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateHmacKey,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyResponse.SerializeToString,
-            ),
-            'DeleteHmacKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.DeleteHmacKey,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.DeleteHmacKeyRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-            'GetHmacKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetHmacKey,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.GetHmacKeyRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.SerializeToString,
-            ),
-            'ListHmacKeys': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListHmacKeys,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysResponse.SerializeToString,
-            ),
-            'UpdateHmacKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.UpdateHmacKey,
-                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.UpdateHmacKeyRequest.FromString,
-                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1022,114 +851,6 @@ class Storage(object):
             '/google.storage.v2.Storage/UpdateBucket',
             google_dot_storage_dot_v2_dot_storage__pb2.UpdateBucketRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.Bucket.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def DeleteNotificationConfig(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/DeleteNotificationConfig',
-            google_dot_storage_dot_v2_dot_storage__pb2.DeleteNotificationConfigRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetNotificationConfig(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/GetNotificationConfig',
-            google_dot_storage_dot_v2_dot_storage__pb2.GetNotificationConfigRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CreateNotificationConfig(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/CreateNotificationConfig',
-            google_dot_storage_dot_v2_dot_storage__pb2.CreateNotificationConfigRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.NotificationConfig.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def ListNotificationConfigs(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/ListNotificationConfigs',
-            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.ListNotificationConfigsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -1481,168 +1202,6 @@ class Storage(object):
             '/google.storage.v2.Storage/QueryWriteStatus',
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetServiceAccount(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/GetServiceAccount',
-            google_dot_storage_dot_v2_dot_storage__pb2.GetServiceAccountRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.ServiceAccount.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CreateHmacKey(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/CreateHmacKey',
-            google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.CreateHmacKeyResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def DeleteHmacKey(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/DeleteHmacKey',
-            google_dot_storage_dot_v2_dot_storage__pb2.DeleteHmacKeyRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetHmacKey(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/GetHmacKey',
-            google_dot_storage_dot_v2_dot_storage__pb2.GetHmacKeyRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def ListHmacKeys(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/ListHmacKeys',
-            google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.ListHmacKeysResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def UpdateHmacKey(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/google.storage.v2.Storage/UpdateHmacKey',
-            google_dot_storage_dot_v2_dot_storage__pb2.UpdateHmacKeyRequest.SerializeToString,
-            google_dot_storage_dot_v2_dot_storage__pb2.HmacKeyMetadata.FromString,
             options,
             channel_credentials,
             insecure,
