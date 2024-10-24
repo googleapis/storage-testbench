@@ -606,6 +606,11 @@ class Database:
             "storage.default_object_acl.insert",
             "storage.default_object_acl.patch",
             "storage.default_object_acl.update",
+            "storage.hmacKey.create",
+            "storage.hmacKey.delete",
+            "storage.hmacKey.get",
+            "storage.hmacKey.list",
+            "storage.hmacKey.update",
             "storage.object_acl.get",
             "storage.object_acl.list",
             "storage.object_acl.delete",
@@ -616,6 +621,7 @@ class Database:
             "storage.notifications.get",
             "storage.notifications.insert",
             "storage.notifications.list",
+            "storage.serviceaccount.get",
         }
         if method in not_supported_grpc_w_retry:
             testbench.error.unimplemented(
