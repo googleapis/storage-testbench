@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+import time
 
 import flask
 from google.protobuf import json_format
@@ -978,6 +979,18 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
+        # Handle stall for full uploads.
+        testbench.common.extract_instruction(request, context=None)
+        (
+            stall_time,
+            after_bytes,
+            test_id,
+        ) = testbench.common.get_stall_uploads_after_bytes(db, request)
+        if stall_time and len(blob.media) >= after_bytes:
+            if test_id:
+                db.dequeue_next_instruction(test_id, "storage.objects.insert")
+            time.sleep(stall_time)
+
     db.insert_object(
         bucket_name,
         blob,
@@ -1102,6 +1115,23 @@ def resumable_upload_chunk(bucket_name):
                 last_byte_persisted,
                 chunk_first_byte,
                 chunk_last_byte,
+                test_id,
+            )
+
+        testbench.common.extract_instruction(request, context=None)
+        (
+            stall_time,
+            after_bytes,
+            test_id,
+        ) = testbench.common.get_stall_uploads_after_bytes(db, request)
+
+        if stall_time:
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload,
+                data,
+                db,
+                stall_time,
+                after_bytes,
                 test_id,
             )
         # The testbench should ignore any request bytes that have already been persisted,
