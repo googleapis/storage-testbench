@@ -656,7 +656,7 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertIn("size", create_rest)
         self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
 
-    def test_write_retry_test_stall_after_bytes(self):
+    def test_write_retry_test_stall_single_shot(self):
         # Create a new bucket
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
@@ -762,7 +762,7 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200, msg=response.data)
 
-    def test_write_retry_test_stall_for_full_uploads(self):
+    def test_write_retry_test_stall_single_shot(self):
         # Create a new bucket
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
@@ -827,6 +827,56 @@ class TestTestbenchRetry(unittest.TestCase):
         elapsed_time = end_time - start_time
         self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200)
+
+    def test_write_retry_test_stall_single_shot_while_upload_size_less_than_stall_size(self):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "stall-for-1s-after-250K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Upload the 200KiB of data and check stall not happen.
+        data = self._create_block(200 * 1024)
+        self.assertEqual(len(data), 200 * 1024)
+
+        start_time = time.perf_counter()
+        boundary, payload = format_multipart_upload({}, data)
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(elapsed_time, 1)
 
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
