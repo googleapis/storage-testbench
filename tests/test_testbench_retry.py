@@ -656,7 +656,7 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertIn("size", create_rest)
         self.assertEqual(int(create_rest.get("size")), 2 * UPLOAD_QUANTUM)
 
-    def test_write_retry_test_stall_single_shot(self):
+    def test_write_retry_test_stall_after_bytes(self):
         # Create a new bucket
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})

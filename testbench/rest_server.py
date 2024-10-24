@@ -989,7 +989,6 @@ def object_insert(bucket_name):
         if stall_time and len(blob.media) >= after_bytes:
             if test_id:
                 db.dequeue_next_instruction(test_id, "storage.objects.insert")
-            print("stall time", stall_time)
             time.sleep(stall_time)
 
     db.insert_object(
