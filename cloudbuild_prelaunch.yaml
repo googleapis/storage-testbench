@@ -30,5 +30,6 @@ images:
   - gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:$SHORT_SHA
   - gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:latest
 
-options:
-  logging: CLOUD_LOGGING_ONLY
+# If you do not set `logging` option, Cloud Build stores the
+# logs in both Cloud Logging and Cloud Storage.
+logsBucket: 'gs://gcs-sdk-cloud-builds-logs'
