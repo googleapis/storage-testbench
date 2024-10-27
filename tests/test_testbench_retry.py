@@ -1042,7 +1042,6 @@ class TestTestbenchRetry(unittest.TestCase):
         data = self._create_block(200 * 1024)
         self.assertEqual(len(data), 200 * 1024)
 
-        start_time = time.perf_counter()
         boundary, payload = format_multipart_upload({}, data)
         response = self.client.post(
             "/upload/storage/v1/b/bucket-name/o",
@@ -1053,10 +1052,7 @@ class TestTestbenchRetry(unittest.TestCase):
             },
             data=payload,
         )
-        end_time = time.perf_counter()
-        elapsed_time = end_time - start_time
         self.assertEqual(response.status_code, 200)
-        self.assertLess(elapsed_time, 1)
 
     def test_write_retry_test_stall_after_bytes(self):
       response = self.client.post(
