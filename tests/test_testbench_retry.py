@@ -1003,8 +1003,8 @@ class TestTestbenchRetry(unittest.TestCase):
         )
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
-        self.assertLess(elapsed_time, 1)
         self.assertEqual(response.status_code, 200)
+        self.assertLess(elapsed_time, 1)
 
     def test_write_retry_test_stall_single_shot_while_upload_size_less_than_stall_size(
         self,
