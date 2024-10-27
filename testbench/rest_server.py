@@ -981,9 +981,9 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
         testbench.common.extract_instruction(request, context=None)
         (
-        error_code,
-        after_bytes,
-        test_id,
+            error_code,
+            after_bytes,
+            test_id,
         ) = testbench.common.get_retry_uploads_error_after_bytes(db, request)
         if error_code and len(blob.media) >= after_bytes:
             if test_id:
