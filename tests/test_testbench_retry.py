@@ -880,6 +880,112 @@ class TestTestbenchRetry(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertLess(elapsed_time, 1)
 
+    def test_retry_test_return_error_after_bytes_for_single_shot_upload(self):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a stall for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-503-after-250K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Upload the 256KiB of data and trigger the stall.
+        data = self._create_block(UPLOAD_QUANTUM)
+        self.assertEqual(len(data), UPLOAD_QUANTUM)
+
+        boundary, payload = format_multipart_upload({}, data)
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 503)
+
+        # Upload the data again and check that stall not happen.
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "stall"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_write_retry_error_single_shot_while_upload_size_less_than_size(
+        self,
+    ):
+        # Create a new bucket
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a error for reading back the object.
+        response = self.client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-503-after-250K",
+                        ]
+                    }
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        test_id = create_rest.get("id")
+
+        # Upload the 200KiB of data and check error not happen.
+        data = self._create_block(200 * 1024)
+        self.assertEqual(len(data), 200 * 1024)
+
+        boundary, payload = format_multipart_upload({}, data)
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "multipart", "name": "error"},
+            content_type="multipart/related; boundary=" + boundary,
+            headers={
+                "x-retry-test-id": test_id,
+            },
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
 
 class TestTestbenchRetryGrpc(unittest.TestCase):
     def setUp(self):

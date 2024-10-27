@@ -979,6 +979,22 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
+        testbench.common.extract_instruction(request, context=None)
+        (
+        error_code,
+        after_bytes,
+        test_id,
+        ) = testbench.common.get_retry_uploads_error_after_bytes(db, request)
+        if error_code and len(blob.media) >= after_bytes:
+            if test_id:
+                db.dequeue_next_instruction(test_id, "storage.objects.insert")
+            testbench.error.generic(
+                "Fault injected during a resumable upload",
+                rest_code=error_code,
+                grpc_code=None,
+                context=None,
+            )
+
         # Handle stall for full uploads.
         testbench.common.extract_instruction(request, context=None)
         (
