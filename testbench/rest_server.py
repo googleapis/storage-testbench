@@ -979,6 +979,8 @@ def object_insert(bucket_name):
         blob, projection = gcs_type.object.Object.init_media(flask.request, bucket)
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
+
+    if upload_type == "media" or upload_type == "multipart":
         testbench.common.extract_instruction(request, context=None)
         (
             error_code,
@@ -989,7 +991,7 @@ def object_insert(bucket_name):
             if test_id:
                 db.dequeue_next_instruction(test_id, "storage.objects.insert")
             testbench.error.generic(
-                "Fault injected during a resumable upload",
+                "Fault injected during a single-shot upload",
                 rest_code=error_code,
                 grpc_code=None,
                 context=None,
