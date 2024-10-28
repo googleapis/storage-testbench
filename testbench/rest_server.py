@@ -980,6 +980,7 @@ def object_insert(bucket_name):
     elif upload_type == "multipart":
         blob, projection = gcs_type.object.Object.init_multipart(flask.request, bucket)
 
+    # Handle errors for single-shot uploads.
     testbench.common.extract_instruction(request, context=None)
     (
         error_code,
@@ -997,7 +998,7 @@ def object_insert(bucket_name):
             context=None,
         )
 
-        # Handle stall for full uploads.
+    # Handle stall for single-shot uploads.
     testbench.common.extract_instruction(request, context=None)
     (
         stall_time,
