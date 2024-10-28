@@ -991,7 +991,7 @@ def object_insert(bucket_name):
         if test_id:
             db.dequeue_next_instruction(test_id, "storage.objects.insert")
         testbench.error.generic(
-           "Fault injected during a single-shot upload",
+            "Fault injected during a single-shot upload",
             rest_code=error_code,
             grpc_code=None,
             context=None,
