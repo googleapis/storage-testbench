@@ -989,12 +989,12 @@ def object_insert(bucket_name):
 
     if error_code and len(blob.media) >= after_bytes:
         if test_id:
-           db.dequeue_next_instruction(test_id, "storage.objects.insert")
+            db.dequeue_next_instruction(test_id, "storage.objects.insert")
         testbench.error.generic(
-          "Fault injected during a single-shot upload",
-           rest_code=error_code,
-           grpc_code=None,
-           context=None,
+           "Fault injected during a single-shot upload",
+            rest_code=error_code,
+            grpc_code=None,
+            context=None,
         )
 
         # Handle stall for full uploads.
