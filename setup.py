@@ -51,7 +51,7 @@ setuptools.setup(
         "scalpl==0.4.2",
         "crc32c==2.4.1",
         "gunicorn==22.0.0",
-        "waitress==3.0.0",
+        "waitress==3.0.1",
         "Werkzeug==3.0.4",
     ],
     # Support installing via https://pypa.github.io/pipx/
