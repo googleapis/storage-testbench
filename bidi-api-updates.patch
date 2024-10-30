@@ -19,7 +19,7 @@ index 8fa25cc09..c17d0fe82 100644
      ],
  )
 diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
-index 0f9758f19..c9c027345 100644
+index c7229d4..c36fb4c 100644
 --- a/google/storage/v2/storage.proto
 +++ b/google/storage/v2/storage.proto
 @@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
@@ -30,20 +30,10 @@ index 0f9758f19..c9c027345 100644
  import "google/type/date.proto";
  
  option go_package = "cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb";
-@@ -274,6 +275,26 @@ service Storage {
+@@ -235,6 +236,16 @@ service Storage {
      option (google.api.method_signature) = "bucket,object,generation";
    }
  
-+  // Reads an object's data.
-+  //
-+  // This is a bi-directional API with the added support for reading multiple
-+  // ranges within one stream both within and across multiple messages. This can
-+  // improve performance compared with performing individual range read RPCs.
-+  // If the server encountered an error for any of the inputs, the stream will
-+  // be closed with the relevant error code.
-+  // Because the API allows for multiple outstanding requests, when the stream
-+  // is closed the error response will contain a BidiReadObjectRangesError proto
-+  // in the error extension describing the error for each outstanding read_id.
 +  rpc BidiReadObject(stream BidiReadObjectRequest)
 +      returns (stream BidiReadObjectResponse) {
 +    option (google.api.routing) = {
@@ -57,22 +47,20 @@ index 0f9758f19..c9c027345 100644
    // Updates an object's metadata.
    // Equivalent to JSON API's storage.objects.patch.
    rpc UpdateObject(UpdateObjectRequest) returns (Object) {
-@@ -995,6 +1016,236 @@ message ReadObjectResponse {
+@@ -847,6 +858,253 @@ message ReadObjectResponse {
    Object metadata = 4;
  }
  
 +// Describes the object to read in a BidiReadObject request.
 +message BidiReadObjectSpec {
-+  // The name of the bucket containing the object to read.
++  // Required. The name of the bucket containing the object to read.
 +  string bucket = 1 [
 +    (google.api.field_behavior) = REQUIRED,
-+    (google.api.resource_reference).type = "storage.googleapis.com/Bucket"
++    (google.api.resource_reference) = { type: "storage.googleapis.com/Bucket" }
 +  ];
 +
-+  // The name of the object to read.
-+  string object = 2 [
-+    (google.api.field_behavior) = REQUIRED
-+  ];
++  // Required. The name of the object to read.
++  string object = 2 [(google.api.field_behavior) = REQUIRED];
 +
 +  // If present, selects a specific revision of this object (as opposed
 +  // to the latest version, the default).
@@ -98,9 +86,6 @@ index 0f9758f19..c9c027345 100644
 +  optional int64 if_metageneration_not_match = 7;
 +
 +  // A set of parameters common to Storage API requests concerning an object.
-+  // (-- api-linter: core::0131::request-unknown-fields=disabled
-+  //     aip.dev/not-precedent: All Cloud Storage object requests share a common
-+  //     set of parameters to handle billing and other per-request concerns. --)
 +  CommonObjectRequestParams common_object_request_params = 8;
 +
 +  // Mask specifying which fields to read.
@@ -108,7 +93,10 @@ index 0f9758f19..c9c027345 100644
 +  // If no mask is specified, will default to all fields except metadata.owner
 +  // and metadata.acl.
 +  // * may be used to mean "all fields".
-+  optional google.protobuf.FieldMask read_mask = 12;
++  // As per https://google.aip.dev/161, this field is deprecated.
++  // As an alternative, grpc metadata can be used:
++  // https://cloud.google.com/apis/docs/system-parameters#definitions
++  optional google.protobuf.FieldMask read_mask = 12 [deprecated = true];
 +
 +  // The client can optionally set this field. The read handle is an optimized
 +  // way of creating new streams. Read handles are generated and periodically
@@ -122,12 +110,9 @@ index 0f9758f19..c9c027345 100644
 +
 +// Request message for BidiReadObject.
 +message BidiReadObjectRequest {
-+
 +  // The first message of each stream must set this field. The stream returns an
 +  // error if any subsequent message sets this field, or if the first message
 +  // does not set the field.
-+  // TODO(b/340927727): The oneof will be removed once the field is no longer
-+  // referenced
 +  oneof first_message {
 +    // Describes the object to read
 +    BidiReadObjectSpec read_spec = 6 [deprecated = true];
@@ -172,15 +157,13 @@ index 0f9758f19..c9c027345 100644
 +  // empty for any given `ReadResponse`. This enables the service to inform the
 +  // client that the request is still live while it is running an operation to
 +  // generate more data.
-+  ChecksummedData checksummed_data = 1
-+      [deprecated = true];
++  ChecksummedData checksummed_data = 1 [deprecated = true];
 +
 +  // The checksums of the complete object regardless of data range. If the
 +  // object is downloaded in full, the client should compute one of these
 +  // checksums over the downloaded object and compare it against the value
 +  // provided here.
-+  ObjectChecksums object_checksums = 2
-+      [deprecated = true];
++  ObjectChecksums object_checksums = 2 [deprecated = true];
 +
 +  // If read_offset and or read_limit was specified on the
 +  // ReadObjectRequest, ContentRange will be populated on the first
@@ -213,13 +196,28 @@ index 0f9758f19..c9c027345 100644
 +// Error proto containing details for a redirected read. This error is only
 +// returned on initial open in case of a redirect.
 +message BidiReadObjectRedirectedError {
-+
 +  // The read handle for the redirected read. The client can use this for the
 +  // subsequent open.
 +  BidiReadHandle read_handle = 1;
 +
 +  // The routing token that should be used when reopening the read stream.
 +  optional string routing_token = 2;
++}
++
++// Error proto containing details for a redirected write. This error is only
++// returned on initial open in case of a redirect.
++message BidiWriteObjectRedirectedError {
++  // The routing token that should be used when reopening the write stream.
++  optional string routing_token = 1;
++
++  // Opaque value describing a previous write.
++  optional BidiWriteHandle write_handle = 2;
++
++  // The generation of the object that triggered the redirect.
++  // Note that if this error was returned as part of an appendable object
++  // create, this object generation is now successfully created and
++  // append_object_spec should be used when reconnecting.
++  optional int64 generation = 3;
 +}
 +
 +// Error extension proto containing details for all outstanding reads on the
@@ -233,14 +231,15 @@ index 0f9758f19..c9c027345 100644
 +message ReadRangeError {
 +  // The id of the corresponding read_range
 +  int64 read_id = 1;
++
 +  // The status which should be an enum value of [google.rpc.Code].
 +  google.rpc.Status status = 2;
 +}
 +
 +// Describes a range of bytes to read in a BidiReadObjectRanges request.
 +message ReadRange {
-+  // The offset for the first byte to return in the read, relative to the start
-+  // of the object.
++  // Required. The offset for the first byte to return in the read, relative to
++  // the start of the object.
 +  //
 +  // A negative read_offset value will be interpreted as the number of bytes
 +  // back from the end of the object to be returned. For example, if an object's
@@ -251,19 +250,19 @@ index 0f9758f19..c9c027345 100644
 +  // will result in an OutOfRange error.
 +  int64 read_offset = 1 [(google.api.field_behavior) = REQUIRED];
 +
-+  // The maximum number of data bytes the server is allowed to return across
-+  // all response messages with the same read_id. A read_limit of zero
++  // Optional. The maximum number of data bytes the server is allowed to return
++  // across all response messages with the same read_id. A read_limit of zero
 +  // indicates that there is no limit, and a negative read_limit will cause an
 +  // error. If the stream returns fewer bytes than allowed by the read_limit
 +  // and no error occurred, the stream includes all data from the read_offset
 +  // to the resource end.
 +  int64 read_limit = 2 [(google.api.field_behavior) = OPTIONAL];
 +
-+  // Read identifier provided by the client. When the client issues more than
-+  // one outstanding ReadRange on the same stream, responses can be mapped back
-+  // to their corresponding requests using this value. Clients must ensure that
-+  // all outstanding requests have different read_id values. The server may
-+  // close the stream with an error if this condition is not met.
++  // Required. Read identifier provided by the client. When the client issues
++  // more than one outstanding ReadRange on the same stream, responses can be
++  // mapped back to their corresponding requests using this value. Clients must
++  // ensure that all outstanding requests have different read_id values. The
++  // server may close the stream with an error if this condition is not met.
 +  int64 read_id = 3 [(google.api.field_behavior) = REQUIRED];
 +}
 +
@@ -287,10 +286,89 @@ index 0f9758f19..c9c027345 100644
 +// invocation. The client can use this instead of BidiReadObjectSpec as an
 +// optimized way of opening subsequent bidirectional streams to the same object.
 +message BidiReadHandle {
-+  // Opaque value describing a previous read.
++  // Required. Opaque value describing a previous read.
 +  bytes handle = 1 [(google.api.field_behavior) = REQUIRED];
++}
++
++// BidiWriteHandle contains a handle from a previous BidiWriteObject
++// invocation. The client can use this as an optimized way of opening subsequent
++// bidirectional streams to the same object.
++message BidiWriteHandle {
++  // Opaque value describing a previous write.
++  bytes handle = 1;
 +}
 +
  // Describes an attempt to insert an object, possibly over multiple requests.
  message WriteObjectSpec {
    // Required. Destination object, including its name and its metadata.
+@@ -884,6 +1142,10 @@ message WriteObjectSpec {
+   // you must start the upload over from scratch, this time sending the correct
+   // number of bytes.
+   optional int64 object_size = 8;
++
++  // If true, the object will be created in appendable mode.
++  // This field may only be set when using BidiWriteObject.
++  optional bool appendable = 9;
+ }
+ 
+ // Request message for WriteObject.
+@@ -953,6 +1215,37 @@ message WriteObjectResponse {
+   }
+ }
+ 
++// Describes an attempt to append to an object, possibly over multiple requests.
++message AppendObjectSpec {
++  // Required. The name of the bucket containing the object to write.
++  string bucket = 1 [
++    (google.api.field_behavior) = REQUIRED,
++    (google.api.resource_reference) = { type: "storage.googleapis.com/Bucket" }
++  ];
++
++  // Required. The name of the object to open for writing.
++  string object = 2 [(google.api.field_behavior) = REQUIRED];
++
++  // Required. The generation number of the object to open for writing.
++  int64 generation = 3 [(google.api.field_behavior) = REQUIRED];
++
++  // Makes the operation conditional on whether the object's current
++  // metageneration matches the given value.
++  optional int64 if_metageneration_match = 4;
++
++  // Makes the operation conditional on whether the object's current
++  // metageneration does not match the given value.
++  optional int64 if_metageneration_not_match = 5;
++
++  // An optional routing token that influences request routing for the stream.
++  // Must be provided if a BidiWriteObjectRedirectedError is returned.
++  optional string routing_token = 6;
++
++  // An optional write handle returned from a previous BidiWriteObjectResponse
++  // message or a BidiWriteObjectRedirectedError error.
++  optional BidiWriteHandle write_handle = 7;
++}
++
+ // Request message for BidiWriteObject.
+ message BidiWriteObjectRequest {
+   // The first message of each stream should set one of the following.
+@@ -964,6 +1257,9 @@ message BidiWriteObjectRequest {
+     // For non-resumable uploads. Describes the overall upload, including the
+     // destination bucket and object name, preconditions, etc.
+     WriteObjectSpec write_object_spec = 2;
++
++    // For appendable uploads. Describes the object to append to.
++    AppendObjectSpec append_object_spec = 11;
+   }
+ 
+   // Required. The offset from the beginning of the object at which the data
+@@ -1035,6 +1331,11 @@ message BidiWriteObjectResponse {
+     // the upload has finalized.
+     Object resource = 2;
+   }
++
++  // An optional write handle that will periodically be present in response
++  // messages. Clients should save it for later use in establishing a new stream
++  // if a connection is interrupted.
++  optional BidiWriteHandle write_handle = 3;
+ }
+ 
+ // Request message for ListObjects.

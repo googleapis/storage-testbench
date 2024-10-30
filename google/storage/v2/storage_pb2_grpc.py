@@ -342,17 +342,7 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def BidiReadObject(self, request_iterator, context):
-        """Reads an object's data.
-
-        This is a bi-directional API with the added support for reading multiple
-        ranges within one stream both within and across multiple messages. This can
-        improve performance compared with performing individual range read RPCs.
-        If the server encountered an error for any of the inputs, the stream will
-        be closed with the relevant error code.
-        Because the API allows for multiple outstanding requests, when the stream
-        is closed the error response will contain a BidiReadObjectRangesError proto
-        in the error extension describing the error for each outstanding read_id.
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
