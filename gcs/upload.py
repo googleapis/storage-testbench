@@ -311,6 +311,11 @@ class Upload(types.SimpleNamespace):
             ).metadata
             upload = cls.__init_first_write_grpc(first_msg, bucket, context)
             if first_msg.write_object_spec.appendable:
+                if bucket.storage_class != "RAPID":
+                    testbench.error.invalid(
+                        f"Appendable object in {bucket.storage_class} storage class",
+                        context,
+                    )
                 is_appendable = True
                 appendable_metadata_in_first_response = True
                 db.insert_upload(upload)
