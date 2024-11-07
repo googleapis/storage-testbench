@@ -585,6 +585,8 @@ class Database:
             testbench.common.retry_return_short_response,
             testbench.common.retry_return_broken_stream_after_bytes,
             testbench.common.retry_stall_after_bytes,
+            testbench.common.retry_return_redirection_token,
+            testbench.common.retry_expect_redirection_token,
         ]:
             if expr.match(failure) is not None:
                 return

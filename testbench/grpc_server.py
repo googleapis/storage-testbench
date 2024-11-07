@@ -845,6 +845,40 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     @retry_test(method="storage.objects.insert")
     def BidiWriteObject(self, request_iterator, context):
+        test_id = testbench.common.get_retry_test_id_from_context(context)
+        method = "storage.objects.insert"
+        if test_id and self.db.has_instructions_retry_test(
+            test_id, method, transport="GRPC"
+        ):
+            next_instruction = self.db.peek_next_instruction(test_id, method)
+            expected_redirect_token = testbench.common.get_expect_redirect_token(
+                next_instruction
+            )
+            if expected_redirect_token:
+                request_params = testbench.common.get_context_request_params(context)
+                if (
+                    request_params
+                    and f"routing_token={expected_redirect_token}" in request_params
+                ):
+                    self.db.dequeue_next_instruction(test_id, method)
+            return_redirect_token = testbench.common.get_return_redirect_token(
+                next_instruction
+            )
+            if return_redirect_token:
+                detail = any_pb2.Any()
+                detail.Pack(
+                    storage_pb2.BidiWriteObjectRedirectedError(
+                        routing_token=return_redirect_token
+                    )
+                )
+                status_proto = status_pb2.Status(
+                    code=grpc.StatusCode.ABORTED.value[0],
+                    message=grpc.StatusCode.ABORTED.value[1],
+                    details=[detail],
+                )
+                self.db.dequeue_next_instruction(test_id, method)
+                context.abort_with_status(rpc_status.to_status(status_proto))
+
         return gcs.upload.Upload.process_bidi_write_object_grpc(
             self.db, request_iterator, context
         )
