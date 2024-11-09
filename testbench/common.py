@@ -49,6 +49,9 @@ retry_return_broken_stream_after_bytes = re.compile(
 )
 retry_stall_after_bytes = re.compile(r"stall-for-([0-9]+)s-after-([0-9]+)K$")
 retry_return_redirection_token = re.compile(r"redirect-send-token-([a-z\-]+)$")
+retry_return_handle_and_redirection_token = re.compile(
+    r"redirect-send-handle-and-token-([a-z\-]+)$"
+)
 retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z\-]+)$")
 
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
@@ -1081,20 +1084,41 @@ def get_broken_stream_after_bytes(instruction):
     return after_bytes
 
 
-def get_return_redirect_token(instruction):
-    retry_redirection_token_matches = (
-        testbench.common.retry_return_redirection_token.match(instruction)
-    )
-    if retry_redirection_token_matches:
-        return list(retry_redirection_token_matches.groups())[0]
+def _get_grpc_instruction_match(db, context, method, rexp, dequeue=True):
+    test_id = get_retry_test_id_from_context(context)
+    if not (
+        test_id and db.has_instructions_retry_test(test_id, method, transport="GRPC")
+    ):
+        return None
+
+    instruction = db.peek_next_instruction(test_id, method)
+    matches = rexp.match(instruction)
+    if matches:
+        if dequeue:
+            db.dequeue_next_instruction(test_id, method)
+        return list(matches.groups())[0]
 
 
-def get_expect_redirect_token(instruction):
-    retry_expect_redirection_token_matches = (
-        testbench.common.retry_expect_redirection_token.match(instruction)
+def get_return_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db, context, "storage.objects.insert", retry_return_redirection_token
     )
-    if retry_expect_redirection_token_matches:
-        return list(retry_expect_redirection_token_matches.groups())[0]
+
+
+def get_return_handle_and_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db, context, "storage.objects.insert", retry_return_handle_and_redirection_token
+    )
+
+
+def get_expect_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db,
+        context,
+        "storage.objects.insert",
+        retry_expect_redirection_token,
+        dequeue=False,
+    )
 
 
 def handle_gzip_request(request):

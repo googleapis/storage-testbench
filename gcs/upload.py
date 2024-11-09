@@ -22,7 +22,11 @@ import uuid
 
 import crc32c
 import flask
+import google.protobuf.any_pb2 as any_pb2
+import grpc
 from google.protobuf import json_format
+from google.rpc import status_pb2
+from grpc_status import rpc_status
 
 import gcs
 import testbench
@@ -318,6 +322,7 @@ class Upload(types.SimpleNamespace):
                     )
                 is_appendable = True
                 appendable_metadata_in_first_response = True
+                upload.metadata.generation = gcs.object.make_generation()
                 db.insert_upload(upload)
         elif write_type == "append_object_spec":
             is_appendable = True
@@ -330,6 +335,23 @@ class Upload(types.SimpleNamespace):
 
         if first_msg.HasField("object_checksums"):
             object_checksums = first_msg.object_checksums
+
+        return_redirect_token = testbench.common.get_return_handle_and_redirect_token(
+            db, context
+        )
+        if return_redirect_token:
+            err = storage_pb2.BidiWriteObjectRedirectedError()
+            err.generation = upload.metadata.generation
+            err.write_handle.handle = bytes(upload.upload_id, "utf-8")
+            err.routing_token = return_redirect_token
+            detail = any_pb2.Any()
+            detail.Pack(err)
+            status_proto = status_pb2.Status(
+                code=grpc.StatusCode.ABORTED.value[0],
+                message=grpc.StatusCode.ABORTED.value[1],
+                details=[detail],
+            )
+            context.abort_with_status(rpc_status.to_status(status_proto))
 
         # Treat the rest of the first message as a data request, then keep
         # pulling from request_iterator
@@ -466,6 +488,7 @@ class Upload(types.SimpleNamespace):
 
         # Create a new object when the write is completed.
         if upload.complete:
+            generation = upload.metadata.generation
             blob, _ = gcs.object.Object.init(
                 upload.request,
                 upload.metadata,
@@ -474,6 +497,8 @@ class Upload(types.SimpleNamespace):
                 False,
                 context,
             )
+            if generation:
+                blob.metadata.generation = generation
             upload.blob = blob
             db.insert_object(
                 upload.bucket.name,
