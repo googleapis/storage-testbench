@@ -246,6 +246,7 @@ def __postprocess_object_rest(metadata):
         {
             "bucket": lambda x: ("bucket", bucket_id),
             "createTime": lambda x: ("timeCreated", x),
+            "finalizeTime": lambda x: ("timeFinalized", x),
             "updateTime": lambda x: ("updated", x),
             "kmsKey": lambda x: ("kmsKeyName", x),
             "retentionExpireTime": lambda x: ("retentionExpirationTime", x),

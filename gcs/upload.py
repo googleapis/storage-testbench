@@ -14,6 +14,7 @@
 
 """Helper class to hold data during an upload."""
 
+import datetime
 import hashlib
 import itertools
 import json
@@ -288,6 +289,48 @@ class Upload(types.SimpleNamespace):
         return upload, is_resumable
 
     @classmethod
+    def _insert_empty_appendable_object(cls, db, upload, spec, context):
+        # Construct the appendable object unfinalized in metadata. The upload
+        # will reflect the insertion-time generation.
+        blob, _ = gcs.object.Object.init(
+            upload.request,
+            upload.metadata,
+            upload.media,
+            upload.bucket,
+            False,
+            context,
+            finalize=False,
+        )
+
+        def insert_if_latest_is_unfinalized(latest_blob, live_generation):
+            if latest_blob is not None and latest_blob.metadata.HasField(
+                "finalize_time"
+            ):
+                # The live generation exists but is unfinalized, return an
+                # error. This is slightly different behavior from the real
+                # implementation, but it is sufficient for testing.
+                context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    "Attempting to overwrite an unfinalized object",
+                )
+            db.insert_object(
+                upload.bucket.name,
+                blob,
+                context=context,
+                preconditions=upload.preconditions,
+            )
+            return blob
+
+        return db.do_update_object(
+            upload.bucket.name,
+            blob.metadata.name,
+            update_fn=insert_if_latest_is_unfinalized,
+            context=context,
+            preconditions=upload.preconditions,
+            require_live_current_generation=False,
+        )
+
+    @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
         # Many tests use a list as the request_iterator
@@ -322,7 +365,10 @@ class Upload(types.SimpleNamespace):
                     )
                 is_appendable = True
                 appendable_metadata_in_first_response = True
-                upload.metadata.generation = gcs.object.make_generation()
+                blob = cls._insert_empty_appendable_object(
+                    db, upload, first_msg.write_object_spec, context
+                )
+                upload.blob = blob
                 db.insert_upload(upload)
         elif write_type == "append_object_spec":
             is_appendable = True
@@ -330,6 +376,21 @@ class Upload(types.SimpleNamespace):
                 first_msg.append_object_spec.write_handle.handle.decode("utf-8"),
                 context,
             )
+            preconditions = testbench.common.make_grpc_preconditions(
+                first_msg.append_object_spec
+            )
+            blob = db.get_object(
+                first_msg.append_object_spec.bucket,
+                first_msg.append_object_spec.object,
+                context=context,
+                generation=first_msg.append_object_spec.generation,
+                preconditions=preconditions,
+            )
+            if blob.metadata.HasField("finalize_time"):
+                context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    "Attempting to append to already-finalized object",
+                )
         else:
             testbench.error.invalid("Upload missing a first_message field", context)
 
@@ -488,24 +549,39 @@ class Upload(types.SimpleNamespace):
 
         # Create a new object when the write is completed.
         if upload.complete:
-            generation = upload.metadata.generation
-            blob, _ = gcs.object.Object.init(
-                upload.request,
-                upload.metadata,
-                upload.media,
-                upload.bucket,
-                False,
-                context,
-            )
-            if generation:
-                blob.metadata.generation = generation
-            upload.blob = blob
-            db.insert_object(
-                upload.bucket.name,
-                blob,
-                context=context,
-                preconditions=upload.preconditions,
-            )
+            if upload.metadata.generation:
+
+                def finalize_blob(blob, unused_generation):
+                    blob.media = upload.media
+                    blob.metadata.finalize_time.FromDatetime(
+                        datetime.datetime.now(datetime.timezone.utc)
+                    )
+                    blob.metadata.size = len(upload.media)
+                    return blob
+
+                blob = db.do_update_object(
+                    upload.bucket.name,
+                    upload.metadata.name,
+                    update_fn=finalize_blob,
+                    context=context,
+                    generation=upload.metadata.generation,
+                )
+            else:
+                blob, _ = gcs.object.Object.init(
+                    upload.request,
+                    upload.metadata,
+                    upload.media,
+                    upload.bucket,
+                    False,
+                    context,
+                )
+                upload.blob = blob
+                db.insert_object(
+                    upload.bucket.name,
+                    blob,
+                    context=context,
+                    preconditions=upload.preconditions,
+                )
             yield response(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
         elif not is_resumable and not is_appendable:
             testbench.error.missing("finish_write in request", context)

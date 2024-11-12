@@ -87,7 +87,9 @@ class Object:
         return hashlib.md5(("%d" % metadata.metageneration).encode("utf-8")).hexdigest()
 
     @classmethod
-    def init(cls, request, metadata, media, bucket, is_destination, context):
+    def init(
+        cls, request, metadata, media, bucket, is_destination, context, finalize=True
+    ):
         instruction = testbench.common.extract_instruction(request, context)
         if instruction == "inject-upload-data-error":
             media = testbench.common.corrupt_media(media)
@@ -111,6 +113,8 @@ class Object:
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
         metadata.update_time.FromDatetime(timestamp)
+        if finalize:
+            metadata.finalize_time.FromDatetime(timestamp)
         if bucket.HasField("retention_policy"):
             retention_expiration_time = timestamp + datetime.timedelta(
                 seconds=bucket.retention_policy.retention_duration.seconds

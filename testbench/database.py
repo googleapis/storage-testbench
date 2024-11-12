@@ -331,7 +331,13 @@ class Database:
             return items, sorted(list(prefixes))
 
     def __get_object(
-        self, bucket_name, object_name, context=None, generation=None, preconditions=[]
+        self,
+        bucket_name,
+        object_name,
+        context=None,
+        generation=None,
+        preconditions=[],
+        require_live_current_generation=True,
     ):
         bucket_key = self.__bucket_key(bucket_name, context)
         if bucket_key not in self._live_generations:
@@ -342,10 +348,12 @@ class Database:
         if generation is None or int(generation) == 0:
             # We are looking for the latest "live" version, but there is none.
             if live_generation is None:
-                return testbench.error.notfound(
-                    "Live version of object %s/%s" % (bucket_name, object_name),
-                    context,
-                )
+                if require_live_current_generation:
+                    return testbench.error.notfound(
+                        "Live version of object %s/%s" % (bucket_name, object_name),
+                        context,
+                    )
+                return None, None
             lookup_generation = int(live_generation)
         else:
             lookup_generation = int(generation)
@@ -452,10 +460,16 @@ class Database:
         context=None,
         generation=None,
         preconditions=[],
+        require_live_current_generation=True,
     ) -> T:
         with self._resources_lock:
             blob, live_generation = self.__get_object(
-                bucket_name, object_name, context, generation, preconditions
+                bucket_name,
+                object_name,
+                context,
+                generation,
+                preconditions,
+                require_live_current_generation=require_live_current_generation,
             )
             return update_fn(blob, live_generation)
 

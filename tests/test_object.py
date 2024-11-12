@@ -276,6 +276,7 @@ class TestObject(unittest.TestCase):
         "owner",
         "timeCreated",
         "timeDeleted",
+        "timeFinalized",
         "timeStorageClassUpdated",
         "updated",
     ]
