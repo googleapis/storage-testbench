@@ -303,7 +303,7 @@ class Upload(types.SimpleNamespace):
         )
 
         def insert_if_latest_is_unfinalized(latest_blob, live_generation):
-            if latest_blob is not None and latest_blob.metadata.HasField(
+            if latest_blob is not None and not latest_blob.metadata.HasField(
                 "finalize_time"
             ):
                 # The live generation exists but is unfinalized, return an

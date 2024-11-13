@@ -1971,6 +1971,150 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.name, "object-name")
         self.assertEqual(blob.bucket, "projects/_/buckets/rapid-bucket")
 
+    def test_bidi_write_object_appendable_already_finalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        # Only the RAPID storage class supports appendable objects at this time.
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="rapid-bucket",
+                bucket=storage_pb2.Bucket(
+                    storage_class="RAPID",
+                ),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                ),
+                appendable=True,
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertTrue(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            append_object_spec=storage_pb2.AppendObjectSpec(
+                bucket="projects/_/buckets/rapid-bucket",
+                object="object-name",
+                generation=responses[0].resource.generation,
+                write_handle=responses[0].write_handle,
+            ),
+        )
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiWriteObject([r2], context=context)
+            responses = list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "Attempting to append to already-finalized object",
+        )
+
+    def test_bidi_write_object_appendable_live_generation_unfinalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        # Only the RAPID storage class supports appendable objects at this time.
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="rapid-bucket",
+                bucket=storage_pb2.Bucket(
+                    storage_class="RAPID",
+                ),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertFalse(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiWriteObject([r2], context=context)
+            responses = list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "Attempting to overwrite an unfinalized object",
+        )
+
+    def test_bidi_write_object_appendable_live_generation_finalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        # Only the RAPID storage class supports appendable objects at this time.
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="rapid-bucket",
+                bucket=storage_pb2.Bucket(
+                    storage_class="RAPID",
+                ),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                ),
+                appendable=True,
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertTrue(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context=context)
+        responses2 = list(streamer)
+        self.assertEqual(len(responses2), 1)
+        self.assertFalse(responses2[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(
+            responses[0].resource.generation, responses2[0].resource.generation
+        )
+
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
