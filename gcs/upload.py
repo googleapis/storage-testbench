@@ -549,7 +549,7 @@ class Upload(types.SimpleNamespace):
 
         # Create a new object when the write is completed.
         if upload.complete:
-            if upload.metadata.generation:
+            if is_appendable:
 
                 def finalize_blob(blob, unused_generation):
                     blob.media = upload.media
