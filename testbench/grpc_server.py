@@ -23,7 +23,7 @@ import uuid
 from collections.abc import Iterable
 from concurrent import futures
 from queue import Queue
-from threading import Thread
+from threading import Thread, Timer
 
 import crc32c
 import google.protobuf.any_pb2 as any_pb2
@@ -609,6 +609,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             target=gather_requests, args=(first_message.read_ranges,)
         )
 
+        def terminate_w_timer():
+            nonlocal responses
+            responses.put(("terminate", None))
+
+        timer_thread = Timer(10, terminate_w_timer)
+
         poll_queue = True
 
         # Check retry test broken-stream instructions.
@@ -628,6 +634,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         try:
             gather_thread.start()
+            timer_thread.start()
 
             while poll_queue:
                 action, arg = responses.get()
@@ -673,7 +680,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 action, _ = responses.get()
                 if action == "terminate":
                     poll_queue = False
-            gather_thread.join()
+            gather_thread.join(timeout=10)
 
     def _to_read_range_error_proto(self, range, status_code):
         return storage_pb2.ReadRangeError(
