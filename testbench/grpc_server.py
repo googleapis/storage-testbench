@@ -609,9 +609,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             target=gather_requests, args=(first_message.read_ranges,)
         )
 
+        # We force all BidiReadObject streams to cancel on the server side after
+        # 10 seconds. This is to bound the effect of thread exhaustion on the
+        # gRPC server, which can happen when clients don't clean up their
+        # streams. Such clients will instead see CANCELLED errors.
         def terminate_w_timer():
-            nonlocal responses
-            responses.put(("terminate", None))
+            context.cancel()
 
         timer_thread = Timer(10, terminate_w_timer)
 
@@ -680,7 +683,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 action, _ = responses.get()
                 if action == "terminate":
                     poll_queue = False
-            gather_thread.join(timeout=10)
+            gather_thread.join()
 
     def _to_read_range_error_proto(self, range, status_code):
         return storage_pb2.ReadRangeError(
