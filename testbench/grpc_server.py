@@ -15,6 +15,7 @@
 import base64
 import datetime
 import functools
+import itertools
 import json
 import re
 import sys
@@ -22,8 +23,7 @@ import types
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
-from queue import Queue
-from threading import Thread, Timer
+from threading import Timer
 
 import crc32c
 import google.protobuf.any_pb2 as any_pb2
@@ -553,13 +553,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # always emit a response to the first request.
             yield response(storage_pb2.BidiReadObjectResponse())
 
-        # Start handling async requests. maxsize=1 means that concurrent
-        # requests have a chance of blocking and therefore interleaving with one
-        # another.
-        responses = Queue(maxsize=1)
-
+        # In real life requests may be async. For convenience of implementation,
+        # we handle each request synchronously before reading the next request.
         def process_read_range(range):
-            nonlocal responses
             size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
             # A read range corresponds to a unique read_id.
             # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
@@ -572,7 +568,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     range, grpc.StatusCode.OUT_OF_RANGE
                 )
                 grpc_status = rpc_status.to_status(status_msg)
-                responses.put(("abort_with_status", grpc_status))
+                context.abort_with_status(grpc_status)
                 return
 
             if range.read_limit > 0:
@@ -589,25 +585,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     "read_limit": range.read_limit,
                     "read_id": read_id,
                 }
-                responses.put(("respond", (chunk, range_end, read_range)))
+                yield (chunk, range_end, read_range)
                 start = end
-
-        def gather_requests(initial_ranges):
-            nonlocal responses
-            with futures.ThreadPoolExecutor() as readers:
-                try:
-                    for range in initial_ranges:
-                        readers.submit(process_read_range, range)
-                    for request in request_iterator:
-                        for range in request.read_ranges:
-                            readers.submit(process_read_range, range)
-                except Exception as e:
-                    responses.put(("raise", e))
-            responses.put(("terminate", None))
-
-        gather_thread = Thread(
-            target=gather_requests, args=(first_message.read_ranges,)
-        )
 
         # We force all BidiReadObject streams to cancel on the server side after
         # 10 seconds. This is to bound the effect of thread exhaustion on the
@@ -617,8 +596,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context.cancel()
 
         timer_thread = Timer(10, terminate_w_timer)
-
-        poll_queue = True
+        timer_thread.start()
 
         # Check retry test broken-stream instructions.
         test_id = testbench.common.get_retry_test_id_from_context(context)
@@ -635,55 +613,53 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         returnable = (
             broken_stream_after_bytes if broken_stream_after_bytes else sys.maxsize
         )
-        try:
-            gather_thread.start()
-            timer_thread.start()
 
-            while poll_queue:
-                action, arg = responses.get()
-                if action == "terminate":
-                    poll_queue = False
-                elif action == "respond":
-                    chunk, range_end, read_range = arg
-                    count = len(chunk)
-                    excess = count - returnable
-                    if excess > 0:
-                        chunk = chunk[:returnable]
-                        range_end = False
-                        read_range["read_limit"] -= excess
-                    returnable -= count
-                    yield response(
-                        storage_pb2.BidiReadObjectResponse(
-                            object_data_ranges=[
-                                storage_pb2.ObjectRangeData(
-                                    checksummed_data=storage_pb2.ChecksummedData(
-                                        content=chunk,
-                                        crc32c=crc32c.crc32c(chunk),
-                                    ),
-                                    read_range=read_range,
-                                    range_end=range_end,
-                                ),
-                            ],
-                        )
-                    )
-                    if returnable <= 0:
-                        self.db.dequeue_next_instruction(test_id, method)
-                        context.abort(
-                            grpc.StatusCode.UNAVAILABLE,
-                            "Injected 'broken stream' fault",
-                        )
-                elif action == "abort_with_status":
-                    context.abort_with_status(arg)
-                elif action == "raise":
-                    raise arg
-                else:
-                    raise RuntimeError(f"Unexpected action {action}")
-        finally:
-            while poll_queue:
-                action, _ = responses.get()
-                if action == "terminate":
-                    poll_queue = False
-            gather_thread.join()
+        # We don't want to have a thread blocking on request_iterator, so we
+        # have to handle results in batches rather than concurrently. This
+        # generator yields the read results.
+        #
+        # We force clients to handle out-of-order responses by selecting one
+        # response from each range at a time.
+        def responses_for_range_batch(range_batch):
+            iters = map(process_read_range, range_batch)
+            for responses in itertools.zip_longest(*iters):
+                for response in responses:
+                    if response is not None:
+                        yield response
+
+        def read_results():
+            yield from responses_for_range_batch(first_message.read_ranges)
+            for request in request_iterator:
+                yield from responses_for_range_batch(request.read_ranges)
+
+        for chunk, range_end, read_range in read_results():
+            count = len(chunk)
+            excess = count - returnable
+            if excess > 0:
+                chunk = chunk[:returnable]
+                range_end = False
+                read_range["read_limit"] -= excess
+            returnable -= count
+            yield response(
+                storage_pb2.BidiReadObjectResponse(
+                    object_data_ranges=[
+                        storage_pb2.ObjectRangeData(
+                            checksummed_data=storage_pb2.ChecksummedData(
+                                content=chunk,
+                                crc32c=crc32c.crc32c(chunk),
+                            ),
+                            read_range=read_range,
+                            range_end=range_end,
+                        ),
+                    ],
+                )
+            )
+            if returnable <= 0:
+                self.db.dequeue_next_instruction(test_id, method)
+                context.abort(
+                    grpc.StatusCode.UNAVAILABLE,
+                    "Injected 'broken stream' fault",
+                )
 
     def _to_read_range_error_proto(self, range, status_code):
         return storage_pb2.ReadRangeError(
