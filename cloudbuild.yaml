@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,20 +15,16 @@
 timeout: 7200s # 2 hours
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build", "-t", "gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:$SHORT_SHA", "."]
+    args: ["build",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:latest",
+      "-t", "gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-$SHORT_SHA",      
+      "."]
     dir: .
-    id: storage-testbench-prelaunch-build
-  - name: gcr.io/cloud-builders/docker
-    args:
-      [
-        "tag",
-        "gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:$SHORT_SHA",
-        "gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:latest",
-      ]
+    id: storage-testbench-build
 
 images:
-  - gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:$SHORT_SHA
-  - gcr.io/gcs-sdk-cloud-builds/storage-testbench-prelaunch:latest
-
-options:
-  logging: CLOUD_LOGGING_ONLY
+  - gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME
+  - gcr.io/cloud-devrel-public-resources/storage-testbench:latest
+  - gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-$SHORT_SHA
+  
