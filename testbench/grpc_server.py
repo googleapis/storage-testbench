@@ -563,7 +563,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             read_end = len(blob.media)
             read_id = range.read_id
 
-            if start > read_end or range.read_limit < 0:
+            if start > read_end or range.read_length < 0:
                 status_msg = self._pack_bidiread_error_details(
                     range, grpc.StatusCode.OUT_OF_RANGE
                 )
@@ -571,9 +571,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 context.abort_with_status(grpc_status)
                 return
 
-            if range.read_limit > 0:
-                # read_limit is the maximum number of data bytes the server is allowed to return across all response messages with the same read_id.
-                read_end = min(read_end, start + range.read_limit)
+            if range.read_length > 0:
+                read_end = min(read_end, start + range.read_length)
 
             while start < read_end:
                 end = min(start + size, read_end)
@@ -582,7 +581,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 chunk = blob.media[start:end]
                 read_range = {
                     "read_offset": start,
-                    "read_limit": range.read_limit,
+                    "read_length": end - start,
                     "read_id": read_id,
                 }
                 yield (chunk, range_end, read_range)
@@ -638,7 +637,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             if excess > 0:
                 chunk = chunk[:returnable]
                 range_end = False
-                read_range["read_limit"] -= excess
+                read_range["read_length"] -= excess
             returnable -= count
             yield response(
                 storage_pb2.BidiReadObjectResponse(

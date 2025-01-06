@@ -1564,9 +1564,9 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             return_value=(("x-retry-test-id", create_rest.get("id")),)
         )
 
-        # Test one range in stream with limit more than 256kb.
+        # Test one range in stream with length more than 256kb.
         offset_1 = 0
-        limit_1 = 1 * 1024 * 1024
+        length_1 = 1 * 1024 * 1024
         read_id_1 = 1
 
         r1 = storage_pb2.BidiReadObjectRequest(
@@ -1577,7 +1577,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_1,
-                    read_limit=limit_1,
+                    read_length=length_1,
                     read_id=read_id_1,
                 ),
             ],
@@ -1628,7 +1628,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.assertEqual(len(odr.checksummed_data.content), EXPECTED_LEN)
         self.assertEqual(odr.read_range.read_id, read_id_1)
         self.assertEqual(odr.read_range.read_offset, offset_1)
-        self.assertEqual(odr.read_range.read_limit, offset_1 + EXPECTED_LEN)
+        self.assertEqual(odr.read_range.read_length, EXPECTED_LEN)
         # Because we requested 1 MiB, but only got back 256KiB
         self.assertFalse(odr.range_end)
 

@@ -2134,10 +2134,10 @@ class TestGrpc(unittest.TestCase):
 
         # Test n ranges in 1 stream, where n=2.
         offset_1 = 0
-        limit_1 = 2 * 1024 * 1024
+        length_1 = 2 * 1024 * 1024
         read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
         offset_2 = 3 * 1024 * 1024
-        limit_2 = 2 * 1024 * 1024
+        length_2 = 2 * 1024 * 1024
         read_id_2 = read_id_1 + 1
 
         r1 = storage_pb2.BidiReadObjectRequest(
@@ -2148,12 +2148,12 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_1,
-                    read_limit=limit_1,
+                    read_length=length_1,
                     read_id=read_id_1,
                 ),
                 storage_pb2.ReadRange(
                     read_offset=offset_2,
-                    read_limit=limit_2,
+                    read_length=length_2,
                     read_id=read_id_2,
                 ),
             ],
@@ -2174,8 +2174,8 @@ class TestGrpc(unittest.TestCase):
                 self.assertEqual(crc32c.crc32c(data.content), data.crc32c)
                 returned_by_readid[read_id] += len(data.content)
 
-        self.assertEqual(returned_by_readid[read_id_1], offset_1 + limit_1)
-        self.assertEqual(returned_by_readid[read_id_2], offset_2 + limit_2)
+        self.assertEqual(returned_by_readid[read_id_1], offset_1 + length_1)
+        self.assertEqual(returned_by_readid[read_id_2], offset_2 + length_2)
 
     def test_bidi_read_object_not_found(self):
         # Test BidiReadObject with non-existent object.
@@ -2239,7 +2239,7 @@ class TestGrpc(unittest.TestCase):
         # Test BidiReadObject with invalid object generation match precondition.
         invalid_generation_match = 0
         offset_1 = 0
-        limit_1 = 1024
+        length_1 = 1024
         read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
         r1 = storage_pb2.BidiReadObjectRequest(
             read_object_spec=storage_pb2.BidiReadObjectSpec(
@@ -2250,7 +2250,7 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_1,
-                    read_limit=limit_1,
+                    read_length=length_1,
                     read_id=read_id_1,
                 ),
             ],
@@ -2285,7 +2285,7 @@ class TestGrpc(unittest.TestCase):
             def make_2_chunk_range(i):
                 return storage_pb2.ReadRange(
                     read_offset=2 * CHUNK * i,
-                    read_limit=2 * CHUNK,
+                    read_length=2 * CHUNK,
                     read_id=i,
                 )
 
@@ -2330,7 +2330,7 @@ class TestGrpc(unittest.TestCase):
 
         # Test out-of-range offset.
         offset_1 = 8 * 1024 * 1024
-        limit_1 = 1024
+        length_1 = 1024
         read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
         r1 = storage_pb2.BidiReadObjectRequest(
             read_object_spec=storage_pb2.BidiReadObjectSpec(
@@ -2340,13 +2340,13 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_1,
-                    read_limit=limit_1,
+                    read_length=length_1,
                     read_id=read_id_1,
                 ),
             ],
         )
-        # Test out-of-range with negative read limit.
-        limit_2 = -2048
+        # Test out-of-range with negative read length.
+        length_2 = -2048
         offset_2 = 10
         read_id_2 = read_id_1 + 1
         r2 = storage_pb2.BidiReadObjectRequest(
@@ -2357,7 +2357,7 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_2,
-                    read_limit=limit_2,
+                    read_length=length_2,
                     read_id=read_id_2,
                 ),
             ],
@@ -2389,7 +2389,7 @@ class TestGrpc(unittest.TestCase):
 
         # Test out-of-range offset.
         offset_1 = 8 * 1024 * 1024
-        limit_1 = 1024
+        length_1 = 1024
         read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
         r1 = storage_pb2.BidiReadObjectRequest(
             read_object_spec=storage_pb2.BidiReadObjectSpec(
@@ -2399,14 +2399,14 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_1,
-                    read_limit=limit_1,
+                    read_length=length_1,
                     read_id=read_id_1,
                 ),
             ],
         )
         # Test in-range offset.
         offset_2 = 0
-        limit_2 = 10
+        length_2 = 10
         read_id_2 = read_id_1 + 1
         r2 = storage_pb2.BidiReadObjectRequest(
             read_object_spec=storage_pb2.BidiReadObjectSpec(
@@ -2416,7 +2416,7 @@ class TestGrpc(unittest.TestCase):
             read_ranges=[
                 storage_pb2.ReadRange(
                     read_offset=offset_2,
-                    read_limit=limit_2,
+                    read_length=length_2,
                     read_id=read_id_2,
                 ),
             ],

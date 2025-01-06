@@ -19,7 +19,7 @@ index 8fa25cc09..c17d0fe82 100644
      ],
  )
 diff --git a/google/storage/v2/storage.proto b/google/storage/v2/storage.proto
-index c7229d4e9..c56e7375e 100644
+index 2671acbc4..420130f15 100644
 --- a/google/storage/v2/storage.proto
 +++ b/google/storage/v2/storage.proto
 @@ -26,6 +26,7 @@ import "google/protobuf/duration.proto";
@@ -30,7 +30,70 @@ index c7229d4e9..c56e7375e 100644
  import "google/type/date.proto";
  
  option go_package = "cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb";
-@@ -235,6 +236,16 @@ service Storage {
+@@ -176,12 +177,26 @@ service Storage {
+     };
+   }
+ 
+-  // Deletes an object and its metadata.
++  // Deletes an object and its metadata. Deletions are permanent if versioning
++  // is not enabled for the bucket, or if the generation parameter is used, or
++  // if [soft delete](https://cloud.google.com/storage/docs/soft-delete) is not
++  // enabled for the bucket.
++  // When this API is used to delete an object from a bucket that has soft
++  // delete policy enabled, the object becomes soft deleted, and the
++  // `softDeleteTime` and `hardDeleteTime` properties are set on the object.
++  // This API cannot be used to permanently delete soft-deleted objects.
++  // Soft-deleted objects are permanently deleted according to their
++  // `hardDeleteTime`.
+   //
+-  // Deletions are normally permanent when versioning is disabled or whenever
+-  // the generation parameter is used. However, if soft delete is enabled for
+-  // the bucket, deleted objects can be restored using RestoreObject until the
+-  // soft delete retention period has passed.
++  // You can use the [`RestoreObject`][google.storage.v2.Storage.RestoreObject]
++  // API to restore soft-deleted objects until the soft delete retention period
++  // has passed.
++  //
++  // **IAM Permissions**:
++  //
++  // Requires `storage.objects.delete`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
++  // the bucket.
+   rpc DeleteObject(DeleteObjectRequest) returns (google.protobuf.Empty) {
+     option (google.api.routing) = {
+       routing_parameters { field: "bucket" path_template: "{bucket=**}" }
+@@ -217,7 +232,14 @@ service Storage {
+     option (google.api.method_signature) = "upload_id";
+   }
+ 
+-  // Retrieves an object's metadata.
++  // Retrieves object metadata.
++  //
++  // **IAM Permissions**:
++  //
++  // Requires `storage.objects.get`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
++  // the bucket. To return object ACLs, the authenticated user must also have
++  // the `storage.objects.getIamPolicy` permission.
+   rpc GetObject(GetObjectRequest) returns (Object) {
+     option (google.api.routing) = {
+       routing_parameters { field: "bucket" path_template: "{bucket=**}" }
+@@ -226,7 +248,13 @@ service Storage {
+     option (google.api.method_signature) = "bucket,object,generation";
+   }
+ 
+-  // Reads an object's data.
++  // Retrieves object data.
++  //
++  // **IAM Permissions**:
++  //
++  // Requires `storage.objects.get`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
++  // the bucket.
+   rpc ReadObject(ReadObjectRequest) returns (stream ReadObjectResponse) {
+     option (google.api.routing) = {
+       routing_parameters { field: "bucket" path_template: "{bucket=**}" }
+@@ -235,6 +263,16 @@ service Storage {
      option (google.api.method_signature) = "bucket,object,generation";
    }
  
@@ -47,7 +110,96 @@ index c7229d4e9..c56e7375e 100644
    // Updates an object's metadata.
    // Equivalent to JSON API's storage.objects.patch.
    rpc UpdateObject(UpdateObjectRequest) returns (Object) {
-@@ -847,6 +858,253 @@ message ReadObjectResponse {
+@@ -297,12 +335,18 @@ service Storage {
+   // whether the service views the object as complete.
+   //
+   // Attempting to resume an already finalized object will result in an OK
+-  // status, with a WriteObjectResponse containing the finalized object's
++  // status, with a `WriteObjectResponse` containing the finalized object's
+   // metadata.
+   //
+   // Alternatively, the BidiWriteObject operation may be used to write an
+   // object with controls over flushing and the ability to fetch the ability to
+   // determine the current persisted size.
++  //
++  // **IAM Permissions**:
++  //
++  // Requires `storage.objects.create`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
++  // the bucket.
+   rpc WriteObject(stream WriteObjectRequest) returns (WriteObjectResponse) {}
+ 
+   // Stores a new object and metadata.
+@@ -324,6 +368,13 @@ service Storage {
+       returns (stream BidiWriteObjectResponse) {}
+ 
+   // Retrieves a list of objects matching the criteria.
++  //
++  // **IAM Permissions**:
++  //
++  // The authenticated user requires `storage.objects.list`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions)
++  // to use this method. To return object ACLs, the authenticated user must also
++  // have the `storage.objects.getIamPolicy` permission.
+   rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse) {
+     option (google.api.routing) = {
+       routing_parameters { field: "parent" path_template: "{bucket=**}" }
+@@ -343,9 +394,19 @@ service Storage {
+     };
+   }
+ 
+-  // Starts a resumable write. How long the write operation remains valid, and
+-  // what happens when the write operation becomes invalid, are
+-  // service-dependent.
++  // Starts a resumable write operation. This
++  // method is part of the [Resumable
++  // upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
++  // This allows you to upload large objects in multiple chunks, which is more
++  // resilient to network interruptions than a single upload. The validity
++  // duration of the write operation, and the consequences of it becoming
++  // invalid, are service-dependent.
++  //
++  // **IAM Permissions**:
++  //
++  // Requires `storage.objects.create`
++  // [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
++  // the bucket.
+   rpc StartResumableWrite(StartResumableWriteRequest)
+       returns (StartResumableWriteResponse) {
+     option (google.api.routing) = {
+@@ -356,18 +417,22 @@ service Storage {
+     };
+   }
+ 
+-  // Determines the `persisted_size` for an object that is being written, which
+-  // can then be used as the `write_offset` for the next `Write()` call.
++  // Determines the `persisted_size` of an object that is being written. This
++  // method is part of the [resumable
++  // upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
++  // The returned value is the size of the object that has been persisted so
++  // far. The value can be used as the `write_offset` for the next `Write()`
++  // call.
+   //
+-  // If the object does not exist (i.e., the object has been deleted, or the
+-  // first `Write()` has not yet reached the service), this method returns the
++  // If the object does not exist, meaning if it was deleted, or the
++  // first `Write()` has not yet reached the service, this method returns the
+   // error `NOT_FOUND`.
+   //
+-  // The client **may** call `QueryWriteStatus()` at any time to determine how
+-  // much data has been processed for this object. This is useful if the
+-  // client is buffering data and needs to know which data can be safely
+-  // evicted. For any sequence of `QueryWriteStatus()` calls for a given
+-  // object name, the sequence of returned `persisted_size` values will be
++  // This method is useful for clients that buffer data and need to know which
++  // data can be safely evicted. The client can call `QueryWriteStatus()` at any
++  // time to determine how much data has been logged for this object.
++  // For any sequence of `QueryWriteStatus()` calls for a given
++  // object name, the sequence of returned `persisted_size` values are
+   // non-decreasing.
+   rpc QueryWriteStatus(QueryWriteStatusRequest)
+       returns (QueryWriteStatusResponse) {
+@@ -856,6 +921,205 @@ message ReadObjectResponse {
    Object metadata = 4;
  }
  
@@ -110,14 +262,6 @@ index c7229d4e9..c56e7375e 100644
 +
 +// Request message for BidiReadObject.
 +message BidiReadObjectRequest {
-+  // The first message of each stream must set this field. The stream returns an
-+  // error if any subsequent message sets this field, or if the first message
-+  // does not set the field.
-+  oneof first_message {
-+    // Describes the object to read
-+    BidiReadObjectSpec read_spec = 6 [deprecated = true];
-+  }
-+
 +  // The first message of each stream should set this field. If this is not
 +  // the first message, an error will be returned. Describes the object to read.
 +  BidiReadObjectSpec read_object_spec = 1;
@@ -129,47 +273,10 @@ index c7229d4e9..c56e7375e 100644
 +  // include ObjectRangeData. For full object downloads, the offset and size can
 +  // be set to 0.
 +  repeated ReadRange read_ranges = 8;
-+
-+  // The offset for the first byte to return in the read, relative to the start
-+  // of the object.
-+  //
-+  // A negative `read_offset` value will be interpreted as the number of bytes
-+  // back from the end of the object to be returned. For example, if an object's
-+  // length is 15 bytes, a ReadObjectRequest with `read_offset` = -5 and
-+  // `read_limit` = 3 would return bytes 10 through 12 of the object. Requesting
-+  // a negative offset with magnitude larger than the size of the object will
-+  // return the entire object.
-+  int64 read_offset = 4 [deprecated = true];
-+
-+  // The maximum number of `data` bytes the server is allowed to return in the
-+  // sum of all `Object` messages. A `read_limit` of zero indicates that there
-+  // is no limit, and a negative `read_limit` will cause an error.
-+  //
-+  // If the stream returns fewer bytes than allowed by the `read_limit` and no
-+  // error occurred, the stream includes all data from the `read_offset` to the
-+  // end of the resource.
-+  int64 read_limit = 5 [deprecated = true];
 +}
 +
 +// Response message for BidiReadObject.
 +message BidiReadObjectResponse {
-+  // A portion of the data for the object. The service **may** leave `data`
-+  // empty for any given `ReadResponse`. This enables the service to inform the
-+  // client that the request is still live while it is running an operation to
-+  // generate more data.
-+  ChecksummedData checksummed_data = 1 [deprecated = true];
-+
-+  // The checksums of the complete object regardless of data range. If the
-+  // object is downloaded in full, the client should compute one of these
-+  // checksums over the downloaded object and compare it against the value
-+  // provided here.
-+  ObjectChecksums object_checksums = 2 [deprecated = true];
-+
-+  // If read_offset and or read_limit was specified on the
-+  // ReadObjectRequest, ContentRange will be populated on the first
-+  // ReadObjectResponse message following the request.
-+  ContentRange content_range = 3 [deprecated = true];
-+
 +  // A portion of the object's data. The service **may** leave data
 +  // empty for any given ReadResponse. This enables the service to inform the
 +  // client that the request is still live while it is running an operation to
@@ -188,9 +295,6 @@ index c7229d4e9..c56e7375e 100644
 +  // every response. It allows the client to more efficiently open subsequent
 +  // bidirectional streams to the same object.
 +  BidiReadHandle read_handle = 7;
-+
-+  // If set, indicates there are no more bytes to read for the given range.
-+  bool end_of_range = 5 [deprecated = true];
 +}
 +
 +// Error proto containing details for a redirected read. This error is only
@@ -244,19 +348,19 @@ index c7229d4e9..c56e7375e 100644
 +  // A negative read_offset value will be interpreted as the number of bytes
 +  // back from the end of the object to be returned. For example, if an object's
 +  // length is 15 bytes, a ReadObjectRequest with read_offset = -5 and
-+  // read_limit = 3 would return bytes 10 through 12 of the object. Requesting
++  // read_length = 3 would return bytes 10 through 12 of the object. Requesting
 +  // a negative offset with magnitude larger than the size of the object will
 +  // return the entire object. A read_offset larger than the size of the object
 +  // will result in an OutOfRange error.
 +  int64 read_offset = 1 [(google.api.field_behavior) = REQUIRED];
 +
 +  // Optional. The maximum number of data bytes the server is allowed to return
-+  // across all response messages with the same read_id. A read_limit of zero
-+  // indicates that there is no limit, and a negative read_limit will cause an
-+  // error. If the stream returns fewer bytes than allowed by the read_limit
-+  // and no error occurred, the stream includes all data from the read_offset
-+  // to the resource end.
-+  int64 read_limit = 2 [(google.api.field_behavior) = OPTIONAL];
++  // across all response messages with the same read_id. A read_length of zero
++  // indicates to read until the resource end, and a negative read_length will
++  // cause an error. If the stream returns fewer bytes than allowed by the
++  // read_length and no error occurred, the stream includes all data from the
++  // read_offset to the resource end.
++  int64 read_length = 2 [(google.api.field_behavior) = OPTIONAL];
 +
 +  // Required. Read identifier provided by the client. When the client issues
 +  // more than one outstanding ReadRange on the same stream, responses can be
@@ -301,7 +405,7 @@ index c7229d4e9..c56e7375e 100644
  // Describes an attempt to insert an object, possibly over multiple requests.
  message WriteObjectSpec {
    // Required. Destination object, including its name and its metadata.
-@@ -884,6 +1142,10 @@ message WriteObjectSpec {
+@@ -893,6 +1157,10 @@ message WriteObjectSpec {
    // you must start the upload over from scratch, this time sending the correct
    // number of bytes.
    optional int64 object_size = 8;
@@ -312,7 +416,7 @@ index c7229d4e9..c56e7375e 100644
  }
  
  // Request message for WriteObject.
-@@ -953,6 +1215,37 @@ message WriteObjectResponse {
+@@ -962,6 +1230,37 @@ message WriteObjectResponse {
    }
  }
  
@@ -350,7 +454,7 @@ index c7229d4e9..c56e7375e 100644
  // Request message for BidiWriteObject.
  message BidiWriteObjectRequest {
    // The first message of each stream should set one of the following.
-@@ -964,6 +1257,9 @@ message BidiWriteObjectRequest {
+@@ -973,6 +1272,9 @@ message BidiWriteObjectRequest {
      // For non-resumable uploads. Describes the overall upload, including the
      // destination bucket and object name, preconditions, etc.
      WriteObjectSpec write_object_spec = 2;
@@ -360,17 +464,7 @@ index c7229d4e9..c56e7375e 100644
    }
  
    // Required. The offset from the beginning of the object at which the data
-@@ -990,7 +1286,8 @@ message BidiWriteObjectRequest {
- 
-   // Checksums for the complete object. If the checksums computed by the service
-   // don't match the specified checksums the call will fail. May only be
--  // provided in last request (with finish_write set).
-+  // provided in the first request or the
-+  // last request (with finish_write set).
-   ObjectChecksums object_checksums = 6;
- 
-   // For each BidiWriteObjectRequest where state_lookup is `true` or the client
-@@ -1035,6 +1332,11 @@ message BidiWriteObjectResponse {
+@@ -1045,6 +1347,11 @@ message BidiWriteObjectResponse {
      // the upload has finalized.
      Object resource = 2;
    }
@@ -382,14 +476,51 @@ index c7229d4e9..c56e7375e 100644
  }
  
  // Request message for ListObjects.
-@@ -2055,6 +2357,10 @@ message Object {
-   google.protobuf.Timestamp delete_time = 12
-       [(google.api.field_behavior) = OUTPUT_ONLY];
+@@ -1390,25 +1697,28 @@ message MoveObjectRequest {
  
-+  // Output only. The time when the object was finalized.
-+  google.protobuf.Timestamp finalize_time = 36
-+      [(google.api.field_behavior) = OUTPUT_ONLY];
+ // Request message StartResumableWrite.
+ message StartResumableWriteRequest {
+-  // Required. The destination bucket, object, and metadata, as well as any
+-  // preconditions.
++  // Required. Contains the information necessary to start a resumable write.
+   WriteObjectSpec write_object_spec = 1
+       [(google.api.field_behavior) = REQUIRED];
+ 
+-  // A set of parameters common to Storage API requests concerning an object.
++  // A set of parameters common to Storage API requests related to an object.
+   CommonObjectRequestParams common_object_request_params = 3;
+ 
+-  // The checksums of the complete object. This will be used to validate the
+-  // uploaded object. For each upload, object_checksums can be provided with
+-  // either StartResumableWriteRequest or the WriteObjectRequest with
+-  // finish_write set to `true`.
++  // The checksums of the complete object. This is used to validate the
++  // uploaded object. For each upload, `object_checksums` can be provided when
++  // initiating a resumable upload with`StartResumableWriteRequest` or when
++  // completing a write with `WriteObjectRequest` with
++  // `finish_write` set to `true`.
+   ObjectChecksums object_checksums = 5;
+ }
+ 
+ // Response object for `StartResumableWrite`.
+ message StartResumableWriteResponse {
+-  // The upload_id of the newly started resumable write operation. This
+-  // value should be copied into the `WriteObjectRequest.upload_id` field.
++  // A unique identifier for the initiated resumable write operation.
++  // As the ID grants write access, you should keep it confidential during
++  // the upload to prevent unauthorized access and data tampering during your
++  // upload. This ID should be included in subsequent `WriteObject` requests to
++  // upload the object data.
+   string upload_id = 1;
+ }
+ 
+@@ -1555,6 +1865,9 @@ message ServiceConstants {
+     // The maximum number of days for which a token returned by the
+     // GetListObjectsSplitPoints RPC is valid.
+     SPLIT_TOKEN_MAX_VALID_DAYS = 14;
 +
-   // Content-Type of the object data, matching
-   // [https://tools.ietf.org/html/rfc7231#section-3.1.1.5][RFC 7231 §3.1.1.5].
-   // If an object is stored without a Content-Type, it is served as
++    // The maximum number of read ranges that can be in flight.
++    MAX_READ_RANGES_IN_FLIGHT = 100;
+   }
+ }
+ 

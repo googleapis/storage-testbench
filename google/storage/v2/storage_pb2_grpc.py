@@ -187,6 +187,11 @@ class StorageStub(object):
                 request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
                 response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
                 _registered_method=True)
+        self.MoveObject = channel.unary_unary(
+                '/google.storage.v2.Storage/MoveObject',
+                request_serializer=google_dot_storage_dot_v2_dot_storage__pb2.MoveObjectRequest.SerializeToString,
+                response_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
+                _registered_method=True)
 
 
 class StorageServicer(object):
@@ -295,12 +300,26 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def DeleteObject(self, request, context):
-        """Deletes an object and its metadata.
+        """Deletes an object and its metadata. Deletions are permanent if versioning
+        is not enabled for the bucket, or if the generation parameter is used, or
+        if [soft delete](https://cloud.google.com/storage/docs/soft-delete) is not
+        enabled for the bucket.
+        When this API is used to delete an object from a bucket that has soft
+        delete policy enabled, the object becomes soft deleted, and the
+        `softDeleteTime` and `hardDeleteTime` properties are set on the object.
+        This API cannot be used to permanently delete soft-deleted objects.
+        Soft-deleted objects are permanently deleted according to their
+        `hardDeleteTime`.
 
-        Deletions are normally permanent when versioning is disabled or whenever
-        the generation parameter is used. However, if soft delete is enabled for
-        the bucket, deleted objects can be restored using RestoreObject until the
-        soft delete retention period has passed.
+        You can use the [`RestoreObject`][google.storage.v2.Storage.RestoreObject]
+        API to restore soft-deleted objects until the soft delete retention period
+        has passed.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.delete`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -328,14 +347,27 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetObject(self, request, context):
-        """Retrieves an object's metadata.
+        """Retrieves object metadata.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.get`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket. To return object ACLs, the authenticated user must also have
+        the `storage.objects.getIamPolicy` permission.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ReadObject(self, request, context):
-        """Reads an object's data.
+        """Retrieves object data.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.get`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -409,12 +441,18 @@ class StorageServicer(object):
         whether the service views the object as complete.
 
         Attempting to resume an already finalized object will result in an OK
-        status, with a WriteObjectResponse containing the finalized object's
+        status, with a `WriteObjectResponse` containing the finalized object's
         metadata.
 
         Alternatively, the BidiWriteObject operation may be used to write an
         object with controls over flushing and the ability to fetch the ability to
         determine the current persisted size.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.create`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -443,6 +481,13 @@ class StorageServicer(object):
 
     def ListObjects(self, request, context):
         """Retrieves a list of objects matching the criteria.
+
+        **IAM Permissions**:
+
+        The authenticated user requires `storage.objects.list`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions)
+        to use this method. To return object ACLs, the authenticated user must also
+        have the `storage.objects.getIamPolicy` permission.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -457,28 +502,49 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def StartResumableWrite(self, request, context):
-        """Starts a resumable write. How long the write operation remains valid, and
-        what happens when the write operation becomes invalid, are
-        service-dependent.
+        """Starts a resumable write operation. This
+        method is part of the [Resumable
+        upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
+        This allows you to upload large objects in multiple chunks, which is more
+        resilient to network interruptions than a single upload. The validity
+        duration of the write operation, and the consequences of it becoming
+        invalid, are service-dependent.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.create`
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def QueryWriteStatus(self, request, context):
-        """Determines the `persisted_size` for an object that is being written, which
-        can then be used as the `write_offset` for the next `Write()` call.
+        """Determines the `persisted_size` of an object that is being written. This
+        method is part of the [resumable
+        upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
+        The returned value is the size of the object that has been persisted so
+        far. The value can be used as the `write_offset` for the next `Write()`
+        call.
 
-        If the object does not exist (i.e., the object has been deleted, or the
-        first `Write()` has not yet reached the service), this method returns the
+        If the object does not exist, meaning if it was deleted, or the
+        first `Write()` has not yet reached the service, this method returns the
         error `NOT_FOUND`.
 
-        The client **may** call `QueryWriteStatus()` at any time to determine how
-        much data has been processed for this object. This is useful if the
-        client is buffering data and needs to know which data can be safely
-        evicted. For any sequence of `QueryWriteStatus()` calls for a given
-        object name, the sequence of returned `persisted_size` values will be
+        This method is useful for clients that buffer data and need to know which
+        data can be safely evicted. The client can call `QueryWriteStatus()` at any
+        time to determine how much data has been logged for this object.
+        For any sequence of `QueryWriteStatus()` calls for a given
+        object name, the sequence of returned `persisted_size` values are
         non-decreasing.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def MoveObject(self, request, context):
+        """Moves the source object to the destination object in the same bucket.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -601,6 +667,11 @@ def add_StorageServicer_to_server(servicer, server):
                     servicer.QueryWriteStatus,
                     request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.FromString,
                     response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.SerializeToString,
+            ),
+            'MoveObject': grpc.unary_unary_rpc_method_handler(
+                    servicer.MoveObject,
+                    request_deserializer=google_dot_storage_dot_v2_dot_storage__pb2.MoveObjectRequest.FromString,
+                    response_serializer=google_dot_storage_dot_v2_dot_storage__pb2.Object.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1245,6 +1316,33 @@ class Storage(object):
             '/google.storage.v2.Storage/QueryWriteStatus',
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusRequest.SerializeToString,
             google_dot_storage_dot_v2_dot_storage__pb2.QueryWriteStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def MoveObject(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/google.storage.v2.Storage/MoveObject',
+            google_dot_storage_dot_v2_dot_storage__pb2.MoveObjectRequest.SerializeToString,
+            google_dot_storage_dot_v2_dot_storage__pb2.Object.FromString,
             options,
             channel_credentials,
             insecure,
