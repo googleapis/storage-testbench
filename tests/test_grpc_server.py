@@ -1946,21 +1946,18 @@ class TestGrpc(unittest.TestCase):
         context = self.mock_context()
         context.abort.side_effect = grpc.RpcError()
 
-        # Only the RAPID storage class supports appendable objects at this time.
         self.grpc.CreateBucket(
             storage_pb2.CreateBucketRequest(
                 parent="projects/test-project",
-                bucket_id="rapid-bucket",
-                bucket=storage_pb2.Bucket(
-                    storage_class="RAPID",
-                ),
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
             ),
             context,
         )
         r1 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
                 ),
                 appendable=True,
             ),
@@ -1974,7 +1971,7 @@ class TestGrpc(unittest.TestCase):
 
         r2 = storage_pb2.BidiWriteObjectRequest(
             append_object_spec=storage_pb2.AppendObjectSpec(
-                bucket="projects/_/buckets/rapid-bucket",
+                bucket="projects/_/buckets/test-bucket-name",
                 object="object-name",
                 generation=responses[0].resource.generation,
                 write_handle=responses[0].write_handle,
@@ -1993,21 +1990,18 @@ class TestGrpc(unittest.TestCase):
         context = self.mock_context()
         context.abort.side_effect = grpc.RpcError()
 
-        # Only the RAPID storage class supports appendable objects at this time.
         self.grpc.CreateBucket(
             storage_pb2.CreateBucketRequest(
                 parent="projects/test-project",
-                bucket_id="rapid-bucket",
-                bucket=storage_pb2.Bucket(
-                    storage_class="RAPID",
-                ),
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
             ),
             context,
         )
         r1 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
                 ),
                 appendable=True,
             ),
@@ -2022,7 +2016,7 @@ class TestGrpc(unittest.TestCase):
         r2 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
                 ),
                 appendable=True,
             ),
@@ -2042,21 +2036,18 @@ class TestGrpc(unittest.TestCase):
         context = self.mock_context()
         context.abort.side_effect = grpc.RpcError()
 
-        # Only the RAPID storage class supports appendable objects at this time.
         self.grpc.CreateBucket(
             storage_pb2.CreateBucketRequest(
                 parent="projects/test-project",
-                bucket_id="rapid-bucket",
-                bucket=storage_pb2.Bucket(
-                    storage_class="RAPID",
-                ),
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
             ),
             context,
         )
         r1 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
                 ),
                 appendable=True,
             ),
@@ -2071,7 +2062,7 @@ class TestGrpc(unittest.TestCase):
         r2 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
                 ),
                 appendable=True,
             ),
