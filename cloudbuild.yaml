@@ -27,3 +27,4 @@ images:
   - gcr.io/cloud-devrel-public-resources/storage-testbench:$TAG_NAME
   - gcr.io/cloud-devrel-public-resources/storage-testbench:latest
   - gcr.io/cloud-devrel-public-resources/storage-testbench:infrastructure-public-image-$SHORT_SHA
+  

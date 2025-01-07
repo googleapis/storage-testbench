@@ -16,14 +16,17 @@
 
 """Unit test for testbench.grpc."""
 
+import collections
 import datetime
 import json
 import os
+import time
 import unittest
 import unittest.mock
 
 import crc32c
 import grpc
+import grpc_status
 from google.protobuf import field_mask_pb2, timestamp_pb2
 
 import gcs
@@ -1728,6 +1731,10 @@ class TestGrpc(unittest.TestCase):
         server.stop(grace=0)
 
     def test_bidi_write_object(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
         QUANTUM = 256 * 1024
         media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
 
@@ -1770,7 +1777,7 @@ class TestGrpc(unittest.TestCase):
             ),
             finish_write=True,
         )
-        streamer = self.grpc.BidiWriteObject([r1, r2, r3], context=self.mock_context())
+        streamer = self.grpc.BidiWriteObject([r1, r2, r3], context=context)
         responses = list(streamer)
         # We expect a total of 3 responses with state_lookup set to True.
         self.assertEqual(len(responses), 3)
@@ -1782,6 +1789,10 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
     def test_bidi_write_object_resumable(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
         start = self.grpc.StartResumableWrite(
             storage_pb2.StartResumableWriteRequest(
                 write_object_spec=storage_pb2.WriteObjectSpec(
@@ -1790,7 +1801,7 @@ class TestGrpc(unittest.TestCase):
                     )
                 )
             ),
-            context=unittest.mock.MagicMock(),
+            context=context,
         )
         self.assertIsNotNone(start.upload_id)
 
@@ -1810,7 +1821,6 @@ class TestGrpc(unittest.TestCase):
         offset = QUANTUM
         content = media[QUANTUM : 2 * QUANTUM]
         r2 = storage_pb2.BidiWriteObjectRequest(
-            upload_id=start.upload_id,
             write_offset=offset,
             checksummed_data=storage_pb2.ChecksummedData(
                 content=content, crc32c=crc32c.crc32c(content)
@@ -1819,7 +1829,7 @@ class TestGrpc(unittest.TestCase):
             state_lookup=True,
             finish_write=False,
         )
-        streamer = self.grpc.BidiWriteObject([r1, r2], "fake-context")
+        streamer = self.grpc.BidiWriteObject([r1, r2], context=context)
         responses = list(streamer)
         # We only expect 1 response with r2 state_lookup set to True.
         self.assertEqual(len(responses), 1)
@@ -1828,7 +1838,7 @@ class TestGrpc(unittest.TestCase):
 
         status = self.grpc.QueryWriteStatus(
             storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
-            "fake-context",
+            context=context,
         )
         self.assertEqual(status.persisted_size, 2 * QUANTUM)
 
@@ -1842,12 +1852,550 @@ class TestGrpc(unittest.TestCase):
             ),
             finish_write=True,
         )
-        streamer = self.grpc.BidiWriteObject([r3], "fake-context")
+        streamer = self.grpc.BidiWriteObject([r3], context=context)
         responses = list(streamer)
         self.assertEqual(len(responses), 1)
         blob = responses[0].resource
         self.assertEqual(blob.name, "object-name")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_bidi_write_object_appendable(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            flush=True,
+        )
+        offset += QUANTUM
+        content = media[offset : offset + QUANTUM]
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            flush=True,
+            state_lookup=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1, r2], context=context)
+        responses = list(streamer)
+        # We only expect 1 response with r2 state_lookup set to True.
+        self.assertEqual(len(responses), 1)
+        self.assertIsNotNone(responses[0])
+        # For appendable objects, we expect the object metadata in the first
+        # response rather than the persisted_size.
+        self.assertEqual(responses[0].resource.size, 2 * QUANTUM)
+        self.assertEqual(responses[0].resource.bucket, "projects/_/buckets/bucket-name")
+        self.assertEqual(responses[0].resource.name, "object-name")
+
+        bucket = responses[0].resource.bucket
+        name = responses[0].resource.name
+        generation = responses[0].resource.generation
+        write_handle = responses[0].write_handle
+
+        offset += QUANTUM
+        content = media[offset : offset + 1]
+        r3 = storage_pb2.BidiWriteObjectRequest(
+            append_object_spec=storage_pb2.AppendObjectSpec(
+                bucket=bucket,
+                object=name,
+                generation=generation,
+                write_handle=write_handle,
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            flush=True,
+            state_lookup=True,
+        )
+        offset += 1
+        content = media[offset:]
+        r4 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r3, r4], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 2)
+        self.assertEqual(responses[0].persisted_size, 2 * QUANTUM + 1)
+        blob = responses[1].resource
+        self.assertEqual(responses[1].resource.size, 2 * QUANTUM + QUANTUM / 2)
+        self.assertEqual(blob.name, "object-name")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+    def test_bidi_write_object_appendable_already_finalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
+                ),
+                appendable=True,
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertTrue(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            append_object_spec=storage_pb2.AppendObjectSpec(
+                bucket="projects/_/buckets/test-bucket-name",
+                object="object-name",
+                generation=responses[0].resource.generation,
+                write_handle=responses[0].write_handle,
+            ),
+        )
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiWriteObject([r2], context=context)
+            responses = list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "Attempting to append to already-finalized object",
+        )
+
+    def test_bidi_write_object_appendable_live_generation_unfinalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertFalse(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiWriteObject([r2], context=context)
+            responses = list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "Attempting to overwrite an unfinalized object",
+        )
+
+    def test_bidi_write_object_appendable_live_generation_finalized(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="test-bucket-name",
+                bucket=storage_pb2.Bucket(),
+            ),
+            context,
+        )
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
+                ),
+                appendable=True,
+            ),
+            finish_write=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertTrue(responses[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(0, responses[0].resource.generation)
+
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/test-bucket-name"
+                ),
+                appendable=True,
+            ),
+            state_lookup=True,
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context=context)
+        responses2 = list(streamer)
+        self.assertEqual(len(responses2), 1)
+        self.assertFalse(responses2[0].resource.HasField("finalize_time"))
+        self.assertNotEqual(
+            responses[0].resource.generation, responses2[0].resource.generation
+        )
+
+    def test_bidi_write_object_no_requests(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiWriteObject([], context=context)
+            responses = list(streamer)
+
+    def test_bidi_read_object(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(5 * 1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test n ranges in 1 stream, where n=2.
+        offset_1 = 0
+        length_1 = 2 * 1024 * 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        offset_2 = 3 * 1024 * 1024
+        length_2 = 2 * 1024 * 1024
+        read_id_2 = read_id_1 + 1
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=length_1,
+                    read_id=read_id_1,
+                ),
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_length=length_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        streamer = self.grpc.BidiReadObject([r1], context=self.mock_context())
+        returned_by_readid = {
+            read_id_1: offset_1,
+            read_id_2: offset_2,
+        }
+        for resp in streamer:
+            for range in resp.object_data_ranges:
+                read_id = range.read_range.read_id
+                offset = range.read_range.read_offset
+                self.assertEqual(returned_by_readid[read_id], offset)
+
+                data = range.checksummed_data
+                self.assertEqual(crc32c.crc32c(data.content), data.crc32c)
+                returned_by_readid[read_id] += len(data.content)
+
+        self.assertEqual(returned_by_readid[read_id_1], offset_1 + length_1)
+        self.assertEqual(returned_by_readid[read_id_2], offset_2 + length_2)
+
+    def test_bidi_read_object_not_found(self):
+        # Test BidiReadObject with non-existent object.
+        nonexistent_object_name = "object-name2"
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object=nonexistent_object_name,
+            ),
+            read_ranges=[],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+        # Test BidiReadObject with invalid object generation.
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        obj = self.db.get_object("bucket-name", "object-name", None)
+        invalid_generation = obj.metadata.generation + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                generation=invalid_generation,
+            ),
+            read_ranges=[],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r2], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_bidi_read_object_generation_precondition_failed(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test BidiReadObject with invalid object generation match precondition.
+        invalid_generation_match = 0
+        offset_1 = 0
+        length_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=invalid_generation_match,
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=length_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # The code depends on `context.abort()` raising an exception.
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1], context=context)
+            list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
+
+    def test_bidi_read_object_interleaves_responses(self):
+        # This lets the test pass in a reasonale amount of time - otherwise the
+        # test harness prints a _lot_ to stdout.
+        OLD_CHUNK = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+        try:
+            CHUNK = 100
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = CHUNK
+            # 100 ranges of 2 chunks each. Empirically, that makes this test
+            # flake fewer than 1 in 10,000 runs.
+            media = TestGrpc._create_block(100 * 2 * CHUNK).encode("utf-8")
+            request = testbench.common.FakeRequest(
+                args={"name": f"object-name"}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
+
+            def make_2_chunk_range(i):
+                return storage_pb2.ReadRange(
+                    read_offset=2 * CHUNK * i,
+                    read_length=2 * CHUNK,
+                    read_id=i,
+                )
+
+            first_read_ranges = [make_2_chunk_range(i) for i in range(50)]
+            second_read_ranges = [make_2_chunk_range(i) for i in range(50, 100)]
+
+            r1 = storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                ),
+                read_ranges=first_read_ranges,
+            )
+            r2 = storage_pb2.BidiReadObjectRequest(
+                read_ranges=second_read_ranges,
+            )
+
+            def response_to_ranges(resp):
+                return [
+                    (range.read_range.read_id, range.read_range.read_offset)
+                    for range in resp.object_data_ranges
+                ]
+
+            streamer = self.grpc.BidiReadObject([r1, r2], context=self.mock_context())
+            response_ranges = [response_to_ranges(resp) for resp in list(streamer)]
+            self.assertNotEqual(sorted(response_ranges), response_ranges)
+        finally:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = OLD_CHUNK
+
+    def test_bidi_read_no_messages_sent(self):
+        streamer = self.grpc.BidiReadObject([], context=self.mock_context())
+        self.assertEqual(len(list(streamer)), 0)  # No responses, does not raise
+
+    def test_bidi_read_out_of_range_error(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test out-of-range offset.
+        offset_1 = 8 * 1024 * 1024
+        length_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=length_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # Test out-of-range with negative read length.
+        length_2 = -2048
+        offset_2 = 10
+        read_id_2 = read_id_1 + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_length=length_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        for request in [r1, r2]:
+            context = unittest.mock.Mock()
+            context.abort_with_status = unittest.mock.MagicMock()
+            context.abort_with_status.side_effect = grpc.RpcError()
+            with self.assertRaises(grpc.RpcError):
+                streamer = self.grpc.BidiReadObject([request], context=context)
+                list(streamer)
+
+            context.abort_with_status.assert_called_once()
+            abort_status = context.abort_with_status.call_args[0][0]
+            grpc_status_details_bin = abort_status.trailing_metadata[0][1]
+            self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
+            self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
+            self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
+
+    def test_bidi_read_one_out_of_range_one_in_range_error(self):
+        # Create object in database to read.
+        media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        # Test out-of-range offset.
+        offset_1 = 8 * 1024 * 1024
+        length_1 = 1024
+        read_id_1 = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=length_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        # Test in-range offset.
+        offset_2 = 0
+        length_2 = 10
+        read_id_2 = read_id_1 + 1
+        r2 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_2,
+                    read_length=length_2,
+                    read_id=read_id_2,
+                ),
+            ],
+        )
+
+        context = unittest.mock.Mock()
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            streamer = self.grpc.BidiReadObject([r1, r2], context=context)
+            list(streamer)
+
+        context.abort_with_status.assert_called_once()
+        abort_status = context.abort_with_status.call_args[0][0]
+        grpc_status_details_bin = abort_status.trailing_metadata[0][1]
+        self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
+        self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
+        self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
 
 
 if __name__ == "__main__":

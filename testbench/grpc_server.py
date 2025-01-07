@@ -15,17 +15,23 @@
 import base64
 import datetime
 import functools
+import itertools
 import json
 import re
+import sys
 import types
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
+from threading import Timer
 
 import crc32c
+import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 from google.protobuf import field_mask_pb2, json_format, text_format
+from google.rpc import status_pb2
+from grpc_status import rpc_status
 
 import gcs
 import testbench
@@ -512,6 +518,173 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             content_range = None
             start = start + size
 
+    @retry_test(method="storage.objects.get")
+    def BidiReadObject(self, request_iterator, context):
+        # handle first message
+        try:
+            first_message = next(request_iterator)
+        except StopIteration:
+            # ok if no messages arrive from the client.
+            return
+
+        obj_spec = first_message.read_object_spec
+        blob = self.db.get_object(
+            obj_spec.bucket,
+            obj_spec.object,
+            context=context,
+            generation=obj_spec.generation,
+            preconditions=testbench.common.make_grpc_preconditions(obj_spec),
+        )
+        metadata = blob.metadata
+
+        # first_response is protected by GIL
+        first_response = True
+
+        def response(resp):
+            nonlocal first_response
+            if first_response:
+                first_response = False
+                resp.metadata.CopyFrom(metadata)
+                resp.read_handle.handle = b"an-opaque-handle"
+            # We ignore the read_mask for this test server
+            return resp
+
+        if not first_message.read_ranges:
+            # always emit a response to the first request.
+            yield response(storage_pb2.BidiReadObjectResponse())
+
+        # In real life requests may be async. For convenience of implementation,
+        # we handle each request synchronously before reading the next request.
+        def process_read_range(range):
+            size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+            # A read range corresponds to a unique read_id.
+            # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
+            start = range.read_offset
+            read_end = len(blob.media)
+            read_id = range.read_id
+
+            if start > read_end or range.read_length < 0:
+                status_msg = self._pack_bidiread_error_details(
+                    range, grpc.StatusCode.OUT_OF_RANGE
+                )
+                grpc_status = rpc_status.to_status(status_msg)
+                context.abort_with_status(grpc_status)
+                return
+
+            if range.read_length > 0:
+                read_end = min(read_end, start + range.read_length)
+
+            while start < read_end:
+                end = min(start + size, read_end)
+                # Verify if there are no more bytes to read for the given ReadRange.
+                range_end = end == read_end
+                chunk = blob.media[start:end]
+                read_range = {
+                    "read_offset": start,
+                    "read_length": end - start,
+                    "read_id": read_id,
+                }
+                yield (chunk, range_end, read_range)
+                start = end
+
+        # We force all BidiReadObject streams to cancel on the server side after
+        # 10 seconds. This is to bound the effect of thread exhaustion on the
+        # gRPC server, which can happen when clients don't clean up their
+        # streams. Such clients will instead see CANCELLED errors.
+        def terminate_w_timer():
+            context.cancel()
+
+        timer_thread = Timer(10, terminate_w_timer)
+        timer_thread.start()
+
+        # Check retry test broken-stream instructions.
+        test_id = testbench.common.get_retry_test_id_from_context(context)
+        broken_stream_after_bytes = 0
+        method = "storage.objects.get"
+        if test_id and self.db.has_instructions_retry_test(
+            test_id, method, transport="GRPC"
+        ):
+            next_instruction = self.db.peek_next_instruction(test_id, method)
+            broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
+                next_instruction
+            )
+
+        returnable = (
+            broken_stream_after_bytes if broken_stream_after_bytes else sys.maxsize
+        )
+
+        # We don't want to have a thread blocking on request_iterator, so we
+        # have to handle results in batches rather than concurrently. This
+        # generator yields the read results.
+        #
+        # We force clients to handle out-of-order responses by selecting one
+        # response from each range at a time.
+        def responses_for_range_batch(range_batch):
+            iters = map(process_read_range, range_batch)
+            for responses in itertools.zip_longest(*iters):
+                for response in responses:
+                    if response is not None:
+                        yield response
+
+        def read_results():
+            yield from responses_for_range_batch(first_message.read_ranges)
+            for request in request_iterator:
+                yield from responses_for_range_batch(request.read_ranges)
+
+        for chunk, range_end, read_range in read_results():
+            count = len(chunk)
+            excess = count - returnable
+            if excess > 0:
+                chunk = chunk[:returnable]
+                range_end = False
+                read_range["read_length"] -= excess
+            returnable -= count
+            yield response(
+                storage_pb2.BidiReadObjectResponse(
+                    object_data_ranges=[
+                        storage_pb2.ObjectRangeData(
+                            checksummed_data=storage_pb2.ChecksummedData(
+                                content=chunk,
+                                crc32c=crc32c.crc32c(chunk),
+                            ),
+                            read_range=read_range,
+                            range_end=range_end,
+                        ),
+                    ],
+                )
+            )
+            if returnable <= 0:
+                self.db.dequeue_next_instruction(test_id, method)
+                context.abort(
+                    grpc.StatusCode.UNAVAILABLE,
+                    "Injected 'broken stream' fault",
+                )
+
+    def _to_read_range_error_proto(self, range, status_code):
+        return storage_pb2.ReadRangeError(
+            read_id=range.read_id,
+            status={
+                "code": status_code.value[0],
+                "message": status_code.value[1],
+            },
+        )
+
+    def _pack_bidiread_error_details(self, range, status_code):
+        range_read_error = self._to_read_range_error_proto(range, status_code)
+        code = status_code.value[0]
+        message = status_code.value[1]
+        detail = any_pb2.Any()
+        detail.Pack(
+            storage_pb2.BidiReadObjectError(
+                read_range_errors=[range_read_error],
+            )
+        )
+        return status_pb2.Status(
+            code=code,
+            message=message,
+            details=[detail],
+        )
+
     @retry_test(method="storage.objects.patch")
     def UpdateObject(self, request, context):
         intersection = field_mask_pb2.FieldMask(
@@ -657,6 +830,35 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     @retry_test(method="storage.objects.insert")
     def BidiWriteObject(self, request_iterator, context):
+        expected_redirect_token = testbench.common.get_expect_redirect_token(
+            self.db, context
+        )
+        if expected_redirect_token:
+            request_params = testbench.common.get_context_request_params(context)
+            if (
+                request_params
+                and f"routing_token={expected_redirect_token}" in request_params
+            ):
+                test_id = testbench.common.get_retry_test_id_from_context(context)
+                self.db.dequeue_next_instruction(test_id, "storage.objects.insert")
+
+        return_redirect_token = testbench.common.get_return_redirect_token(
+            self.db, context
+        )
+        if return_redirect_token:
+            detail = any_pb2.Any()
+            detail.Pack(
+                storage_pb2.BidiWriteObjectRedirectedError(
+                    routing_token=return_redirect_token
+                )
+            )
+            status_proto = status_pb2.Status(
+                code=grpc.StatusCode.ABORTED.value[0],
+                message=grpc.StatusCode.ABORTED.value[1],
+                details=[detail],
+            )
+            context.abort_with_status(rpc_status.to_status(status_proto))
+
         return gcs.upload.Upload.process_bidi_write_object_grpc(
             self.db, request_iterator, context
         )

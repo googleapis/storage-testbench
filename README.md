@@ -26,6 +26,9 @@ is expected to be used by Storage library maintainers.
     - [stall-at-256KiB](#stall-at-256kib)
     - [return-503-after-256K](#return-503-after-256k)
     - [return-503-after-256K/retry-N](#return-503-after-256kretry-n)
+    - [redirect-send-token-T](#redirect-send-token-t)
+    - [redirect-send-handle-and-token-T](#redirect-send-handle-and-token-t)
+    - [redirect-expect-token-T](#redirect-expect-token-t)
   - [Retry Test API](#retry-test-api)
     - [Creating a new Retry Test](#creating-a-new-retry-test)
     - [Get a Retry Test resource](#get-a-retry-test-resource)
@@ -125,14 +128,8 @@ run the grpc_tools generator:
 
 ```shell
 cd $HOME/storage-testbench
-
-# This creates a new directory with the protos from `googleapis`.  If
-# the clone already exists use:
-#    git -C $HOME/googleapis pull
-git -C $HOME clone https://github.com/googleapis/googleapis
-
-pip install grpcio-tools
-./update-protos.sh $HOME/googleapis
+pip install --no-deps grpcio-tools
+./update-protos.sh $PWD/.googleapis
 ```
 
 Then commit the files generated in `google/**`:
@@ -181,6 +178,29 @@ For N==1 and N==2 behave like `return-305-after-256K`, for `N>=3` ignore the
 failure instruction and return successfully. This is used to test failures during
 retry, the client cooperates by sending the retry counter in the failure
 instructions.
+
+### redirect-send-token-T
+
+In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-send-token-tokenval`.
+Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
+(`tokenval` in the example).
+
+### redirect-send-handle-and-token-T
+
+In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-send-handle-and-token-tokenval`.
+Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
+(`tokenval` in the example) and a `write_handle` (`read_handle` is not currently
+supported).
+
+### redirect-expect-token-T
+
+In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-expect-token-tokenval`.
+Testbench will consume the instruction if the RPC also specifies
+`x-goog-request-params: routing_token=T` (`routing_token=tokenval` in the
+example).
+
+Note that `x-goog-request-params` supports multiple key-value pairs, encoded
+like URL query parameters.
 
 
 ## Retry Test API
@@ -253,6 +273,9 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
 | return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
 | stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T second after reading YKiB of downloaded/uploaded data, e.g. stall-for-10s-after-12K stalls after reading/writing 12KiB of data <br> [GRPC] Not supported
+| redirect-send-token-T                     | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
+| redirect-send-handle-and-token-T          | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
+
 
 ## Releasing the testbench
 

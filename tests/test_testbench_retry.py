@@ -18,13 +18,16 @@
 
 import json
 import os
+import random
 import re
+import string
 import time
 import unittest
 import unittest.mock
 
 import crc32c
-from grpc import StatusCode
+from grpc import RpcError, StatusCode
+from grpc_status import rpc_status
 
 import gcs
 import testbench
@@ -1281,6 +1284,353 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         self.assertEqual(blob.name, "object-name")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(blob.size, 2 * UPLOAD_QUANTUM)
+
+    def test_grpc_bidiwrite_redirect_expect_token_match(self):
+        token = "".join(random.choice(string.ascii_lowercase) for _ in range(5))
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            f"redirect-expect-token-{token}",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest()
+        r2.CopyFrom(r1)
+
+        context = unittest.mock.Mock()
+        # The code depends on `context.abort_with_status()` raising an exception.
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+
+        # With an incorrect routing token, we still have an instruction
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    "bucket=projects/_/buckets/bucket-name&routing_token=incorrect_token",
+                ),
+            )
+        )
+        _ = list(self.grpc.BidiWriteObject([r1], context=context))
+        self.assertIsNotNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+
+        # With the correct routing token, we no longer have a problem.
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    f"bucket=projects/_/buckets/bucket-name&routing_token={token}",
+                ),
+            )
+        )
+        _ = list(self.grpc.BidiWriteObject([r2], context=context))
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+
+    class _StatusAsCall:
+        """_StatusAsCall wraps a status and pretends it is a client-side call"""
+
+        def __init__(self, grpc_status):
+            self._grpc_status = grpc_status
+
+        def trailing_metadata(self):
+            return self._grpc_status.trailing_metadata
+
+        def code(self):
+            return self._grpc_status.code
+
+        def details(self):
+            return self._grpc_status.details
+
+    def _unpack_details(self, status, msg):
+        status_proto = rpc_status.from_call(self._StatusAsCall(status))
+        self.assertEqual(len(status_proto.details), 1)
+        status_proto.details[0].Unpack(msg)
+
+    def test_grpc_bidiwrite_create_routing_only_redirect(self):
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "redirect-send-token-sometoken",
+                            "redirect-expect-token-sometoken",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        # The code depends on `context.abort_with_status()` raising an exception.
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest()
+        r2.CopyFrom(r1)
+
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    "bucket=projects/_/buckets/bucket-name",
+                ),
+            )
+        )
+        with self.assertRaises(RpcError):
+            streamer = self.grpc.BidiWriteObject([r1], context=context)
+            responses = list(streamer)
+
+        context.abort_with_status.assert_called()
+        status = context.abort_with_status.call_args.args[0]
+        self.assertEqual(status.code, StatusCode.ABORTED)
+        redirect_error = storage_pb2.BidiWriteObjectRedirectedError()
+        self._unpack_details(status, redirect_error)
+
+        self.assertFalse(redirect_error.HasField("generation"))
+        self.assertFalse(redirect_error.HasField("write_handle"))
+        self.assertEqual(redirect_error.routing_token, "sometoken")
+
+        # If we set the right routing token, it should consume instructions.
+        self.assertIsNotNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    f"bucket=projects/_/buckets/bucket-name&routing_token={redirect_error.routing_token}",
+                ),
+            )
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context=context)
+        responses = list(streamer)
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+
+    def test_grpc_bidiwrite_create_redirect(self):
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "redirect-send-handle-and-token-sometoken",
+                            "redirect-expect-token-sometoken",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        # The code depends on `context.abort_with_status()` raising an exception.
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+        )
+
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    "bucket=projects/_/buckets/bucket-name",
+                ),
+            )
+        )
+        with self.assertRaises(RpcError):
+            streamer = self.grpc.BidiWriteObject([r1], context=context)
+            responses = list(streamer)
+
+        context.abort_with_status.assert_called()
+        status = context.abort_with_status.call_args.args[0]
+        self.assertEqual(status.code, StatusCode.ABORTED)
+        redirect_error = storage_pb2.BidiWriteObjectRedirectedError()
+        self._unpack_details(status, redirect_error)
+
+        self.assertTrue(redirect_error.HasField("write_handle"))
+        self.assertEqual(redirect_error.routing_token, "sometoken")
+
+        # If we set the right routing token, it should consume instructions.
+        self.assertIsNotNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            append_object_spec=storage_pb2.AppendObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                generation=redirect_error.generation,
+                write_handle=redirect_error.write_handle,
+            ),
+        )
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                (
+                    "x-goog-request-params",
+                    f"bucket=projects/_/buckets/bucket-name&routing_token={redirect_error.routing_token}",
+                ),
+            )
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context=context)
+        responses = list(streamer)
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.insert")
+        )
+
+    def test_grpc_bidiread_retry_broken_stream(self):
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(5 * 1024 * 1024)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a return-broken-stream failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {"storage.objects.get": ["return-broken-stream"]},
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+
+        # Test one range in stream with length more than 256kb.
+        offset_1 = 0
+        length_1 = 1 * 1024 * 1024
+        read_id_1 = 1
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="512k.txt",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=length_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+        with self.assertRaises(RpcError):
+            response = self.grpc.BidiReadObject([r1], context)
+            list(response)
+        context.abort.assert_called_with(
+            StatusCode.UNAVAILABLE, "Injected 'broken stream' fault"
+        )
+
+        # Setup a return-broken-stream-after-256K failure for reading back the object.
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["return-broken-stream-after-256K"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+        responses = []
+        with self.assertRaises(RpcError):
+            response = self.grpc.BidiReadObject([r1], context)
+            # Gather all the responses that arrive before the context abort
+            for r in response:
+                responses.append(r)
+        context.abort.assert_called_with(
+            StatusCode.UNAVAILABLE, "Injected 'broken stream' fault"
+        )
+        # Verify the early break occurred after exactly 256K
+        self.assertEqual(len(responses), 1)
+        self.assertEqual(len(responses[0].object_data_ranges), 1)
+        odr = responses[0].object_data_ranges[0]
+        EXPECTED_LEN = 256 * 1024
+        self.assertEqual(len(odr.checksummed_data.content), EXPECTED_LEN)
+        self.assertEqual(odr.read_range.read_id, read_id_1)
+        self.assertEqual(odr.read_range.read_offset, offset_1)
+        self.assertEqual(odr.read_range.read_length, EXPECTED_LEN)
+        # Because we requested 1 MiB, but only got back 256KiB
+        self.assertFalse(odr.range_end)
 
 
 if __name__ == "__main__":

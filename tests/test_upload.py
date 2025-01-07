@@ -17,6 +17,7 @@
 """Tests for the Object class (see gcs/object.py)."""
 
 import base64
+import copy
 import hashlib
 import json
 import unittest
@@ -749,6 +750,7 @@ class TestHolder(unittest.TestCase):
             ),
             finish_write=True,
         )
+        r2 = copy.deepcopy(r1)
         db = unittest.mock.Mock()
         db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
         db.get_upload = unittest.mock.MagicMock(return_value=upload)
@@ -763,7 +765,7 @@ class TestHolder(unittest.TestCase):
         # Test resuming an already finalized object will result with
         # a response containing the finalized object's metadata.
         context = self.mock_context()
-        streamer = gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context)
+        streamer = gcs.upload.Upload.process_bidi_write_object_grpc(db, [r2], context)
         responses = list(streamer)
         blob = responses[0].resource
         self.assertEqual(blob.name, "object")
@@ -779,8 +781,11 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
@@ -798,8 +803,11 @@ class TestHolder(unittest.TestCase):
             finish_write=False,
         )
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
@@ -834,10 +842,15 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(
-            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1, r2, r3], context)
-        )
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(
+                gcs.upload.Upload.process_bidi_write_object_grpc(
+                    db, [r1, r2, r3], context
+                )
+            )
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
@@ -875,10 +888,15 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(
-            gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1, r2, r3], context)
-        )
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(
+                gcs.upload.Upload.process_bidi_write_object_grpc(
+                    db, [r1, r2, r3], context
+                )
+            )
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
@@ -899,8 +917,11 @@ class TestHolder(unittest.TestCase):
             finish_write=True,
         )
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
@@ -976,8 +997,11 @@ class TestHolder(unittest.TestCase):
 
     def test_process_bidi_write_grpc_empty(self):
         db = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [], context))
+        context.abort.side_effect = grpc.RpcError()
+        with self.assertRaises(grpc.RpcError):
+            list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [], context))
         context.abort.assert_called_once_with(
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
@@ -1021,36 +1045,6 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertTrue(upload.complete)
-
-    def test_process_bidi_write_grpc_message_invalid_data(self):
-        request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket-name"})
-        )
-        bucket, _ = gcs.bucket.Bucket.init(request, None)
-        request = storage_pb2.StartResumableWriteRequest(
-            write_object_spec=storage_pb2.WriteObjectSpec(
-                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
-            )
-        )
-        context = self.mock_context()
-        upload = gcs.upload.Upload.init_resumable_grpc(
-            request, bucket.metadata, context
-        )
-
-        r1 = storage_pb2.BidiWriteObjectRequest(
-            upload_id=upload.upload_id,
-            write_offset=0,
-            finish_write=False,
-        )
-        context = self.mock_context()
-        db = unittest.mock.Mock()
-        db.get_bucket = unittest.mock.MagicMock(return_value=bucket)
-        db.get_upload = unittest.mock.MagicMock(return_value=upload)
-        list(gcs.upload.Upload.process_bidi_write_object_grpc(db, [r1], context))
-        context.abort.assert_called_once_with(
-            grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
-        )
-        self.assertFalse(upload.complete)
 
 
 if __name__ == "__main__":

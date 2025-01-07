@@ -48,6 +48,11 @@ retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
 retry_stall_after_bytes = re.compile(r"stall-for-([0-9]+)s-after-([0-9]+)K$")
+retry_return_redirection_token = re.compile(r"redirect-send-token-([a-z\-]+)$")
+retry_return_handle_and_redirection_token = re.compile(
+    r"redirect-send-handle-and-token-([a-z\-]+)$"
+)
+retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z\-]+)$")
 
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 
@@ -1039,15 +1044,24 @@ def handle_grpc_retry_uploads_error_after_bytes(
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
 
 
-def get_retry_test_id_from_context(context):
-    """Get the retry test id from context; returns None if not found."""
+def _get_invocation_metadata_value_from_context(context, k):
     if context is not None:
         if hasattr(context, "invocation_metadata") and isinstance(
             context.invocation_metadata(), tuple  # Handle mocks in tests
         ):
             for key, value in context.invocation_metadata():
-                if key == "x-retry-test-id":
+                if key == k:
                     return value
+
+
+def get_retry_test_id_from_context(context):
+    """Get the retry test id from context; returns None if not found."""
+    return _get_invocation_metadata_value_from_context(context, "x-retry-test-id")
+
+
+def get_context_request_params(context):
+    """Get gRPC request parameters from context; returns None if not found."""
+    return _get_invocation_metadata_value_from_context(context, "x-goog-request-params")
 
 
 def get_broken_stream_after_bytes(instruction):
@@ -1068,6 +1082,43 @@ def get_broken_stream_after_bytes(instruction):
         items = list(broken_stream_after_bytes.groups())
         after_bytes = int(items[0]) * 1024
     return after_bytes
+
+
+def _get_grpc_instruction_match(db, context, method, rexp, dequeue=True):
+    test_id = get_retry_test_id_from_context(context)
+    if not (
+        test_id and db.has_instructions_retry_test(test_id, method, transport="GRPC")
+    ):
+        return None
+
+    instruction = db.peek_next_instruction(test_id, method)
+    matches = rexp.match(instruction)
+    if matches:
+        if dequeue:
+            db.dequeue_next_instruction(test_id, method)
+        return list(matches.groups())[0]
+
+
+def get_return_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db, context, "storage.objects.insert", retry_return_redirection_token
+    )
+
+
+def get_return_handle_and_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db, context, "storage.objects.insert", retry_return_handle_and_redirection_token
+    )
+
+
+def get_expect_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db,
+        context,
+        "storage.objects.insert",
+        retry_expect_redirection_token,
+        dequeue=False,
+    )
 
 
 def handle_gzip_request(request):
@@ -1169,6 +1220,7 @@ def preprocess_object_metadata(metadata):
             "kind": lambda x: (None, None),
             "id": lambda x: (None, None),
             "timeCreated": lambda x: ("createTime", x),
+            "timeFinalized": lambda x: ("finalizeTime", x),
             "updated": lambda x: ("updateTime", x),
             "kmsKeyName": lambda x: ("kmsKey", x),
             "retentionExpirationTime": lambda x: ("retentionExpireTime", x),
