@@ -1859,38 +1859,10 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(blob.name, "object-name")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
-    def test_bidi_write_object_appendable_unsupported(self):
-        # The code depends on `context.abort()` raising an exception.
-        context = self.mock_context()
-        context.abort.side_effect = grpc.RpcError()
-        req = storage_pb2.BidiWriteObjectRequest(
-            write_object_spec=storage_pb2.WriteObjectSpec(
-                resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/bucket-name"
-                ),
-                appendable=True,
-            ),
-        )
-        with self.assertRaises(grpc.RpcError):
-            streamer = self.grpc.BidiWriteObject([req], context=context)
-            responses = list(streamer)
-
     def test_bidi_write_object_appendable(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
         context.abort.side_effect = grpc.RpcError()
-
-        # Only the RAPID storage class supports appendable objects at this time.
-        self.grpc.CreateBucket(
-            storage_pb2.CreateBucketRequest(
-                parent="projects/test-project",
-                bucket_id="rapid-bucket",
-                bucket=storage_pb2.Bucket(
-                    storage_class="RAPID",
-                ),
-            ),
-            context,
-        )
 
         QUANTUM = 256 * 1024
         media = TestGrpc._create_block(2 * QUANTUM + QUANTUM / 2).encode("utf-8")
@@ -1899,7 +1871,7 @@ class TestGrpc(unittest.TestCase):
         r1 = storage_pb2.BidiWriteObjectRequest(
             write_object_spec=storage_pb2.WriteObjectSpec(
                 resource=storage_pb2.Object(
-                    name="object-name", bucket="projects/_/buckets/rapid-bucket"
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
                 ),
                 appendable=True,
             ),
@@ -1927,9 +1899,7 @@ class TestGrpc(unittest.TestCase):
         # For appendable objects, we expect the object metadata in the first
         # response rather than the persisted_size.
         self.assertEqual(responses[0].resource.size, 2 * QUANTUM)
-        self.assertEqual(
-            responses[0].resource.bucket, "projects/_/buckets/rapid-bucket"
-        )
+        self.assertEqual(responses[0].resource.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(responses[0].resource.name, "object-name")
 
         bucket = responses[0].resource.bucket
@@ -1969,7 +1939,7 @@ class TestGrpc(unittest.TestCase):
         blob = responses[1].resource
         self.assertEqual(responses[1].resource.size, 2 * QUANTUM + QUANTUM / 2)
         self.assertEqual(blob.name, "object-name")
-        self.assertEqual(blob.bucket, "projects/_/buckets/rapid-bucket")
+        self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
     def test_bidi_write_object_appendable_already_finalized(self):
         # The code depends on `context.abort()` raising an exception.
