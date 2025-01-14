@@ -819,7 +819,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         dst_metadata.CopyFrom(src_object.metadata)
         dst_metadata.bucket = request.bucket
         dst_metadata.name = request.destination_object
-        dst_metadata.metageneration = 1
         dst_media = b""
         dst_media += src_object.media
         dst_object, _ = gcs.object.Object.init(
