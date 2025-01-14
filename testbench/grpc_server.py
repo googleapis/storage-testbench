@@ -805,7 +805,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return blob.metadata
 
-    @retry_test(method="storage.objects.move")
+    # The MoveObject gRPC call only performas a copy + delete of a single object
+    # as testbench does not have the concept of folders.
+    # This will suffice for a very basic test but lacks the full depth of the production API.
     def MoveObject(self, request, context):
         preconditions = testbench.common.make_grpc_preconditions(request)
         bucket = self.db.get_bucket(request.bucket, context).metadata
