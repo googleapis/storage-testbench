@@ -703,6 +703,7 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
     )
     return dst_object.rest_metadata()
 
+
 # The objects_move endpoint only performas a copy + delete of a single object
 # as testbench does not have the concept of folders.
 # This will suffice for a very basic test but lacks the full depth of the production API.
