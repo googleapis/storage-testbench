@@ -156,6 +156,38 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
             response.data.decode("utf-8"), "The quick brown fox jumps over the lazy dog"
         )
 
+    def test_object_move(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payload = "The quick brown fox jumps over the lazy dog"
+        response = self.client.put(
+            "/bucket-name/fox",
+            content_type="text/plain",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post("/storage/v1/b/bucket-name/o/fox/moveTo/o/fox2")
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        move_rest = json.loads(response.data)
+        move_rest.pop("acl")
+        move_rest.pop("owner")
+
+        response = self.client.get("/storage/v1/b/bucket-name/o/fox2")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            response.headers.get("content-type").startswith("application/json")
+        )
+        get_rest = json.loads(response.data)
+
+        self.assertEqual(get_rest, move_rest)
+
     def test_object_copy_with_metadata(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})

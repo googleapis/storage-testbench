@@ -413,7 +413,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -804,6 +807,41 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             request.bucket, request.object, request.generation, preconditions, context
         )
         return blob.metadata
+
+    @retry_test(method="storage.objects.move")
+    def MoveObject(self, request, context):
+        preconditions = testbench.common.make_grpc_preconditions(request)
+        bucket = self.db.get_bucket(request.bucket, context).metadata
+        src_object = self.db.get_object(
+            request.bucket,
+            request.source_object,
+            preconditions=preconditions,
+            context=context,
+        )
+        dst_metadata = storage_pb2.Object()
+        dst_metadata.CopyFrom(src_object.metadata)
+        dst_metadata.bucket = request.bucket
+        dst_metadata.name = request.destination_object
+        dst_metadata.metageneration = 1
+        dst_media = b""
+        dst_media += src_object.media
+        dst_object, _ = gcs.object.Object.init(
+            request, dst_metadata, dst_media, bucket, False, context, csek=False
+        )
+        self.db.insert_object(
+            request.bucket,
+            dst_object,
+            context=context,
+            preconditions=preconditions,
+        )
+        self.db.delete_object(
+            request.bucket,
+            request.source_object,
+            context=context,
+            preconditions=preconditions,
+        )
+
+        return dst_object.metadata
 
     @retry_test(method="storage.objects.insert")
     def WriteObject(self, request_iterator, context):

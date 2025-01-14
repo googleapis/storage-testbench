@@ -705,6 +705,19 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
 
 
 @gcs.route(
+    "/b/<bucket_name>/o/<path:src_object_name>/moveTo/o/<path:dst_object_name>",
+    methods=["POST"],
+)
+@retry_test(method="storage.objects.move")
+def objects_move(bucket_name, src_object_name, dst_object_name):
+    moved_object_metadata = objects_copy(
+        bucket_name, src_object_name, bucket_name, dst_object_name
+    )
+    object_delete(bucket_name, src_object_name)
+    return moved_object_metadata
+
+
+@gcs.route(
     "/b/<src_bucket_name>/o/<path:src_object_name>/rewriteTo/b/<dst_bucket_name>/o/<path:dst_object_name>",
     methods=["POST"],
 )

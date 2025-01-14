@@ -1302,6 +1302,28 @@ class TestGrpc(unittest.TestCase):
         self.assertIsNotNone(response)
         self.assertNotEqual(initial_generation, response.generation)
 
+    def test_move_object(self):
+        media = b"The quick brown fox jumps over the lazy dog"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-to-move"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        response = self.grpc.MoveObject(
+            storage_pb2.MoveObjectRequest(
+                bucket="projects/_/buckets/bucket-name",
+                source_object="object-to-move",
+                destination_object="destination-object-to-move",
+            ),
+            context=context,
+        )
+        context.abort.assert_not_called()
+        self.assertIsNotNone(response)
+        self.assertEqual(response.name, "destination-object-to-move")
+
     def test_rewrite_object(self):
         # We need a large enough payload to make sure the first rewrite does
         # not complete.  The minimum is 1 MiB
