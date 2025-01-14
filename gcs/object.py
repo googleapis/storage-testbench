@@ -88,7 +88,15 @@ class Object:
 
     @classmethod
     def init(
-        cls, request, metadata, media, bucket, is_destination, context, finalize=True
+        cls,
+        request,
+        metadata,
+        media,
+        bucket,
+        is_destination,
+        context,
+        finalize=True,
+        csek=True,
     ):
         instruction = testbench.common.extract_instruction(request, context)
         if instruction == "inject-upload-data-error":
@@ -121,9 +129,11 @@ class Object:
             )
             metadata.retention_expire_time.FromDatetime(retention_expiration_time)
         metadata.owner.entity = testbench.acl.get_object_entity("OWNER", context)
-        algorithm, key_b64, key_sha256_b64 = testbench.csek.extract(
-            request, False, context
-        )
+        algorithm, key_b64, key_sha256_b64 = "", "", ""
+        if csek:
+            algorithm, key_b64, key_sha256_b64 = testbench.csek.extract(
+                request, False, context
+            )
         if algorithm != "":
             key_sha256 = base64.b64decode(key_sha256_b64)
             testbench.csek.check(algorithm, key_b64, key_sha256, context)

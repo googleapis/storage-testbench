@@ -805,6 +805,42 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         )
         return blob.metadata
 
+    # The MoveObject gRPC call only performas a copy + delete of a single object
+    # as testbench does not have the concept of folders.
+    # This will suffice for a very basic test but lacks the full depth of the production API.
+    def MoveObject(self, request, context):
+        preconditions = testbench.common.make_grpc_preconditions(request)
+        bucket = self.db.get_bucket(request.bucket, context).metadata
+        src_object = self.db.get_object(
+            request.bucket,
+            request.source_object,
+            preconditions=preconditions,
+            context=context,
+        )
+        dst_metadata = storage_pb2.Object()
+        dst_metadata.CopyFrom(src_object.metadata)
+        dst_metadata.bucket = request.bucket
+        dst_metadata.name = request.destination_object
+        dst_media = b""
+        dst_media += src_object.media
+        dst_object, _ = gcs.object.Object.init(
+            request, dst_metadata, dst_media, bucket, False, context, csek=False
+        )
+        self.db.insert_object(
+            request.bucket,
+            dst_object,
+            context=context,
+            preconditions=preconditions,
+        )
+        self.db.delete_object(
+            request.bucket,
+            request.source_object,
+            context=context,
+            preconditions=preconditions,
+        )
+
+        return dst_object.metadata
+
     @retry_test(method="storage.objects.insert")
     def WriteObject(self, request_iterator, context):
         upload, is_resumable = gcs.upload.Upload.init_write_object_grpc(

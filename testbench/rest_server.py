@@ -704,6 +704,21 @@ def objects_copy(src_bucket_name, src_object_name, dst_bucket_name, dst_object_n
     return dst_object.rest_metadata()
 
 
+# The objects_move endpoint only performas a copy + delete of a single object
+# as testbench does not have the concept of folders.
+# This will suffice for a very basic test but lacks the full depth of the production API.
+@gcs.route(
+    "/b/<bucket_name>/o/<path:src_object_name>/moveTo/o/<path:dst_object_name>",
+    methods=["POST"],
+)
+def objects_move(bucket_name, src_object_name, dst_object_name):
+    moved_object_metadata = objects_copy(
+        bucket_name, src_object_name, bucket_name, dst_object_name
+    )
+    object_delete(bucket_name, src_object_name)
+    return moved_object_metadata
+
+
 @gcs.route(
     "/b/<src_bucket_name>/o/<path:src_object_name>/rewriteTo/b/<dst_bucket_name>/o/<path:dst_object_name>",
     methods=["POST"],
