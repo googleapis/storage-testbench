@@ -548,11 +548,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
-        return_redirect_token = (
-                testbench.common.get_return_read_handle_and_redirect_token(
-                    self.db,context
-                )
-            )
+        return_redirect_token = testbench.common.get_return_read_handle_and_redirect_token(self.db,context)
 
         # first_response is protected by GIL
         first_response = True
