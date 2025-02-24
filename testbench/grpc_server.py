@@ -525,7 +525,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             first_message = next(request_iterator)
         except StopIteration:
             # ok if no messages arrive from the client.
-            return   
+            return
 
         obj_spec = first_message.read_object_spec
         blob = self.db.get_object(
@@ -548,9 +548,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
-            return_redirect_token = (
-            testbench.common.get_return_read_handle_and_redirect_token(
-                self.db,context
+        return_redirect_token = (
+                testbench.common.get_return_read_handle_and_redirect_token(
+                    self.db,context
                 )
             )
 
