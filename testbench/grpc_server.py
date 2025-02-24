@@ -549,7 +549,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 next_instruction
             )
         return_redirect_token = (
-            testbench.common.get_return_read_handle_and_redirect_token(self.db,context)
+            testbench.common.get_return_read_handle_and_redirect_token(self.db, context)
         )
 
         # first_response is protected by GIL
