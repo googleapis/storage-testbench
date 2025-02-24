@@ -526,7 +526,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         except StopIteration:
             # ok if no messages arrive from the client.
             return
-
+        
         obj_spec = first_message.read_object_spec
         blob = self.db.get_object(
             obj_spec.bucket,
@@ -536,6 +536,19 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             preconditions=testbench.common.make_grpc_preconditions(obj_spec),
         )
         metadata = blob.metadata
+
+        # Check retry test broken-stream instructions.
+        test_id = testbench.common.get_retry_test_id_from_context(context)
+        broken_stream_after_bytes = 0
+        method = "storage.objects.get"
+        if test_id and self.db.has_instructions_retry_test(
+            test_id, method, transport="GRPC"
+        ):
+            next_instruction = self.db.peek_next_instruction(test_id, method)
+            broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
+                next_instruction
+            )
+            return_redirect_token = testbench.common.get_return_read_handle_and_redirect_token(self.db,context)
 
         # first_response is protected by GIL
         first_response = True
@@ -548,6 +561,20 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 resp.read_handle.handle = b"an-opaque-handle"
             # We ignore the read_mask for this test server
             return resp
+        
+        if len(return_redirect_token):
+            detail = any_pb2.Any()
+            detail.Pack(
+                storage_pb2.BidiReadObjectRedirectedError(
+                    routing_token=return_redirect_token
+                )
+            )
+            status_proto = status_pb2.Status(
+                code=grpc.StatusCode.ABORTED.value[0],
+                message=grpc.StatusCode.ABORTED.value[1],
+                details=[detail],
+            )
+            context.abort_with_status(rpc_status.to_status(status_proto))
 
         if not first_message.read_ranges:
             # always emit a response to the first request.
@@ -596,18 +623,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         timer_thread = Timer(10, terminate_w_timer)
         timer_thread.start()
-
-        # Check retry test broken-stream instructions.
-        test_id = testbench.common.get_retry_test_id_from_context(context)
-        broken_stream_after_bytes = 0
-        method = "storage.objects.get"
-        if test_id and self.db.has_instructions_retry_test(
-            test_id, method, transport="GRPC"
-        ):
-            next_instruction = self.db.peek_next_instruction(test_id, method)
-            broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
-                next_instruction
-            )
 
         returnable = (
             broken_stream_after_bytes if broken_stream_after_bytes else sys.maxsize
