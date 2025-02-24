@@ -562,7 +562,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # We ignore the read_mask for this test server
             return resp
         
-        if len(return_redirect_token):
+        if return_redirect_token and len(return_redirect_token):
             detail = any_pb2.Any()
             detail.Pack(
                 storage_pb2.BidiReadObjectRedirectedError(
