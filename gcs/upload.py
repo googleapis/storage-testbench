@@ -392,8 +392,8 @@ class Upload(types.SimpleNamespace):
         if first_msg.HasField("object_checksums"):
             object_checksums = first_msg.object_checksums
 
-        return_redirect_token = testbench.common.get_return_handle_and_redirect_token(
-            db, context
+        return_redirect_token = (
+            testbench.common.get_return_write_handle_and_redirect_token(db, context)
         )
         if return_redirect_token:
             err = storage_pb2.BidiWriteObjectRedirectedError()

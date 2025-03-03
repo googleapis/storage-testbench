@@ -1352,6 +1352,80 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             rest_server.db.peek_next_instruction(id, "storage.objects.insert")
         )
 
+    def test_grpc_bidiread_open_redirect(self):
+        # Use the XML API to inject an object with some data.
+        media = self._create_block(5 * 1024 * 1024)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Setup a redirect-send-handle-and-token failure for reading back the object.
+        token = "".join(random.choice(string.ascii_lowercase) for _ in range(5))
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            f"redirect-send-handle-and-token-{token}",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        # The code depends on `context.abort_with_status()` raising an exception.
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+
+        offset_1 = 0
+        limit_1 = 1 * 1024 * 1024
+        read_id_1 = 1
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="512k.txt",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=offset_1,
+                    read_length=limit_1,
+                    read_id=read_id_1,
+                ),
+            ],
+        )
+
+        responses = []
+        with self.assertRaises(RpcError):
+            response = self.grpc.BidiReadObject([r1], context=context)
+            # Gather all the responses that arrive before the context abort
+            for r in response:
+                responses.append(r)
+        context.abort_with_status.assert_called()
+        status = context.abort_with_status.call_args.args[0]
+        self.assertEqual(status.code, StatusCode.ABORTED)
+        redirect_error = storage_pb2.BidiReadObjectRedirectedError()
+        self._unpack_details(status, redirect_error)
+
+        self.assertEqual(redirect_error.routing_token, token)
+
+        # Verify the early break occurred during first message only.
+        self.assertEqual(len(responses), 0)
+
     class _StatusAsCall:
         """_StatusAsCall wraps a status and pretends it is a client-side call"""
 

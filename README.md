@@ -189,8 +189,7 @@ Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
 
 In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-send-handle-and-token-tokenval`.
 Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
-(`tokenval` in the example) and a `write_handle` (`read_handle` is not currently
-supported).
+(`tokenval` in the example) and a `write_handle` or `read_handle` depending on the method called( `storage.objects.insert` or `storage.objects.get` ).
 
 ### redirect-expect-token-T
 
