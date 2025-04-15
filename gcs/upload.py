@@ -506,10 +506,11 @@ class Upload(types.SimpleNamespace):
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
                 upload.media += content
 
-                # Update appendable blob size and media here, as an example.
-                # TODO: (1) Update_time, size and crc are updated in object metadata.
-                # TODO: (2) Whether the testbench checks for flush or/and performs a background force-close.
+                # Update appendable blob size and media here, as part of #720.
+                # TODO(#720): (a) Update crc and update_time in object metadata.
+                # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
                 if is_appendable:
+
                     def update_appendable_blob(blob, unused_generation):
                         blob.media = upload.media
                         blob.metadata.size = len(upload.media)
