@@ -2098,6 +2098,58 @@ class TestGrpc(unittest.TestCase):
             responses[0].resource.generation, responses2[0].resource.generation
         )
 
+    def test_bidi_write_object_appendable_unfinalized_persisted_media_size(self):
+        context = self.mock_context()
+        QUANTUM = 256 * 1024
+        media = TestGrpc._create_block(2 * QUANTUM).encode("utf-8")
+        offset = 0
+        content = media[0:QUANTUM]
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            flush=True,
+            finish_write=False,
+        )
+        offset += QUANTUM
+        content = media[offset:]
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            write_offset=offset,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            flush=True,
+            state_lookup=True,
+            finish_write=False,
+        )
+        streamer = self.grpc.BidiWriteObject([r1, r2], context=context)
+        list(streamer)
+
+        # For unfinalized appendable objects, we can still read back the object from
+        # the testbench database with the correct persisted size and media content.
+        # Note that this can only happen within the same testbench instance.
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            "fake-context",
+        )
+        chunks = [r for r in response]
+        self.assertEqual(
+            [len(media)], [len(c.checksummed_data.content) for c in chunks]
+        )
+        self.assertEqual(
+            crc32c.crc32c(media),
+            crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
+        )
+
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
