@@ -330,7 +330,6 @@ class Upload(types.SimpleNamespace):
             require_live_current_generation=False,
         )
 
-
     @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
