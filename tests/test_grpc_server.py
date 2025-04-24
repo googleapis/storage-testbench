@@ -2149,6 +2149,9 @@ class TestGrpc(unittest.TestCase):
             crc32c.crc32c(media),
             crc32c.crc32c(b"".join([c.checksummed_data.content for c in chunks])),
         )
+        self.assertEqual(
+            [crc32c.crc32c(media)], [c.metadata.checksums.crc32c for c in chunks]
+        )
 
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.

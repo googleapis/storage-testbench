@@ -433,6 +433,27 @@ class Upload(types.SimpleNamespace):
                     msg.resource.size = obj_len
             return msg
 
+        def update_upload_checksums(upload_metadata, object_checksums):
+            if object_checksums is None:
+                upload_metadata.metadata["x_emulator_no_crc32c"] = "true"
+                upload_metadata.metadata["x_emulator_no_md5"] = "true"
+            else:
+                if object_checksums.HasField("crc32c"):
+                    upload_metadata.metadata[
+                        "x_emulator_crc32c"
+                    ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+                else:
+                    upload_metadata.metadata["x_emulator_no_crc32c"] = "true"
+                if (
+                    object_checksums.md5_hash is not None
+                    and object_checksums.md5_hash != b""
+                ):
+                    upload_metadata.metadata[
+                        "x_emulator_md5"
+                    ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+                else:
+                    upload_metadata.metadata["x_emulator_no_md5"] = "true"
+
         for request in request_iterator:
             if request.HasField("first_message"):
                 testbench.error.invalid("Multiple first_message", context)
@@ -511,9 +532,12 @@ class Upload(types.SimpleNamespace):
                 # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
                 if is_appendable:
 
+                    update_upload_checksums(upload.metadata, object_checksums)
+
                     def update_appendable_blob(blob, unused_generation):
                         blob.media = upload.media
                         blob.metadata.size = len(upload.media)
+                        blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
                         return blob
 
                     blob = db.do_update_object(
@@ -540,25 +564,8 @@ class Upload(types.SimpleNamespace):
                     )
                 )
 
-        if object_checksums is None:
-            upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
-            upload.metadata.metadata["x_emulator_no_md5"] = "true"
-        else:
-            if object_checksums.HasField("crc32c"):
-                upload.metadata.metadata[
-                    "x_emulator_crc32c"
-                ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
-            else:
-                upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
-            if (
-                object_checksums.md5_hash is not None
-                and object_checksums.md5_hash != b""
-            ):
-                upload.metadata.metadata[
-                    "x_emulator_md5"
-                ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
-            else:
-                upload.metadata.metadata["x_emulator_no_md5"] = "true"
+        # Update metadata checksums fields on the upload instance.
+        update_upload_checksums(upload.metadata, object_checksums)
 
         # Create a new object when the write is completed.
         if upload.complete:
