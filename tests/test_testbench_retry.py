@@ -1194,7 +1194,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             context,
         )
         # Up to the first error offset
-        self.assertEqual(status.persisted_size, 256*1024)
+        self.assertEqual(status.persisted_size, 256 * 1024)
 
         # Send a full object upload here to verify testbench can
         # (1) trigger error_after_bytes instructions,
@@ -1217,7 +1217,7 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             context,
         )
         # We get another error, though, at the second error offset.
-        self.assertEqual(status.persisted_size, 300*1024)
+        self.assertEqual(status.persisted_size, 300 * 1024)
 
         # Retry r2
         write = self.grpc.WriteObject([r2], context)

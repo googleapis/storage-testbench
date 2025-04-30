@@ -1026,9 +1026,7 @@ def handle_grpc_retry_uploads_error_after_bytes(
     if after_bytes > len(upload.media) and after_bytes <= len(upload.media) + len(data):
         # Only partial data will be commited due to the instructed interruption.
         range_end = after_bytes - len(upload.media)
-        content = testbench.common.partial_media(
-            data, range_end=range_end
-        )
+        content = testbench.common.partial_media(data, range_end=range_end)
         upload.media += content
         database.dequeue_next_instruction(test_id, "storage.objects.insert")
         grpc_code = _grpc_forced_failure_from_http_instruction(str(rest_code))
