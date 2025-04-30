@@ -333,7 +333,7 @@ class Upload(types.SimpleNamespace):
     @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
-        def abort_with_redirect_error(routing_token, handle = None, generation = None):
+        def abort_with_redirect_error(routing_token, handle=None, generation=None):
             err = storage_pb2.BidiWriteObjectRedirectedError()
             if handle is not None:
                 err.write_handle.handle = handle
@@ -418,9 +418,9 @@ class Upload(types.SimpleNamespace):
         )
         if return_redirect_token:
             abort_with_redirect_error(
-                    return_redirect_token,
-                    handle=bytes(upload.upload_id, "utf-8"),
-                    generation=upload.metadata.generation,
+                return_redirect_token,
+                handle=bytes(upload.upload_id, "utf-8"),
+                generation=upload.metadata.generation,
             )
 
         # Treat the rest of the first message as a data request, then keep
