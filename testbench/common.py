@@ -1022,18 +1022,18 @@ def handle_grpc_retry_uploads_error_after_bytes(
 ):
     """
     Handle error-after-bytes instructions for resumable uploads in the grpc server and commit only partial data before forcing a testbench error.
-    This helper method also ignores request bytes that have already been persisted, which aligns with GCS behavior.
     """
     if after_bytes > len(upload.media) and after_bytes <= len(upload.media) + len(data):
         # Only partial data will be commited due to the instructed interruption.
         range_end = after_bytes - len(upload.media)
         content = testbench.common.partial_media(
-            data, range_end=range_end, range_start=0
+            data, range_end=range_end
         )
         upload.media += content
         database.dequeue_next_instruction(test_id, "storage.objects.insert")
         grpc_code = _grpc_forced_failure_from_http_instruction(str(rest_code))
         msg = {"error": {"message": "Retry Test: Caused a {}".format(grpc_code)}}
+        print(f"injecting error {rest_code} {grpc_code}")
         testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
 
 
