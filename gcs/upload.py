@@ -231,6 +231,23 @@ class Upload(types.SimpleNamespace):
                     )
                     return None, False
 
+            # The testbench should ignore any request bytes that have already been persisted,
+            # thus we validate write_offset against persisted_size.
+            # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+            if request.write_offset < len(upload.media):
+                range_start = len(upload.media) - request.write_offset
+                content = testbench.common.partial_media(
+                    content, range_end=len(content), range_start=range_start
+                )
+            if request.write_offset > len(upload.media):
+                context.abort(
+                        grpc.StatusCode.OUT_OF_RANGE,
+                        "Write offset %d does not match expected %d" % (
+                                request.write_offset,
+                                len(upload.media),
+                        ),
+                )
+
             # Handle retry test return-X-after-YK failures if applicable.
             (
                 rest_code,
@@ -239,7 +256,7 @@ class Upload(types.SimpleNamespace):
             ) = testbench.common.get_retry_uploads_error_after_bytes(
                 db, request, context=context, transport="GRPC"
             )
-            expected_persisted_size = request.write_offset + len(content)
+            expected_persisted_size = len(upload.media) + len(content)
             if rest_code:
                 testbench.common.handle_grpc_retry_uploads_error_after_bytes(
                     context,
@@ -248,19 +265,7 @@ class Upload(types.SimpleNamespace):
                     db,
                     rest_code,
                     after_bytes,
-                    write_offset=request.write_offset,
-                    persisted_size=len(upload.media),
-                    expected_persisted_size=expected_persisted_size,
                     test_id=test_id,
-                )
-
-            # The testbench should ignore any request bytes that have already been persisted,
-            # thus we validate write_offset against persisted_size.
-            # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-            if request.write_offset < len(upload.media):
-                range_start = len(upload.media) - request.write_offset
-                content = testbench.common.partial_media(
-                    content, range_end=len(content), range_start=range_start
                 )
 
             upload.media += content
@@ -491,29 +496,6 @@ class Upload(types.SimpleNamespace):
                             context,
                         )
 
-                # Handle retry test return-X-after-YK failures if applicable.
-                (
-                    rest_code,
-                    after_bytes,
-                    test_id,
-                ) = testbench.common.get_retry_uploads_error_after_bytes(
-                    db, request, context=context, transport="GRPC"
-                )
-                expected_persisted_size = request.write_offset + len(content)
-                if rest_code:
-                    testbench.common.handle_grpc_retry_uploads_error_after_bytes(
-                        context,
-                        upload,
-                        content,
-                        db,
-                        rest_code,
-                        after_bytes,
-                        write_offset=request.write_offset,
-                        persisted_size=len(upload.media),
-                        expected_persisted_size=expected_persisted_size,
-                        test_id=test_id,
-                    )
-
                 # The testbench should ignore any request bytes that have already been persisted,
                 # thus we validate write_offset against persisted_size.
                 # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
@@ -522,6 +504,35 @@ class Upload(types.SimpleNamespace):
                     content = testbench.common.partial_media(
                         content, range_end=len(content), range_start=range_start
                     )
+                if request.write_offset > len(upload.media):
+                    context.abort(
+                            grpc.StatusCode.OUT_OF_RANGE,
+                            "Write offset %d does not match expected %d" % (
+                                    request.write_offset,
+                                    len(upload.media),
+                            ),
+                    )
+
+                # Handle retry test return-X-after-YK failures if applicable.
+                (
+                    rest_code,
+                    after_bytes,
+                    test_id,
+                ) = testbench.common.get_retry_uploads_error_after_bytes(
+                    db, request, context=context, transport="GRPC"
+                )
+                expected_persisted_size = len(upload.media) + len(content)
+                if rest_code:
+                    testbench.common.handle_grpc_retry_uploads_error_after_bytes(
+                        context,
+                        upload,
+                        content,
+                        db,
+                        rest_code,
+                        after_bytes,
+                        test_id=test_id,
+                    )
+
                 # Currently, the testbench will always checkpoint and flush data for testing purposes,
                 # instead of the 15 seconds interval used in the GCS server.
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
