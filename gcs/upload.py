@@ -241,11 +241,12 @@ class Upload(types.SimpleNamespace):
                 )
             if request.write_offset > len(upload.media):
                 context.abort(
-                        grpc.StatusCode.OUT_OF_RANGE,
-                        "Write offset %d does not match expected %d" % (
-                                request.write_offset,
-                                len(upload.media),
-                        ),
+                    grpc.StatusCode.OUT_OF_RANGE,
+                    "Write offset %d does not match expected %d"
+                    % (
+                        request.write_offset,
+                        len(upload.media),
+                    ),
                 )
 
             # Handle retry test return-X-after-YK failures if applicable.
@@ -506,11 +507,12 @@ class Upload(types.SimpleNamespace):
                     )
                 if request.write_offset > len(upload.media):
                     context.abort(
-                            grpc.StatusCode.OUT_OF_RANGE,
-                            "Write offset %d does not match expected %d" % (
-                                    request.write_offset,
-                                    len(upload.media),
-                            ),
+                        grpc.StatusCode.OUT_OF_RANGE,
+                        "Write offset %d does not match expected %d"
+                        % (
+                            request.write_offset,
+                            len(upload.media),
+                        ),
                     )
 
                 # Handle retry test return-X-after-YK failures if applicable.
