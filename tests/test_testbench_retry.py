@@ -16,6 +16,7 @@
 
 """Unit test for "retry" (should be "fault injection") operations in the testbench."""
 
+import copy
 import json
 import os
 import random
@@ -1156,6 +1157,9 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         id = create_rest.get("id")
 
         context = unittest.mock.Mock()
+        # The code depends on `context.abort()` raising an exception.
+        context.abort = unittest.mock.MagicMock()
+        context.abort.side_effect = RpcError()
         context.invocation_metadata = unittest.mock.Mock(
             return_value=(("x-retry-test-id", id),)
         )
@@ -1181,14 +1185,16 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             ),
             finish_write=False,
         )
-        write = self.grpc.WriteObject([r1], context)
+        with self.assertRaises(RpcError):
+            self.grpc.WriteObject([r1], context)
         context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
 
         status = self.grpc.QueryWriteStatus(
             storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
             context,
         )
-        self.assertEqual(status.persisted_size, UPLOAD_QUANTUM)
+        # Up to the first error offset
+        self.assertEqual(status.persisted_size, 256 * 1024)
 
         # Send a full object upload here to verify testbench can
         # (1) trigger error_after_bytes instructions,
@@ -1203,8 +1209,18 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             ),
             finish_write=True,
         )
-        write = self.grpc.WriteObject([r2], context)
+        with self.assertRaises(RpcError):
+            self.grpc.WriteObject([copy.deepcopy(r2)], context)
         context.abort.assert_called_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+        status = self.grpc.QueryWriteStatus(
+            storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id),
+            context,
+        )
+        # We get another error, though, at the second error offset.
+        self.assertEqual(status.persisted_size, 300 * 1024)
+
+        # Retry r2
+        write = self.grpc.WriteObject([r2], context)
         self.assertIsNotNone(write)
         blob = write.resource
         self.assertEqual(blob.name, "object-name")
