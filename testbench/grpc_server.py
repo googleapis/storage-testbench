@@ -895,23 +895,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 test_id = testbench.common.get_retry_test_id_from_context(context)
                 self.db.dequeue_next_instruction(test_id, "storage.objects.insert")
 
-        return_redirect_token = testbench.common.get_return_redirect_token(
-            self.db, context
-        )
-        if return_redirect_token:
-            detail = any_pb2.Any()
-            detail.Pack(
-                storage_pb2.BidiWriteObjectRedirectedError(
-                    routing_token=return_redirect_token
-                )
-            )
-            status_proto = status_pb2.Status(
-                code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
-                details=[detail],
-            )
-            context.abort_with_status(rpc_status.to_status(status_proto))
-
         return gcs.upload.Upload.process_bidi_write_object_grpc(
             self.db, request_iterator, context
         )

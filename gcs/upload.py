@@ -339,12 +339,34 @@ class Upload(types.SimpleNamespace):
     @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
+
+        def abort_with_redirect_error(routing_token, handle=None, generation=None):
+            err = storage_pb2.BidiWriteObjectRedirectedError()
+            if handle is not None:
+                err.write_handle.handle = handle
+            if generation is not None:
+                err.generation = generation
+            err.routing_token = routing_token
+            detail = any_pb2.Any()
+            detail.Pack(err)
+            status_proto = status_pb2.Status(
+                code=grpc.StatusCode.ABORTED.value[0],
+                message=grpc.StatusCode.ABORTED.value[1],
+                details=[detail],
+            )
+            context.abort_with_status(rpc_status.to_status(status_proto))
+
         # Many tests use a list as the request_iterator
         request_iterator = iter(request_iterator)
         upload, object_checksums, is_resumable, is_appendable = None, None, False, False
         appendable_metadata_in_first_response = False
         try:
             first_msg = next(request_iterator)
+            return_redirect_token = testbench.common.get_return_redirect_token(
+                db, context
+            )
+            if return_redirect_token is not None:
+                abort_with_redirect_error(return_redirect_token)
         except StopIteration:
             # At least one message is required. This function raises.
             testbench.error.invalid("Missing BidiWriteObjectRequest", context)
@@ -402,18 +424,11 @@ class Upload(types.SimpleNamespace):
             testbench.common.get_return_write_handle_and_redirect_token(db, context)
         )
         if return_redirect_token:
-            err = storage_pb2.BidiWriteObjectRedirectedError()
-            err.generation = upload.metadata.generation
-            err.write_handle.handle = bytes(upload.upload_id, "utf-8")
-            err.routing_token = return_redirect_token
-            detail = any_pb2.Any()
-            detail.Pack(err)
-            status_proto = status_pb2.Status(
-                code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
-                details=[detail],
+            abort_with_redirect_error(
+                return_redirect_token,
+                handle=bytes(upload.upload_id, "utf-8"),
+                generation=upload.metadata.generation,
             )
-            context.abort_with_status(rpc_status.to_status(status_proto))
 
         # Treat the rest of the first message as a data request, then keep
         # pulling from request_iterator
