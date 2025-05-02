@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+import copy
 import datetime
 import functools
 import itertools
@@ -30,6 +31,8 @@ import google.protobuf.any_pb2 as any_pb2
 import google.protobuf.empty_pb2 as empty_pb2
 import grpc
 from google.protobuf import field_mask_pb2, json_format, text_format
+import google.protobuf.descriptor as pb_descriptor
+import google.protobuf.message as pb_message
 from google.rpc import status_pb2
 from grpc_status import rpc_status
 
@@ -39,9 +42,39 @@ from google.iam.v1 import iam_policy_pb2
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 
+def _trimmed_content(content):
+    if len(content) > 10:
+        content = content[:7]
+        content += b"..."
+    return content
+
+
+def _trim_content_fields(message):
+    for field, value in list(message.ListFields()):
+        if (
+            field.name == "content"
+            and field.type == pb_descriptor.FieldDescriptor.TYPE_BYTES
+        ):
+            if field.label == pb_descriptor.FieldDescriptor.LABEL_REPEATED:
+                message.content = [_trimmed_content(v) for v in value]
+            else:
+                message.content = _trimmed_content(value)
+            continue
+
+        if field.label == pb_descriptor.FieldDescriptor.LABEL_REPEATED:
+            vals = value
+        else:
+            vals = [value]
+        for v in vals:
+            if isinstance(v, pb_message.Message):
+                _trim_content_fields(v)
+
+
 def _format(message):
+    to_print = copy.deepcopy(message)
+    _trim_content_fields(to_print)
     text = text_format.MessageToString(
-        message, as_one_line=True, use_short_repeated_primitives=True
+        to_print, as_one_line=True, use_short_repeated_primitives=True
     )
     return text[0:255]
 
