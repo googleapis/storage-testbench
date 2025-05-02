@@ -28,11 +28,11 @@ from threading import Timer
 
 import crc32c
 import google.protobuf.any_pb2 as any_pb2
+import google.protobuf.descriptor as pb_descriptor
 import google.protobuf.empty_pb2 as empty_pb2
+import google.protobuf.message as pb_message
 import grpc
 from google.protobuf import field_mask_pb2, json_format, text_format
-import google.protobuf.descriptor as pb_descriptor
-import google.protobuf.message as pb_message
 from google.rpc import status_pb2
 from grpc_status import rpc_status
 
