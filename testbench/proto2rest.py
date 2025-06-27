@@ -170,6 +170,47 @@ def __postprocess_rest_soft_delete_policy(data):
     )
 
 
+def __postprocess_rest_ip_filter(data):
+    if data.get("vpcNetworkSources") is not None:
+        sources = []
+        for source in data.get("vpcNetworkSources"):
+            sources.append(
+                testbench.common.rest_adjust(
+                    source,
+                    {
+                        "allowed_ip_cidr_ranges": lambda x: (
+                            "allowedIpCidrRanges",
+                            x,
+                        )
+                    },
+                )
+            )
+        data["vpcNetworkSources"] = sources
+    return testbench.common.rest_adjust(
+        data,
+        {
+            "public_network_source": lambda x: (
+                "publicNetworkSource",
+                testbench.common.rest_adjust(
+                    x,
+                    {
+                        "allowed_ip_cidr_ranges": lambda x: (
+                            "allowedIpCidrRanges",
+                            x,
+                        )
+                    },
+                ),
+            ),
+            "vpc_network_sources": lambda x: ("vpcNetworkSources", x),
+            "allow_cross_org_vpcs": lambda x: ("allowCrossOrgVpcs", x),
+            "allow_all_service_agent_access": lambda x: (
+                "allowAllServiceAgentAccess",
+                x,
+            ),
+        },
+    )
+
+
 def __postprocess_bucket_rest(data):
     bucket_id = testbench.common.bucket_name_from_proto(data["name"])
     data = testbench.common.rest_adjust(
@@ -208,6 +249,7 @@ def __postprocess_bucket_rest(data):
                 "softDeletePolicy",
                 __postprocess_rest_soft_delete_policy(x),
             ),
+            "ipFilter": lambda x: ("ipFilter", __postprocess_rest_ip_filter(x)),
         },
     )
     data["kind"] = "storage#bucket"

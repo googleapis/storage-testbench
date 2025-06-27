@@ -42,9 +42,6 @@ else
   git -C "${GOOGLEAPIS_ROOT}" checkout master
   git -C "${GOOGLEAPIS_ROOT}" pull
 fi
-for f in "${PWD}"/*.patch ; do
-  env -C "${GOOGLEAPIS_ROOT}" patch -p1 <$PWD/*.patch
-done
 
 for input in "${INPUTS[@]}"; do
   python -m grpc_tools.protoc -I"${GOOGLEAPIS_ROOT}" \

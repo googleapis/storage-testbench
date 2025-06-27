@@ -22,7 +22,7 @@ from google.iam.v1 import policy_pb2 as google_dot_iam_dot_v1_dot_policy__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.storage.v2 import storage_pb2 as google_dot_storage_dot_v2_dot_storage__pb2
 
-GRPC_GENERATED_VERSION = '1.67.0'
+GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -256,7 +256,9 @@ class StorageServicer(object):
     def GetIamPolicy(self, request, context):
         """Gets the IAM policy for a specified bucket.
         The `resource` field in the request should be
-        `projects/_/buckets/{bucket}`.
+        `projects/_/buckets/{bucket}` for a bucket, or
+        `projects/_/buckets/{bucket}/managedFolders/{managedFolder}`
+        for a managed folder.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -265,7 +267,9 @@ class StorageServicer(object):
     def SetIamPolicy(self, request, context):
         """Updates an IAM policy for the specified bucket.
         The `resource` field in the request should be
-        `projects/_/buckets/{bucket}`.
+        `projects/_/buckets/{bucket}` for a bucket, or
+        `projects/_/buckets/{bucket}/managedFolders/{managedFolder}`
+        for a managed folder.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -374,7 +378,26 @@ class StorageServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def BidiReadObject(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """Reads an object's data.
+
+        This is a bi-directional API with the added support for reading multiple
+        ranges within one stream both within and across multiple messages.
+        If the server encountered an error for any of the inputs, the stream will
+        be closed with the relevant error code.
+        Because the API allows for multiple outstanding requests, when the stream
+        is closed the error response will contain a BidiReadObjectRangesError proto
+        in the error extension describing the error for each outstanding read_id.
+
+        **IAM Permissions**:
+
+        Requires `storage.objects.get`
+
+        [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        the bucket.
+
+        This API is currently in preview and is not yet available for general
+        use.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
