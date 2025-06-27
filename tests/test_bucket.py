@@ -750,9 +750,7 @@ class TestBucket(unittest.TestCase):
             ["213.207.0.0/17"],
         )
         self.assertEqual(
-            bucket.metadata.ip_filter.vpc_network_sources[
-                0
-            ].allowed_ip_cidr_ranges,
+            bucket.metadata.ip_filter.vpc_network_sources[0].allowed_ip_cidr_ranges,
             ["192.168.0.0/24"],
         )
         self.assertEqual(
