@@ -720,6 +720,45 @@ class TestBucket(unittest.TestCase):
         bucket, _ = gcs.bucket.Bucket.init(request, None)
         self.assertEqual(bucket.metadata.location, "US-EAST1+US-WEST1")
 
+    def test_ip_filter(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket",
+                    "ipFilter": {
+                        "mode": "mode",
+                        "publicNetworkSource": {
+                            "allowedIpCidrRanges": ["213.207.0.0/17"]
+                        },
+                        "vpcNetworkSources": [
+                            {
+                                "network": "network",
+                                "allowedIpCidrRanges": ["192.168.0.0/24"],
+                            }
+                        ],
+                        "allowCrossOrgVpcs": True,
+                        "allowAllServiceAgentAccess": True,
+                    },
+                }
+            ),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.assertEqual(bucket.metadata.ip_filter.mode, "mode")
+        self.assertEqual(
+            bucket.metadata.ip_filter.public_network_source.allowed_ip_cidr_ranges,
+            ["213.207.0.0/17"],
+        )
+        self.assertEqual(
+            bucket.metadata.ip_filter.vpc_network_sources[0].allowed_ip_cidr_ranges,
+            ["192.168.0.0/24"],
+        )
+        self.assertEqual(
+            bucket.metadata.ip_filter.vpc_network_sources[0].network, "network"
+        )
+        self.assertEqual(bucket.metadata.ip_filter.allow_cross_org_vpcs, True)
+        self.assertEqual(bucket.metadata.ip_filter.allow_all_service_agent_access, True)
+
 
 if __name__ == "__main__":
     unittest.main()

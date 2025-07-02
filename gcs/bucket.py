@@ -48,6 +48,7 @@ class Bucket:
         "location_type",
         "iam_config",
         "rpo",
+        "ip_filter",
     }
 
     def __init__(self, metadata, notifications, iam_policy):
@@ -211,6 +212,49 @@ class Bucket:
         )
 
     @classmethod
+    def __preprocess_rest_ip_filter(cls, ipf):
+        if ipf.get("vpcNetworkSources") is not None:
+            sources = []
+            for source in ipf.get("vpcNetworkSources"):
+                sources.append(
+                    testbench.common.rest_adjust(
+                        source,
+                        {
+                            "network": lambda x: ("network", x),
+                            "allowedIpCidrRanges": lambda x: (
+                                "allowed_ip_cidr_ranges",
+                                x,
+                            ),
+                        },
+                    )
+                )
+            ipf["vpcNetworkSources"] = sources
+        return testbench.common.rest_adjust(
+            ipf,
+            {
+                "mode": lambda x: ("mode", x),
+                "publicNetworkSource": lambda x: (
+                    "public_network_source",
+                    testbench.common.rest_adjust(
+                        x,
+                        {
+                            "allowedIpCidrRanges": lambda x: (
+                                "allowed_ip_cidr_ranges",
+                                x,
+                            )
+                        },
+                    ),
+                ),
+                "vpcNetworkSources": lambda x: ("vpc_network_sources", x),
+                "allowCrossOrgVpcs": lambda x: ("allow_cross_org_vpcs", x),
+                "allowAllServiceAgentAccess": lambda x: (
+                    "allow_all_service_agent_access",
+                    x,
+                ),
+            },
+        )
+
+    @classmethod
     def __preprocess_rest(cls, rest):
         rest = testbench.common.rest_adjust(
             rest,
@@ -241,6 +285,10 @@ class Bucket:
                 "softDeletePolicy": lambda x: (
                     "softDeletePolicy",
                     Bucket.__preprocess_rest_soft_delete_policy(x),
+                ),
+                "ipFilter": lambda x: (
+                    "ipFilter",
+                    Bucket.__preprocess_rest_ip_filter(x),
                 ),
             },
         )

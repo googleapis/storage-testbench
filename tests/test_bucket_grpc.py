@@ -255,6 +255,27 @@ class TestBucketGrpc(unittest.TestCase):
             grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
         )
 
+    def test_init_grpc_ip_filter(self):
+        policy = storage_pb2.Bucket.IpFilter()
+        policy.mode = "mode"
+        policy.public_network_source.allowed_ip_cidr_ranges.append("213.207.0.0/17")
+        vpcs = policy.vpc_network_sources.add()
+        vpcs.network = "network"
+        vpcs.allowed_ip_cidr_ranges.append("192.168.0.0/24")
+        policy.allow_cross_org_vpcs = True
+        policy.allow_all_service_agent_access = True
+        request = storage_pb2.CreateBucketRequest(
+            parent="projects/_",
+            bucket_id="test-bucket-name",
+            bucket=storage_pb2.Bucket(
+                project="project/test-project",
+                ip_filter=policy,
+            ),
+        )
+        context = unittest.mock.Mock()
+        bucket, _ = gcs.bucket.Bucket.init_grpc(request, context)
+        self.assertEqual(bucket.metadata.ip_filter, policy)
+
 
 if __name__ == "__main__":
     unittest.main()
