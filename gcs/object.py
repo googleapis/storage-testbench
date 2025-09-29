@@ -531,6 +531,8 @@ class Object:
             headers["Content-Type"] = "application/octet-stream"
 
         headers["x-goog-stored-content-length"] = self.metadata.size
+        headers["Content-Length"] = self.metadata.size
+        
 
         if self.metadata.content_encoding:
             headers["x-goog-stored-content-encoding"] = self.metadata.content_encoding
