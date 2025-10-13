@@ -667,6 +667,8 @@ class TestObject(unittest.TestCase):
         self.assertIn("x-goog-generation", response.headers)
         self.assertIn("x-goog-metageneration", response.headers)
         self.assertIn("x-goog-storage-class", response.headers)
+        self.assertIn("Content-Length", response.headers)
+        self.assertEqual(response.headers["Content-Length"], str(len(blob.media)))
 
         cases = {
             "bytes=4-9": (b"vexing", "4-9"),
