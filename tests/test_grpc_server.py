@@ -2156,6 +2156,41 @@ class TestGrpc(unittest.TestCase):
             [crc32c.crc32c(media)], [c.metadata.checksums.crc32c for c in chunks]
         )
 
+    def test_bidi_write_object_appendable_takeover(self):
+        # The code depends on `context.abort()` raising an exception.
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name",
+                    name="object-name",
+                ),
+                appendable=True,
+            ),
+            finish_write=False,
+        )
+        streamer = self.grpc.BidiWriteObject([r1], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        first_handle = responses[0].write_handle.handle
+        self.assertGreater(len(first_handle), 0)
+
+        # no write handle - this is a takeover
+        r2 = storage_pb2.BidiWriteObjectRequest(
+            append_object_spec=storage_pb2.AppendObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                generation=responses[0].resource.generation,
+            ),
+        )
+        streamer = self.grpc.BidiWriteObject([r2], context=context)
+        responses = list(streamer)
+        self.assertEqual(len(responses), 1)
+        self.assertGreater(len(responses[0].write_handle.handle), 0)
+        self.assertNotEqual(responses[0].write_handle.handle, first_handle)
+
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
