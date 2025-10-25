@@ -581,7 +581,7 @@ class Upload(types.SimpleNamespace):
             if request.finish_write:
                 upload.complete = True
                 break
-            elif request.state_lookup:
+            elif request.state_lookup or (first_response and is_appendable):
                 # For uploads not yet completed, yield response with persisted_size.
                 # For uploads that are complete, finalize the upload outside the request loop by
                 # storing full object checksums, creating new object, and yielding response with

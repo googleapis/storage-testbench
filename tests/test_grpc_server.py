@@ -1915,14 +1915,17 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r1, r2], context=context)
         responses = list(streamer)
-        # We only expect 1 response with r2 state_lookup set to True.
-        self.assertEqual(len(responses), 1)
+        # We only expect 2 responses. One to the first request even though it
+        # did not specify state_lookup, and another to r2 with state_lookup set
+        # to True.
+        self.assertEqual(len(responses), 2)
         self.assertIsNotNone(responses[0])
         # For appendable objects, we expect the object metadata in the first
         # response rather than the persisted_size.
-        self.assertEqual(responses[0].resource.size, 2 * QUANTUM)
+        self.assertEqual(responses[0].resource.size, QUANTUM)
         self.assertEqual(responses[0].resource.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(responses[0].resource.name, "object-name")
+        self.assertEqual(responses[1].persisted_size, 2 * QUANTUM)
 
         bucket = responses[0].resource.bucket
         name = responses[0].resource.name
