@@ -407,8 +407,8 @@ class Upload(types.SimpleNamespace):
                 generation=first_msg.append_object_spec.generation,
                 preconditions=preconditions,
             )
-            # The real service can handle replayed finalizes, but for simplicity
-            # we always error in the testbench.
+            # TODO: consider handling replayed finalizes. The real service can
+            # handle them, but for simplicity we always error in the testbench.
             if blob.metadata.HasField("finalize_time"):
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
