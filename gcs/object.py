@@ -63,10 +63,12 @@ class Object:
         "custom_time",
     ]
 
-    def __init__(self, metadata, media, bucket):
+    def __init__(self, metadata, media, bucket, *, upload=None, upload_gen=0):
         self.metadata = metadata
         self.media = media
         self.bucket = bucket
+        self.upload = upload
+        self.upload_gen = upload_gen
 
     @classmethod
     def __insert_predefined_acl(cls, metadata, bucket, predefined_acl, context):
@@ -95,7 +97,7 @@ class Object:
         bucket,
         is_destination,
         context,
-        finalize=True,
+        upload=None,
         csek=True,
     ):
         instruction = testbench.common.extract_instruction(request, context)
@@ -121,7 +123,9 @@ class Object:
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
         metadata.update_time.FromDatetime(timestamp)
-        if finalize:
+        upload_gen = 1
+        if upload is None:
+            upload_gen = 0
             metadata.finalize_time.FromDatetime(timestamp)
         if bucket.HasField("retention_policy"):
             retention_expiration_time = timestamp + datetime.timedelta(
@@ -159,7 +163,7 @@ class Object:
         # TODO(#27) - this is probably a bug, cleanup once we move all the code
         bucket.iam_config.uniform_bucket_level_access.enabled = is_uniform
         return (
-            cls(metadata, media, bucket),
+            cls(metadata, media, bucket, upload=upload, upload_gen=upload_gen),
             testbench.common.extract_projection(request, default_projection, context),
         )
 

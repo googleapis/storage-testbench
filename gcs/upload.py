@@ -305,7 +305,7 @@ class Upload(types.SimpleNamespace):
             upload.bucket,
             False,
             context,
-            finalize=False,
+            upload=upload,
         )
 
         def insert_if_latest_is_unfinalized(latest_blob, live_generation):
@@ -372,6 +372,7 @@ class Upload(types.SimpleNamespace):
             testbench.error.invalid("Missing BidiWriteObjectRequest", context)
 
         write_type = first_msg.WhichOneof("first_message")
+        handle = None
         if write_type == "upload_id":  # resumable upload
             upload = db.get_upload(first_msg.upload_id, context)
             if upload.complete:
@@ -393,12 +394,9 @@ class Upload(types.SimpleNamespace):
                 )
                 upload.blob = blob
                 db.insert_upload(upload)
+                handle = str(1).encode("utf-8")
         elif write_type == "append_object_spec":
             is_appendable = True
-            upload = db.get_upload(
-                first_msg.append_object_spec.write_handle.handle.decode("utf-8"),
-                context,
-            )
             preconditions = testbench.common.make_grpc_preconditions(
                 first_msg.append_object_spec
             )
@@ -409,11 +407,44 @@ class Upload(types.SimpleNamespace):
                 generation=first_msg.append_object_spec.generation,
                 preconditions=preconditions,
             )
+            # TODO: consider handling replayed finalizes. The real service can
+            # handle them, but for simplicity we always error in the testbench.
             if blob.metadata.HasField("finalize_time"):
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
                     "Attempting to append to already-finalized object",
                 )
+            if not first_msg.append_object_spec.HasField("write_handle"):
+                # The real service will fence prior writers in this flow. For
+                # simplicity we don't do that in the testbench, but it means
+                # that concurrent writes to the same object can't use the
+                # testbench as a reliable emulation.
+                def bump_upload_gen(db_blob, gen):
+                    nonlocal handle
+                    if gen != blob.metadata.generation:
+                        return db_blob
+                    db_blob.upload_gen += 1
+                    handle = str(db_blob.upload_gen).encode("utf-8")
+                    return db_blob
+
+                blob = db.do_update_object(
+                    blob.bucket.name,
+                    blob.metadata.name,
+                    update_fn=bump_upload_gen,
+                    context=context,
+                    generation=blob.metadata.generation,
+                )
+                appendable_metadata_in_first_response = True
+            elif (
+                int(first_msg.append_object_spec.write_handle.handle.decode("utf-8"))
+                != blob.upload_gen
+            ):
+                # Someone else took over!
+                context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    "A different writer has become the exclusive writer of this object.",
+                )
+            upload = blob.upload
         else:
             testbench.error.invalid("Upload missing a first_message field", context)
 
@@ -424,9 +455,11 @@ class Upload(types.SimpleNamespace):
             testbench.common.get_return_write_handle_and_redirect_token(db, context)
         )
         if return_redirect_token:
+            if handle is None:
+                handle = str(blob.upload_gen).encode("utf-8")
             abort_with_redirect_error(
                 return_redirect_token,
-                handle=bytes(upload.upload_id, "utf-8"),
+                handle=handle,
                 generation=upload.metadata.generation,
             )
 
@@ -440,18 +473,17 @@ class Upload(types.SimpleNamespace):
 
         def response(msg):
             nonlocal first_response
+            nonlocal handle
             if first_response:
                 first_response = False
-                if is_appendable and appendable_metadata_in_first_response:
-                    # For simplicity in the testbench implementation, just use
-                    # the database's upload_id as the appendable handle.
-                    msg.write_handle.handle = bytes(upload.upload_id, "utf-8")
-                    # Appendable objects also exist at creation time. That's not
-                    # fully supported in the testbench, but we can at least
-                    # return the object metadata.
-                    obj_len = msg.persisted_size
-                    msg.resource.CopyFrom(upload.metadata)
-                    msg.resource.size = obj_len
+                if is_appendable:
+                    if handle is not None:
+                        msg.write_handle.handle = handle
+                        handle = None
+                    if appendable_metadata_in_first_response:
+                        obj_len = msg.persisted_size
+                        msg.resource.CopyFrom(upload.metadata)
+                        msg.resource.size = obj_len
             return msg
 
         def update_upload_checksums(upload_metadata, object_checksums):
@@ -605,6 +637,8 @@ class Upload(types.SimpleNamespace):
                         datetime.datetime.now(datetime.timezone.utc)
                     )
                     blob.metadata.size = len(upload.media)
+                    blob.upload = None
+                    blob.upload_gen = 0
                     return blob
 
                 blob = db.do_update_object(
