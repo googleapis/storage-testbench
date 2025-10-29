@@ -759,6 +759,62 @@ class TestBucket(unittest.TestCase):
         self.assertEqual(bucket.metadata.ip_filter.allow_cross_org_vpcs, True)
         self.assertEqual(bucket.metadata.ip_filter.allow_all_service_agent_access, True)
 
+    def test_encryption_enforcement(self):
+        # 1. Test creation with a single config (Google Managed)
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "bucket-enc-test",
+                    "encryption": {
+                        "googleManagedEncryptionEnforcementConfig": {
+                            "restrictionMode": "FULLY_RESTRICTED"
+                        }
+                    },
+                }
+            ),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+
+        self.assertEqual(
+            bucket.metadata.encryption.google_managed_encryption_enforcement_config.restriction_mode,
+            "FULLY_RESTRICTED",
+        )
+        self.assertNotEqual(
+            bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time,
+            timestamp_pb2.Timestamp(),
+        )
+        
+        initial_time = bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time
+
+        # 2. Test patching one config (Customer Managed)
+        request = testbench.common.FakeRequest(
+            args={"bucket": "bucket-enc-test"},
+            data=json.dumps(
+                {
+                    "encryption": {
+                        "customerManagedEncryptionEnforcementConfig": {
+                            "restrictionMode": "NOT_RESTRICTED"
+                        }
+                    }
+                }
+            ),
+        )
+        bucket.patch(request, None)
+        
+        # Verify the patched config is correct
+        self.assertEqual(
+            bucket.metadata.encryption.customer_managed_encryption_enforcement_config.restriction_mode,
+            "NOT_RESTRICTED",
+        )
+        self.assertNotEqual(
+            bucket.metadata.encryption.customer_managed_encryption_enforcement_config.effective_time,
+            timestamp_pb2.Timestamp(),
+        )
+        self.assertEqual(
+            bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time.seconds,
+            initial_time.seconds,
+        )
 
 if __name__ == "__main__":
     unittest.main()

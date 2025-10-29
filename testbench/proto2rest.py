@@ -64,7 +64,20 @@ def __postprocess_rest_iam_configuration(config):
 
 def __postprocess_rest_encryption(enc):
     return testbench.common.rest_adjust(
-        enc, {"defaultKmsKey": lambda x: ("defaultKmsKeyName", x)}
+        enc, {"defaultKmsKey": lambda x: ("defaultKmsKeyName", x),
+        "googleManagedEncryptionEnforcementConfig": lambda x: (
+                "googleManagedEncryptionEnforcementConfig", 
+                x
+            ),
+            "customerManagedEncryptionEnforcementConfig": lambda x: (
+                "customerManagedEncryptionEnforcementConfig", 
+                x
+            ),
+            "customerSuppliedEncryptionEnforcementConfig": lambda x: (
+                "customerSuppliedEncryptionEnforcementConfig", 
+                x
+            )
+        }
     )
 
 
