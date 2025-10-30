@@ -784,7 +784,7 @@ class TestBucket(unittest.TestCase):
             bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time,
             timestamp_pb2.Timestamp(),
         )
-        
+
         initial_time = bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time
 
         # 2. Test patching one config (Customer Managed)
@@ -801,7 +801,7 @@ class TestBucket(unittest.TestCase):
             ),
         )
         bucket.patch(request, None)
-        
+
         # Verify the patched config is correct
         self.assertEqual(
             bucket.metadata.encryption.customer_managed_encryption_enforcement_config.restriction_mode,
@@ -815,6 +815,7 @@ class TestBucket(unittest.TestCase):
             bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time.seconds,
             initial_time.seconds,
         )
+
 
 if __name__ == "__main__":
     unittest.main()
