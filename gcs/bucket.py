@@ -109,9 +109,30 @@ class Bucket:
         return config
 
     @classmethod
+    def __preprocess_rest_enforcement_config(cls, config):
+        """Helper to process the nested enforcement config, removing server-set fields."""
+        config.pop("effectiveTime", None)
+        return config
+
+    @classmethod
     def __preprocess_rest_encryption(cls, enc):
         return testbench.common.rest_adjust(
-            enc, {"defaultKmsKeyName": lambda x: ("defaultKmsKey", x)}
+            enc,
+            {
+                "defaultKmsKeyName": lambda x: ("defaultKmsKey", x),
+                "googleManagedEncryptionEnforcementConfig": lambda x: (
+                    "googleManagedEncryptionEnforcementConfig",
+                    Bucket.__preprocess_rest_enforcement_config(x),
+                ),
+                "customerManagedEncryptionEnforcementConfig": lambda x: (
+                    "customerManagedEncryptionEnforcementConfig",
+                    Bucket.__preprocess_rest_enforcement_config(x),
+                ),
+                "customerSuppliedEncryptionEnforcementConfig": lambda x: (
+                    "customerSuppliedEncryptionEnforcementConfig",
+                    Bucket.__preprocess_rest_enforcement_config(x),
+                ),
+            },
         )
 
     @classmethod
@@ -356,6 +377,22 @@ class Bucket:
             metadata.owner.entity.encode("utf-8")
         ).hexdigest()
         metadata.etag = cls._metadata_etag(metadata)
+        if metadata.encryption.HasField("google_managed_encryption_enforcement_config"):
+            metadata.encryption.google_managed_encryption_enforcement_config.effective_time.FromDatetime(
+                time_created
+            )
+        if metadata.encryption.HasField(
+            "customer_managed_encryption_enforcement_config"
+        ):
+            metadata.encryption.customer_managed_encryption_enforcement_config.effective_time.FromDatetime(
+                time_created
+            )
+        if metadata.encryption.HasField(
+            "customer_supplied_encryption_enforcement_config"
+        ):
+            metadata.encryption.customer_supplied_encryption_enforcement_config.effective_time.FromDatetime(
+                time_created
+            )
 
     @classmethod
     def validate_soft_delete_policy(cls, metadata, context):
@@ -541,6 +578,25 @@ class Bucket:
         self.metadata.metageneration += 1
         self.metadata.update_time.FromDatetime(now)
         self.metadata.etag = Bucket._metadata_etag(self.metadata)
+        if "encryption" in update_mask.paths:
+            if source.encryption.HasField(
+                "google_managed_encryption_enforcement_config"
+            ):
+                self.metadata.encryption.google_managed_encryption_enforcement_config.effective_time.FromDatetime(
+                    now
+                )
+            if source.encryption.HasField(
+                "customer_managed_encryption_enforcement_config"
+            ):
+                self.metadata.encryption.customer_managed_encryption_enforcement_config.effective_time.FromDatetime(
+                    now
+                )
+            if source.encryption.HasField(
+                "customer_supplied_encryption_enforcement_config"
+            ):
+                self.metadata.encryption.customer_supplied_encryption_enforcement_config.effective_time.FromDatetime(
+                    now
+                )
 
     def update(self, request, context):
         # Support for `Bucket: update` over gRPC is not needed (and not implemented).
