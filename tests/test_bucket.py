@@ -785,7 +785,9 @@ class TestBucket(unittest.TestCase):
             timestamp_pb2.Timestamp(),
         )
 
-        initial_time = bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time
+        initial_time = (
+            bucket.metadata.encryption.google_managed_encryption_enforcement_config.effective_time
+        )
 
         # 2. Test patching one config (Customer Managed)
         request = testbench.common.FakeRequest(
