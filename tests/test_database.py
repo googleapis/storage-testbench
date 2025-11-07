@@ -45,16 +45,16 @@ class TestDatabaseBucket(unittest.TestCase):
 
         get_result = database.get_bucket("bucket-name", None)
         self.assertEqual(bucket.metadata, get_result.metadata)
-        list_result = database.list_bucket("test-project-id", "", None)
+        list_result, _ = database.list_bucket("test-project-id", "", None, None)
         names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
-        list_result = database.list_bucket(
-            "test-project-id", "nonexistent-prefix", None
+        list_result, _ = database.list_bucket(
+            "test-project-id", "nonexistent-prefix", None, None
         )
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
         database.delete_bucket("bucket-name", None)
-        list_result = database.list_bucket("test-project-id", "", None)
+        list_result, _ = database.list_bucket("test-project-id", "", None, None)
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
@@ -96,7 +96,7 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({}),
             )
-            database.list_bucket("invalid-project-id-", "", None)
+            database.list_bucket("invalid-project-id-", "", None, None)
         self.assertEqual(rest.exception.code, 400)
 
     def test_delete_not_empty(self):
@@ -128,13 +128,60 @@ class TestDatabaseBucket(unittest.TestCase):
         )
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database.insert_test_bucket()
-        names = {b.metadata.name for b in database.list_bucket("", "", None)}
+        list_result, _ = database.list_bucket("", "", None, None)
+        names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database.insert_test_bucket()
         get_result = database.get_bucket("test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
+
+def test_list_bucket_partial_success(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-1"})
+        )
+        bucket1, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket1, None)
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-2"})
+        )
+        bucket2, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket2, None)
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-unreachable"})
+        )
+        bucket3, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket3, None)
+
+        retry_test = database.insert_retry_test({
+            "storage.buckets.list": ["return-unreachable-buckets-projects/_/buckets/bucket-unreachable"]
+        })
+
+        mock_request = testbench.common.FakeRequest(
+            args={}, headers={"x-retry-test-id": retry_test["id"]}
+        )
+
+        reachable, unreachable = database.list_bucket("test-project", "", mock_request, None, None)
+
+        self.assertEqual(len(reachable), 2)
+        reachable_names = {b.metadata.name for b in reachable}
+        self.assertEqual(reachable_names, {"bucket-1", "bucket-2"})
+
+        self.assertEqual(len(unreachable), 1)
+        self.assertEqual(unreachable, ["projects/_/buckets/bucket-unreachable"])
+
+        mock_request_no_instruction = testbench.common.FakeRequest(
+            args={}, headers={}
+        )
+        reachable, unreachable = database.list_bucket("test-project", "", mock_request_no_instruction, None, None)
+        self.assertEqual(len(reachable), 3)
+        self.assertEqual(len(unreachable), 0)
 
 
 class TestDatabaseObject(unittest.TestCase):

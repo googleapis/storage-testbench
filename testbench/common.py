@@ -53,6 +53,7 @@ retry_return_handle_and_redirection_token = re.compile(
     r"redirect-send-handle-and-token-([a-z\-]+)$"
 )
 retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z\-]+)$")
+retry_return_unreachable_buckets = re.compile(r"return-unreachable-buckets-([a-zA-Z0-9,-_]+)$")
 
 content_range_split = re.compile(r"bytes (\*|[0-9]+-[0-9]+|[0-9]+-\*)\/(\*|[0-9]+)")
 

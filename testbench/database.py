@@ -107,21 +107,44 @@ class Database:
             self._live_generations[bucket.metadata.name] = {}
             self._soft_deleted_objects[bucket.metadata.name] = {}
 
-    def list_bucket(self, project_id, prefix, context):
+    def list_bucket(self, project_id, prefix, request, context):
         with self._resources_lock:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
-            if not prefix:
-                return self._buckets.values()
 
-            prefix = "projects/_/buckets/" + prefix
-            buckets = []
-            for bucket in self._buckets.values():
-                name = bucket.metadata.name
-                if name.find(prefix) == 0:
-                    buckets.append(bucket)
+            reachable_buckets = []
+            unreachable_buckets = []
+            api_method = "storage.buckets.list"
 
-            return buckets
+            unreachable_instruction = None
+            if request:
+                test_id = request.headers.get("x-retry-test-id", None)
+                if test_id and self.has_instructions_retry_test(test_id, api_method):
+                    next_instruction = self.peek_next_instruction(test_id, api_method)
+                    match = testbench.common.retry_return_unreachable_buckets.match(next_instruction)
+                    if match:
+                        unreachable_instruction = match.group(1)
+
+            all_buckets = self._buckets.values()
+
+            if prefix:
+                prefix_str = "projects/_/buckets/" + prefix
+                all_buckets = [b for b in all_buckets if b.metadata.name.startswith(prefix_str)]
+
+            unreachable_names = []
+            if unreachable_instruction:
+                unreachable_names = unreachable_instruction.split(',')
+
+            for bucket in all_buckets:
+                if bucket.metadata.name in unreachable_names:
+                    unreachable_buckets.append(bucket.metadata.name)
+                else:
+                    reachable_buckets.append(bucket)
+
+            if unreachable_instruction:
+                self.dequeue_next_instruction(test_id, api_method)
+
+            return reachable_buckets, unreachable_buckets
 
     def delete_bucket(self, bucket_name, context, preconditions=[]):
         with self._resources_lock:

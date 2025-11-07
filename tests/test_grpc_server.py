@@ -55,13 +55,13 @@ class TestGrpc(unittest.TestCase):
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database = testbench.database.Database.init()
         server = testbench.grpc_server.StorageServicer(database)
-        names = {b.metadata.name for b in database.list_bucket("", "", None)}
+        names = {b.metadata.name for b in database.list_bucket("", "", None, None)[0]}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database = testbench.database.Database.init()
         server = testbench.grpc_server.StorageServicer(database)
-        names = {b.metadata.name for b in database.list_bucket("", "", None)}
+        names = {b.metadata.name for b in database.list_bucket("", "", None, None)[0]}
         self.assertIn("projects/_/buckets/test-bucket-1", names)
 
     def test_delete_bucket(self):
