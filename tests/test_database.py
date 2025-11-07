@@ -172,19 +172,19 @@ class TestDatabaseBucket(unittest.TestCase):
         )
 
         reachable, unreachable = database.list_bucket(
-            "test-project", "", mock_request, None, None
+            "test-project", "", mock_request, None
         )
 
         self.assertEqual(len(reachable), 2)
         reachable_names = {b.metadata.name for b in reachable}
-        self.assertEqual(reachable_names, {"bucket-1", "bucket-2"})
+        self.assertEqual(reachable_names, {"projects/_/buckets/bucket-1", "projects/_/buckets/bucket-2"})
 
         self.assertEqual(len(unreachable), 1)
         self.assertEqual(unreachable, ["projects/_/buckets/bucket-unreachable"])
 
         mock_request_no_instruction = testbench.common.FakeRequest(args={}, headers={})
         reachable, unreachable = database.list_bucket(
-            "test-project", "", mock_request_no_instruction, None, None
+            "test-project", "", mock_request_no_instruction, None
         )
         self.assertEqual(len(reachable), 3)
         self.assertEqual(len(unreachable), 0)
