@@ -177,7 +177,10 @@ class TestDatabaseBucket(unittest.TestCase):
 
         self.assertEqual(len(reachable), 2)
         reachable_names = {b.metadata.name for b in reachable}
-        self.assertEqual(reachable_names, {"projects/_/buckets/bucket-1", "projects/_/buckets/bucket-2"})
+        self.assertEqual(
+            reachable_names,
+            {"projects/_/buckets/bucket-1", "projects/_/buckets/bucket-2"},
+        )
 
         self.assertEqual(len(unreachable), 1)
         self.assertEqual(unreachable, ["projects/_/buckets/bucket-unreachable"])
