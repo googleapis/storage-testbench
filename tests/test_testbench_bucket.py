@@ -435,6 +435,65 @@ class TestTestbenchBucket(unittest.TestCase):
         self.assertIn("isLocked", policy)
         self.assertEqual(policy.get("isLocked"), True)
 
+    def test_list_buckets_partial_success_no_unreachable(self):
+        self.client.post("/storage/v1/b", data=json.dumps({"name": "bucket-1"}))
+        self.client.post("/storage/v1/b", data=json.dumps({"name": "bucket-2"}))
+
+        retry_test = {
+            "instructions": {"storage.buckets.list": ["return-unreachable-buckets-"]}
+        }
+        response = self.client.post("/retry_test", json=retry_test)
+        response_data = json.loads(response.data)
+        test_id = response_data["id"]
+
+        headers = {"x-retry-test-id": test_id}
+        params = {"returnPartialSuccess": "true", "project": "test-project"}
+
+        response = self.client.get(
+            "/storage/v1/b", headers=headers, query_string=params
+        )
+
+        self.assertEqual(response.status_code, 200)
+        list_rest = json.loads(response.data)
+        names = {b.get("name") for b in list_rest.get("items")}
+        self.assertEqual(names, {"bucket-1", "bucket-2"})
+        self.assertIsNone(list_rest.get("unreachable"))
+
+    def test_list_buckets_partial_success_with_unreachable(self):
+        self.client.post("/storage/v1/b", data=json.dumps({"name": "bucket-1"}))
+        self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-unreachable"})
+        )
+
+        retry_test = {
+            "instructions": {
+                "storage.buckets.list": [
+                    "return-unreachable-buckets-projects/_/buckets/bucket-unreachable"
+                ]
+            }
+        }
+        response = self.client.post("/retry_test", json=retry_test)
+        response_data = json.loads(response.data)
+        test_id = response_data["id"]
+
+        headers = {"x-retry-test-id": test_id}
+        params = {"returnPartialSuccess": "true", "project": "test-project"}
+
+        response = self.client.get(
+            "/storage/v1/b", headers=headers, query_string=params
+        )
+
+        self.assertEqual(response.status_code, 200)
+        list_rest = json.loads(response.data)
+
+        names = {b.get("name") for b in list_rest.get("items")}
+        self.assertEqual(names, {"bucket-1"})
+
+        self.assertIn("unreachable", list_rest)
+        self.assertEqual(
+            list_rest["unreachable"], ["projects/_/buckets/bucket-unreachable"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
