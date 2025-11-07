@@ -629,6 +629,7 @@ class Database:
             testbench.common.retry_return_redirection_token,
             testbench.common.retry_return_handle_and_redirection_token,
             testbench.common.retry_expect_redirection_token,
+            testbench.common.retry_return_unreachable_buckets,
         ]:
             if expr.match(failure) is not None:
                 return

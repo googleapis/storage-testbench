@@ -46,9 +46,9 @@ _builder.BuildTopDescriptorsAndMessages(
 )
 if not _descriptor._USE_C_DESCRIPTORS:
     _globals["DESCRIPTOR"]._loaded_options = None
-    _globals["DESCRIPTOR"]._serialized_options = (
-        b"\n\021com.google.iam.v1B\013PolicyProtoP\001Z)cloud.google.com/go/iam/apiv1/iampb;iampb\370\001\001\252\002\023Google.Cloud.Iam.V1\312\002\023Google\\Cloud\\Iam\\V1"
-    )
+    _globals[
+        "DESCRIPTOR"
+    ]._serialized_options = b"\n\021com.google.iam.v1B\013PolicyProtoP\001Z)cloud.google.com/go/iam/apiv1/iampb;iampb\370\001\001\252\002\023Google.Cloud.Iam.V1\312\002\023Google\\Cloud\\Iam\\V1"
     _globals["_POLICY"]._serialized_start = 70
     _globals["_POLICY"]._serialized_end = 202
     _globals["_BINDING"]._serialized_start = 204

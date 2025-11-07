@@ -52,9 +52,9 @@ _builder.BuildTopDescriptorsAndMessages(
 )
 if not _descriptor._USE_C_DESCRIPTORS:
     _globals["DESCRIPTOR"]._loaded_options = None
-    _globals["DESCRIPTOR"]._serialized_options = (
-        b"\n\021com.google.iam.v1B\016IamPolicyProtoP\001Z)cloud.google.com/go/iam/apiv1/iampb;iampb\252\002\023Google.Cloud.Iam.V1\312\002\023Google\\Cloud\\Iam\\V1"
-    )
+    _globals[
+        "DESCRIPTOR"
+    ]._serialized_options = b"\n\021com.google.iam.v1B\016IamPolicyProtoP\001Z)cloud.google.com/go/iam/apiv1/iampb;iampb\252\002\023Google.Cloud.Iam.V1\312\002\023Google\\Cloud\\Iam\\V1"
     _globals["_SETIAMPOLICYREQUEST"].fields_by_name["resource"]._loaded_options = None
     _globals["_SETIAMPOLICYREQUEST"].fields_by_name[
         "resource"

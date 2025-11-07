@@ -57,9 +57,9 @@ _builder.BuildTopDescriptorsAndMessages(
 )
 if not _descriptor._USE_C_DESCRIPTORS:
     _globals["DESCRIPTOR"]._loaded_options = None
-    _globals["DESCRIPTOR"]._serialized_options = (
-        b"\n\025com.google.storage.v2B\014StorageProtoP\001Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\352Ax\n!cloudkms.googleapis.com/CryptoKey\022Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}"
-    )
+    _globals[
+        "DESCRIPTOR"
+    ]._serialized_options = b"\n\025com.google.storage.v2B\014StorageProtoP\001Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\352Ax\n!cloudkms.googleapis.com/CryptoKey\022Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}"
     _globals["_DELETEBUCKETREQUEST"].fields_by_name["name"]._loaded_options = None
     _globals["_DELETEBUCKETREQUEST"].fields_by_name[
         "name"
@@ -1035,9 +1035,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
     _globals["_BUCKET"].fields_by_name["ip_filter"]._loaded_options = None
     _globals["_BUCKET"].fields_by_name["ip_filter"]._serialized_options = b"\340A\001"
     _globals["_BUCKET"]._loaded_options = None
-    _globals["_BUCKET"]._serialized_options = (
-        b"\352AU\n\035storage.googleapis.com/Bucket\022#projects/{project}/buckets/{bucket}*\007buckets2\006bucket"
-    )
+    _globals[
+        "_BUCKET"
+    ]._serialized_options = b"\352AU\n\035storage.googleapis.com/Bucket\022#projects/{project}/buckets/{bucket}*\007buckets2\006bucket"
     _globals["_BUCKETACCESSCONTROL"].fields_by_name["role"]._loaded_options = None
     _globals["_BUCKETACCESSCONTROL"].fields_by_name[
         "role"
@@ -1257,9 +1257,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
     _globals["_OWNER"].fields_by_name["entity_id"]._loaded_options = None
     _globals["_OWNER"].fields_by_name["entity_id"]._serialized_options = b"\340A\001"
     _globals["_STORAGE"]._loaded_options = None
-    _globals["_STORAGE"]._serialized_options = (
-        b"\312A\026storage.googleapis.com\322A\212\002https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_write"
-    )
+    _globals[
+        "_STORAGE"
+    ]._serialized_options = b"\312A\026storage.googleapis.com\322A\212\002https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_write"
     _globals["_STORAGE"].methods_by_name["DeleteBucket"]._loaded_options = None
     _globals["_STORAGE"].methods_by_name[
         "DeleteBucket"
