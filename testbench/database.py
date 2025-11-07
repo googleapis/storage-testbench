@@ -121,7 +121,9 @@ class Database:
                 test_id = request.headers.get("x-retry-test-id", None)
                 if test_id and self.has_instructions_retry_test(test_id, api_method):
                     next_instruction = self.peek_next_instruction(test_id, api_method)
-                    match = testbench.common.retry_return_unreachable_buckets.match(next_instruction)
+                    match = testbench.common.retry_return_unreachable_buckets.match(
+                        next_instruction
+                    )
                     if match:
                         unreachable_instruction = match.group(1)
 
@@ -129,11 +131,13 @@ class Database:
 
             if prefix:
                 prefix_str = "projects/_/buckets/" + prefix
-                all_buckets = [b for b in all_buckets if b.metadata.name.startswith(prefix_str)]
+                all_buckets = [
+                    b for b in all_buckets if b.metadata.name.startswith(prefix_str)
+                ]
 
             unreachable_names = []
             if unreachable_instruction:
-                unreachable_names = unreachable_instruction.split(',')
+                unreachable_names = unreachable_instruction.split(",")
 
             for bucket in all_buckets:
                 if bucket.metadata.name in unreachable_names:

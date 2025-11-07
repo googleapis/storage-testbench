@@ -137,7 +137,7 @@ class TestDatabaseBucket(unittest.TestCase):
         get_result = database.get_bucket("test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
 
-def test_list_bucket_partial_success(self):
+    def test_list_bucket_partial_success(self):
         database = testbench.database.Database.init()
         database.insert_supported_methods(["storage.buckets.list"])
 
@@ -159,15 +159,21 @@ def test_list_bucket_partial_success(self):
         bucket3, _ = gcs.bucket.Bucket.init(request, None)
         database.insert_bucket(bucket3, None)
 
-        retry_test = database.insert_retry_test({
-            "storage.buckets.list": ["return-unreachable-buckets-projects/_/buckets/bucket-unreachable"]
-        })
+        retry_test = database.insert_retry_test(
+            {
+                "storage.buckets.list": [
+                    "return-unreachable-buckets-projects/_/buckets/bucket-unreachable"
+                ]
+            }
+        )
 
         mock_request = testbench.common.FakeRequest(
             args={}, headers={"x-retry-test-id": retry_test["id"]}
         )
 
-        reachable, unreachable = database.list_bucket("test-project", "", mock_request, None, None)
+        reachable, unreachable = database.list_bucket(
+            "test-project", "", mock_request, None, None
+        )
 
         self.assertEqual(len(reachable), 2)
         reachable_names = {b.metadata.name for b in reachable}
@@ -176,10 +182,10 @@ def test_list_bucket_partial_success(self):
         self.assertEqual(len(unreachable), 1)
         self.assertEqual(unreachable, ["projects/_/buckets/bucket-unreachable"])
 
-        mock_request_no_instruction = testbench.common.FakeRequest(
-            args={}, headers={}
+        mock_request_no_instruction = testbench.common.FakeRequest(args={}, headers={})
+        reachable, unreachable = database.list_bucket(
+            "test-project", "", mock_request_no_instruction, None, None
         )
-        reachable, unreachable = database.list_bucket("test-project", "", mock_request_no_instruction, None, None)
         self.assertEqual(len(reachable), 3)
         self.assertEqual(len(unreachable), 0)
 

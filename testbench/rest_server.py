@@ -203,7 +203,9 @@ def bucket_list():
     projection = flask.request.args.get("projection", "noAcl")
     fields = flask.request.args.get("fields", None)
     prefix = flask.request.args.get("prefix", "")
-    return_partial_success = flask.request.args.get("returnPartialSuccess", "false").lower() == "true"
+    return_partial_success = (
+        flask.request.args.get("returnPartialSuccess", "false").lower() == "true"
+    )
     if return_partial_success:
         items, unreachable = db.list_bucket(project, prefix, flask.request, None)
     else:

@@ -258,7 +258,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 return b
 
         buckets = [
-            filter(b.metadata) for b in self.db.list_bucket(project, prefix, None, context)[0]
+            filter(b.metadata)
+            for b in self.db.list_bucket(project, prefix, None, context)[0]
         ]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
 
@@ -446,7 +447,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(

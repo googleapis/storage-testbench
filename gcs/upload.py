@@ -281,15 +281,15 @@ class Upload(types.SimpleNamespace):
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
             return upload, is_resumable
         if object_checksums.HasField("crc32c"):
-            upload.metadata.metadata[
-                "x_emulator_crc32c"
-            ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+            upload.metadata.metadata["x_emulator_crc32c"] = (
+                testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+            )
         else:
             upload.metadata.metadata["x_emulator_no_crc32c"] = "true"
         if object_checksums.md5_hash is not None and object_checksums.md5_hash != b"":
-            upload.metadata.metadata[
-                "x_emulator_md5"
-            ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+            upload.metadata.metadata["x_emulator_md5"] = (
+                testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+            )
         else:
             upload.metadata.metadata["x_emulator_no_md5"] = "true"
         return upload, is_resumable
@@ -492,18 +492,18 @@ class Upload(types.SimpleNamespace):
                 upload_metadata.metadata["x_emulator_no_md5"] = "true"
             else:
                 if object_checksums.HasField("crc32c"):
-                    upload_metadata.metadata[
-                        "x_emulator_crc32c"
-                    ] = testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+                    upload_metadata.metadata["x_emulator_crc32c"] = (
+                        testbench.common.rest_crc32c_from_proto(object_checksums.crc32c)
+                    )
                 else:
                     upload_metadata.metadata["x_emulator_no_crc32c"] = "true"
                 if (
                     object_checksums.md5_hash is not None
                     and object_checksums.md5_hash != b""
                 ):
-                    upload_metadata.metadata[
-                        "x_emulator_md5"
-                    ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+                    upload_metadata.metadata["x_emulator_md5"] = (
+                        testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
+                    )
                 else:
                     upload_metadata.metadata["x_emulator_no_md5"] = "true"
 
