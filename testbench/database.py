@@ -112,23 +112,7 @@ class Database:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
 
-            reachable_buckets = []
-            unreachable_buckets = []
-            api_method = "storage.buckets.list"
-
-            unreachable_instruction = None
-            if request:
-                test_id = request.headers.get("x-retry-test-id", None)
-                if test_id and self.has_instructions_retry_test(test_id, api_method):
-                    next_instruction = self.peek_next_instruction(test_id, api_method)
-                    match = testbench.common.retry_return_unreachable_buckets.match(
-                        next_instruction
-                    )
-                    if match:
-                        unreachable_instruction = match.group(1)
-
             all_buckets = self._buckets.values()
-
             if prefix:
                 prefix_str = "projects/_/buckets/" + prefix
                 all_buckets = [
@@ -136,17 +120,36 @@ class Database:
                 ]
 
             unreachable_names = []
-            if unreachable_instruction:
-                unreachable_names = unreachable_instruction.split(",")
+            if request:
+                test_id = request.headers.get("x-retry-test-id", None)
+                api_method = "storage.buckets.list"
+                if test_id and self.has_instructions_retry_test(test_id, api_method):
+                    next_instruction = self.peek_next_instruction(test_id, api_method)
+                    match = testbench.common.retry_return_unreachable_buckets.match(
+                        next_instruction
+                    )
+                    if match:
+                        unreachable_names = match.group(1).split(",")
+                        self.dequeue_next_instruction(test_id, api_method)
 
+            if (
+                not unreachable_names
+                and request
+                and request.args.get("returnPartialSuccess", "false").lower() == "true"
+            ):
+                unreachable_names = [
+                    b.metadata.name
+                    for b in all_buckets
+                    if "unreachable" in b.metadata.name
+                ]
+
+            reachable_buckets = []
+            unreachable_buckets = []
             for bucket in all_buckets:
                 if bucket.metadata.name in unreachable_names:
                     unreachable_buckets.append(bucket.metadata.name)
                 else:
                     reachable_buckets.append(bucket)
-
-            if unreachable_instruction:
-                self.dequeue_next_instruction(test_id, api_method)
 
             return reachable_buckets, unreachable_buckets
 

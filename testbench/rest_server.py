@@ -209,7 +209,7 @@ def bucket_list():
     if return_partial_success:
         items, unreachable = db.list_bucket(project, prefix, flask.request, None)
     else:
-        items, unreachable = db.list_bucket(project, prefix, None, None)
+        items, unreachable = db.list_bucket(project, prefix, request=None, context=None)
 
     response = {
         "kind": "storage#buckets",
