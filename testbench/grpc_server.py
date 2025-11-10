@@ -233,6 +233,31 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         project = request.parent[len("projects/") :]
         prefix = request.prefix
 
+        all_buckets, _ = self.db.list_bucket(project, prefix, None, context)
+
+        unreachable_names = []
+        if request.return_partial_success:
+            test_id = testbench.common.get_retry_test_id_from_context(context)
+            if test_id and self.db.has_instructions_retry_test(
+                test_id, "storage.buckets.list", "GRPC"
+            ):
+                next_instruction = self.db.peek_next_instruction(
+                    test_id, "storage.buckets.list"
+                )
+                match = testbench.common.retry_return_unreachable_buckets.match(
+                    next_instruction
+                )
+                if match:
+                    unreachable_names = match.group(1).split(",")
+                    self.db.dequeue_next_instruction(test_id, "storage.buckets.list")
+
+        reachable_buckets = [
+            b for b in all_buckets if b.metadata.name not in unreachable_names
+        ]
+        unreachable_buckets = [
+            b.metadata.name for b in all_buckets if b.metadata.name in unreachable_names
+        ]
+
         if len(request.read_mask.paths) == 0:
             # By default we need to filter out `acl`, `default_object_acl`, and `owner`
             def filter(bucket):
@@ -257,11 +282,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 request.read_mask.MergeMessage(bucket, b)
                 return b
 
-        buckets = [
-            filter(b.metadata)
-            for b in self.db.list_bucket(project, prefix, None, context)[0]
-        ]
-        return storage_pb2.ListBucketsResponse(buckets=buckets)
+        buckets = [filter(b.metadata) for b in reachable_buckets]
+        return storage_pb2.ListBucketsResponse(
+            buckets=buckets, unreachable=unreachable_buckets
+        )
 
     @retry_test(method="storage.buckets.lockRetentionPolicy")
     def LockBucketRetentionPolicy(self, request, context):
