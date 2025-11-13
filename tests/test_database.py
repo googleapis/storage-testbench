@@ -137,26 +137,36 @@ class TestDatabaseBucket(unittest.TestCase):
         get_result = database.get_bucket("test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
 
-    def test_list_bucket_partial_success_retry_instruction(self):
+    def test_list_bucket_partial_success_retry_instruction_multiple(self):
+        """Test that retry instructions with multiple buckets work correctly."""
         database = testbench.database.Database.init()
         database.insert_supported_methods(["storage.buckets.list"])
 
         request = testbench.common.FakeRequest(
             args={}, data=json.dumps({"name": "bucket-1"})
         )
-        bucket1, _ = gcs.bucket.Bucket.init(request, None)
-        database.insert_bucket(bucket1, None)
+        database.insert_bucket(gcs.bucket.Bucket.init(request, None)[0], None)
 
         request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"name": "bucket-unreachable"})
+            args={}, data=json.dumps({"name": "bucket-2"})
         )
-        bucket2, _ = gcs.bucket.Bucket.init(request, None)
-        database.insert_bucket(bucket2, None)
+        database.insert_bucket(
+            gcs.bucket.Bucket.init(request, None)[0],
+            None,
+        )
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-3"})
+        )
+        database.insert_bucket(
+            gcs.bucket.Bucket.init(request, None)[0],
+            None,
+        )
 
         retry_test = database.insert_retry_test(
             {
                 "storage.buckets.list": [
-                    "return-unreachable-buckets-projects/_/buckets/bucket-unreachable"
+                    "return-unreachable-buckets-projects/_/buckets/bucket-2,projects/_/buckets/bucket-3"
                 ]
             }
         )
@@ -170,8 +180,9 @@ class TestDatabaseBucket(unittest.TestCase):
 
         self.assertEqual(len(reachable), 1)
         self.assertEqual(reachable[0].metadata.name, "projects/_/buckets/bucket-1")
-        self.assertEqual(len(unreachable), 1)
-        self.assertEqual(unreachable[0], "projects/_/buckets/bucket-unreachable")
+        self.assertEqual(len(unreachable), 2)
+        self.assertIn("projects/_/buckets/bucket-2", unreachable)
+        self.assertIn("projects/_/buckets/bucket-3", unreachable)
 
     def test_list_bucket_partial_success_naming_convention(self):
         database = testbench.database.Database.init()

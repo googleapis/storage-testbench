@@ -108,6 +108,35 @@ class Database:
             self._soft_deleted_objects[bucket.metadata.name] = {}
 
     def list_bucket(self, project_id, prefix, request, context):
+        """Lists buckets, with optional support for partial success.
+
+        This method implements the logic for the `buckets.list` API. It can
+        return a list of reachable buckets and a list of unreachable buckets
+        based on the request parameters.
+
+        The determination of which buckets are unreachable is done in two ways,
+        in order of precedence:
+        1. Retry Test Instruction: If the request contains an `x-retry-test-id`
+           header with a `return-unreachable-buckets-` instruction, that
+           instruction will be used to determine the unreachable buckets.
+        2. Naming Convention: If no retry instruction is present and the
+           `returnPartialSuccess` query parameter is `true`, any bucket with
+           `-unreachable` in its name will be treated as unreachable.
+
+        Args:
+            project_id (str): The project ID to list buckets for.
+            prefix (str): The prefix to filter buckets by.
+            request (werkzeug.wrappers.Request or None): The incoming request
+                object. This is used to inspect the headers and query
+                parameters. Can be None for gRPC requests.
+            context (grpc.ServicerContext or None): The gRPC context, used for
+                gRPC requests.
+
+        Returns:
+            tuple[list[gcs.bucket.Bucket], list[str]]: A tuple containing a
+                list of the reachable `Bucket` objects and a list of the names
+                of the unreachable buckets.
+        """
         with self._resources_lock:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
