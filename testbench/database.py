@@ -107,21 +107,80 @@ class Database:
             self._live_generations[bucket.metadata.name] = {}
             self._soft_deleted_objects[bucket.metadata.name] = {}
 
-    def list_bucket(self, project_id, prefix, context):
+    def list_bucket(self, project_id, prefix, request, context):
+        """Lists buckets, with optional support for partial success.
+
+        This method implements the logic for the `buckets.list` API. It can
+        return a list of reachable buckets and a list of unreachable buckets
+        based on the request parameters.
+
+        The determination of which buckets are unreachable is done in two ways,
+        in order of precedence:
+        1. Retry Test Instruction: If the request contains an `x-retry-test-id`
+           header with a `return-unreachable-buckets-` instruction, that
+           instruction will be used to determine the unreachable buckets.
+        2. Naming Convention: If no retry instruction is present and the
+           `returnPartialSuccess` query parameter is `true`, any bucket with
+           `-unreachable` in its name will be treated as unreachable.
+
+        Args:
+            project_id (str): The project ID to list buckets for.
+            prefix (str): The prefix to filter buckets by.
+            request (werkzeug.wrappers.Request or None): The incoming request
+                object. This is used to inspect the headers and query
+                parameters. Can be None for gRPC requests.
+            context (grpc.ServicerContext or None): The gRPC context, used for
+                gRPC requests.
+
+        Returns:
+            tuple[list[gcs.bucket.Bucket], list[str]]: A tuple containing a
+                list of the reachable `Bucket` objects and a list of the names
+                of the unreachable buckets.
+        """
         with self._resources_lock:
             if project_id is None or project_id.endswith("-"):
                 testbench.error.invalid("Project id %s" % project_id, context)
-            if not prefix:
-                return self._buckets.values()
 
-            prefix = "projects/_/buckets/" + prefix
-            buckets = []
-            for bucket in self._buckets.values():
-                name = bucket.metadata.name
-                if name.find(prefix) == 0:
-                    buckets.append(bucket)
+            all_buckets = self._buckets.values()
+            if prefix:
+                prefix_str = "projects/_/buckets/" + prefix
+                all_buckets = [
+                    b for b in all_buckets if b.metadata.name.startswith(prefix_str)
+                ]
 
-            return buckets
+            unreachable_names = []
+            if request:
+                test_id = request.headers.get("x-retry-test-id", None)
+                api_method = "storage.buckets.list"
+                if test_id and self.has_instructions_retry_test(test_id, api_method):
+                    next_instruction = self.peek_next_instruction(test_id, api_method)
+                    match = testbench.common.retry_return_unreachable_buckets.match(
+                        next_instruction
+                    )
+                    if match:
+                        unreachable_names = match.group(1).split(",")
+                        self.dequeue_next_instruction(test_id, api_method)
+
+            if (
+                not unreachable_names
+                and request
+                and request.args.get("returnPartialSuccess", "false").lower() == "true"
+            ):
+                unreachable_names = [
+                    b.metadata.name
+                    for b in all_buckets
+                    if "unreachable" in b.metadata.name
+                ]
+
+            reachable_buckets = []
+            unreachable_buckets = []
+            for bucket in all_buckets:
+                if bucket.metadata.name in unreachable_names:
+                    unreachable_buckets.append(bucket.metadata.name)
+                else:
+                    reachable_buckets.append(bucket)
+
+            return reachable_buckets, unreachable_buckets
 
     def delete_bucket(self, bucket_name, context, preconditions=[]):
         with self._resources_lock:
@@ -602,6 +661,7 @@ class Database:
             testbench.common.retry_return_redirection_token,
             testbench.common.retry_return_handle_and_redirection_token,
             testbench.common.retry_expect_redirection_token,
+            testbench.common.retry_return_unreachable_buckets,
         ]:
             if expr.match(failure) is not None:
                 return

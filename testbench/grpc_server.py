@@ -258,7 +258,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 return b
 
         buckets = [
-            filter(b.metadata) for b in self.db.list_bucket(project, prefix, context)
+            filter(b.metadata)
+            for b in self.db.list_bucket(project, prefix, None, context)[0]
         ]
         return storage_pb2.ListBucketsResponse(buckets=buckets)
 

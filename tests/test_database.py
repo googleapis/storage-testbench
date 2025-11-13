@@ -45,16 +45,16 @@ class TestDatabaseBucket(unittest.TestCase):
 
         get_result = database.get_bucket("bucket-name", None)
         self.assertEqual(bucket.metadata, get_result.metadata)
-        list_result = database.list_bucket("test-project-id", "", None)
+        list_result, _ = database.list_bucket("test-project-id", "", None, None)
         names = {b.metadata.bucket_id for b in list_result}
         self.assertEqual(names, {"bucket-name"})
-        list_result = database.list_bucket(
-            "test-project-id", "nonexistent-prefix", None
+        list_result, _ = database.list_bucket(
+            "test-project-id", "nonexistent-prefix", None, None
         )
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
         database.delete_bucket("bucket-name", None)
-        list_result = database.list_bucket("test-project-id", "", None)
+        list_result, _ = database.list_bucket("test-project-id", "", None, None)
         names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
@@ -96,7 +96,7 @@ class TestDatabaseBucket(unittest.TestCase):
                 args={},
                 data=json.dumps({}),
             )
-            database.list_bucket("invalid-project-id-", "", None)
+            database.list_bucket("invalid-project-id-", "", None, None)
         self.assertEqual(rest.exception.code, 400)
 
     def test_delete_not_empty(self):
@@ -128,13 +128,113 @@ class TestDatabaseBucket(unittest.TestCase):
         )
         os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
         database.insert_test_bucket()
-        names = {b.metadata.name for b in database.list_bucket("", "", None)}
+        list_result, _ = database.list_bucket("", "", None, None)
+        names = {b.metadata.name for b in list_result}
         self.assertEqual(names, set())
 
         os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket-1"
         database.insert_test_bucket()
         get_result = database.get_bucket("test-bucket-1", None)
         self.assertEqual(get_result.metadata.bucket_id, "test-bucket-1")
+
+    def test_list_bucket_partial_success_retry_instruction_multiple(self):
+        """Test that retry instructions with multiple buckets work correctly."""
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-1"})
+        )
+        database.insert_bucket(gcs.bucket.Bucket.init(request, None)[0], None)
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-2"})
+        )
+        database.insert_bucket(
+            gcs.bucket.Bucket.init(request, None)[0],
+            None,
+        )
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-3"})
+        )
+        database.insert_bucket(
+            gcs.bucket.Bucket.init(request, None)[0],
+            None,
+        )
+
+        retry_test = database.insert_retry_test(
+            {
+                "storage.buckets.list": [
+                    "return-unreachable-buckets-projects/_/buckets/bucket-2,projects/_/buckets/bucket-3"
+                ]
+            }
+        )
+        mock_request = testbench.common.FakeRequest(
+            args={"returnPartialSuccess": "true"},
+            headers={"x-retry-test-id": retry_test["id"]},
+        )
+        reachable, unreachable = database.list_bucket(
+            "test-project", "", mock_request, None
+        )
+
+        self.assertEqual(len(reachable), 1)
+        self.assertEqual(reachable[0].metadata.name, "projects/_/buckets/bucket-1")
+        self.assertEqual(len(unreachable), 2)
+        self.assertIn("projects/_/buckets/bucket-2", unreachable)
+        self.assertIn("projects/_/buckets/bucket-3", unreachable)
+
+    def test_list_bucket_partial_success_naming_convention(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-1"})
+        )
+        bucket1, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket1, None)
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-unreachable"})
+        )
+        bucket2, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket2, None)
+
+        mock_request = testbench.common.FakeRequest(
+            args={"returnPartialSuccess": "true"}, headers={}
+        )
+        reachable, unreachable = database.list_bucket(
+            "test-project", "", mock_request, None
+        )
+
+        self.assertEqual(len(reachable), 1)
+        self.assertEqual(reachable[0].metadata.name, "projects/_/buckets/bucket-1")
+        self.assertEqual(len(unreachable), 1)
+        self.assertEqual(unreachable[0], "projects/_/buckets/bucket-unreachable")
+
+    def test_list_bucket_no_partial_success(self):
+        database = testbench.database.Database.init()
+        database.insert_supported_methods(["storage.buckets.list"])
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-1"})
+        )
+        bucket1, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket1, None)
+
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-unreachable"})
+        )
+        bucket2, _ = gcs.bucket.Bucket.init(request, None)
+        database.insert_bucket(bucket2, None)
+
+        mock_request = testbench.common.FakeRequest(args={}, headers={})
+        reachable, unreachable = database.list_bucket(
+            "test-project", "", mock_request, None
+        )
+
+        self.assertEqual(len(reachable), 2)
+        self.assertEqual(len(unreachable), 0)
 
 
 class TestDatabaseObject(unittest.TestCase):
