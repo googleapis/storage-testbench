@@ -148,7 +148,7 @@ class TestGrpc(unittest.TestCase):
     def test_list_buckets(self):
         ids = ["bucket-3", "bucket-2", "bucket-1"]
         for id in ids:
-            context = unittest.mock.Mock()
+            context = self.mock_context()
             response = self.grpc.CreateBucket(
                 storage_pb2.CreateBucketRequest(
                     parent="projects/test-project",
@@ -175,7 +175,7 @@ class TestGrpc(unittest.TestCase):
     def test_list_buckets_all(self):
         ids = ["bucket-3", "bucket-2", "bucket-1"]
         for id in ids:
-            context = unittest.mock.Mock()
+            context = self.mock_context()
             response = self.grpc.CreateBucket(
                 storage_pb2.CreateBucketRequest(
                     parent="projects/test-project",
@@ -206,7 +206,7 @@ class TestGrpc(unittest.TestCase):
     def test_list_buckets_filter(self):
         ids = ["bucket-3", "bucket-2", "bucket-1"]
         for id in ids:
-            context = unittest.mock.Mock()
+            context = self.mock_context()
             response = self.grpc.CreateBucket(
                 storage_pb2.CreateBucketRequest(
                     parent="projects/test-project",
@@ -236,7 +236,7 @@ class TestGrpc(unittest.TestCase):
     def test_list_buckets_prefix(self):
         ids = ["a-bucket-3", "b-bucket-2", "a-bucket-1"]
         for id in ids:
-            context = unittest.mock.Mock()
+            context = self.mock_context()
             response = self.grpc.CreateBucket(
                 storage_pb2.CreateBucketRequest(
                     parent="projects/test-project",
@@ -2511,6 +2511,53 @@ class TestGrpc(unittest.TestCase):
         self.assertIsInstance(abort_status, grpc_status.rpc_status._Status)
         self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
         self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
+
+    def test_list_buckets_partial_success(self):
+        self.db.clear()
+        self.db.insert_supported_methods(["storage.buckets.list"])
+
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="bucket-1",
+                bucket=storage_pb2.Bucket(),
+            ),
+            self.mock_context(),
+        )
+        self.grpc.CreateBucket(
+            storage_pb2.CreateBucketRequest(
+                parent="projects/test-project",
+                bucket_id="bucket-unreachable",
+                bucket=storage_pb2.Bucket(),
+            ),
+            self.mock_context(),
+        )
+
+        retry_test = self.db.insert_retry_test(
+            {
+                "storage.buckets.list": [
+                    "return-unreachable-buckets-projects/_/buckets/bucket-unreachable"
+                ]
+            },
+            transport="GRPC",
+        )
+
+        request = storage_pb2.ListBucketsRequest(
+            parent="projects/test-project", return_partial_success=True
+        )
+
+        context = self.mock_context()
+        context.invocation_metadata = lambda: (("x-retry-test-id", retry_test["id"]),)
+
+        response = self.grpc.ListBuckets(request, context)
+
+        self.assertEqual(len(response.buckets), 1)
+        self.assertEqual(response.buckets[0].bucket_id, "bucket-1")
+
+        self.assertEqual(len(response.unreachable), 1)
+        self.assertEqual(
+            response.unreachable[0], "projects/_/buckets/bucket-unreachable"
+        )
 
 
 if __name__ == "__main__":
