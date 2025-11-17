@@ -251,12 +251,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     unreachable_names = match.group(1).split(",")
                     self.db.dequeue_next_instruction(test_id, "storage.buckets.list")
 
-        reachable_buckets = [
-            b for b in all_buckets if b.metadata.name not in unreachable_names
-        ]
-        unreachable_buckets = [
-            b.metadata.name for b in all_buckets if b.metadata.name in unreachable_names
-        ]
+        reachable_buckets = []
+        unreachable_buckets = []
+        for b in all_buckets:
+            if b.metadata.name in unreachable_names:
+                unreachable_buckets.append(b.metadata.name)
+            else:
+                reachable_buckets.append(b)
 
         if len(request.read_mask.paths) == 0:
             # By default we need to filter out `acl`, `default_object_acl`, and `owner`
