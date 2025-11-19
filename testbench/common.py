@@ -30,12 +30,12 @@ from functools import wraps
 import flask
 import scalpl
 from google.protobuf import timestamp_pb2
+from google.storage.v2 import storage_pb2
 from grpc import StatusCode
 from requests_toolbelt import MultipartDecoder
 from requests_toolbelt.multipart.decoder import ImproperBodyPartContentException
 
 import testbench
-from google.storage.v2 import storage_pb2
 
 re_remove_index = re.compile(r"\[\d+\]+|^[0-9]+")
 retry_return_error_code = re.compile(r"return-([0-9]+)$")

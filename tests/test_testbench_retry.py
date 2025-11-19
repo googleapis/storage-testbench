@@ -29,10 +29,10 @@ import unittest.mock
 import crc32c
 from grpc import RpcError, StatusCode
 from grpc_status import rpc_status
+from google.storage.v2 import storage_pb2
 
 import gcs
 import testbench
-from google.storage.v2 import storage_pb2
 from testbench import rest_server
 from tests.format_multipart_upload import format_multipart_upload
 

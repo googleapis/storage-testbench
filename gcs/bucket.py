@@ -21,11 +21,12 @@ import json
 import re
 import uuid
 
-from google.protobuf import field_mask_pb2, json_format
+from google.iam.v1 import policy_pb2
+from google.protobuf import field_mask_pb2
+from google.protobuf import json_format
+from google.storage.v2 import storage_pb2
 
 import testbench
-from google.iam.v1 import policy_pb2
-from google.storage.v2 import storage_pb2
 
 
 class Bucket:

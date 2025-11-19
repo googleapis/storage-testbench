@@ -27,12 +27,15 @@ from concurrent import futures
 from threading import Timer
 
 import crc32c
-import google.protobuf.any_pb2 as any_pb2
-import google.protobuf.descriptor as pb_descriptor
-import google.protobuf.empty_pb2 as empty_pb2
-import google.protobuf.message as pb_message
 import grpc
-from google.protobuf import field_mask_pb2, json_format, text_format
+
+from google.protobuf import any_pb2
+from google.protobuf import descriptor as pb_descriptor
+from google.protobuf import empty_pb2
+from google.protobuf import field_mask_pb2
+from google.protobuf import json_format
+from google.protobuf import message as pb_message
+from google.protobuf import text_format
 from google.rpc import status_pb2
 from grpc_status import rpc_status
 
@@ -472,7 +475,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(

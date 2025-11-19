@@ -27,12 +27,16 @@ import unittest.mock
 import crc32c
 import grpc
 import grpc_status
-from google.protobuf import field_mask_pb2, timestamp_pb2
+
+from google.iam.v1 import iam_policy_pb2
+from google.iam.v1 import policy_pb2
+from google.protobuf import field_mask_pb2
+from google.protobuf import timestamp_pb2
+from google.storage.v2 import storage_pb2
+from google.storage.v2 import storage_pb2_grpc
 
 import gcs
 import testbench
-from google.iam.v1 import iam_policy_pb2, policy_pb2
-from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 
 class TestGrpc(unittest.TestCase):

@@ -24,13 +24,15 @@ import socket
 import struct
 import threading
 import time
-
 import crc32c
 import flask
-from google.protobuf import field_mask_pb2, json_format
+
+from google.protobuf import field_mask_pb2
+from google.protobuf import json_format
+from google.storage.v2 import storage_pb2
 
 import testbench
-from google.storage.v2 import storage_pb2
+
 
 # Lock to prevent race condition while generating metadata versions:
 _GENERATION_LOCK = threading.Lock()

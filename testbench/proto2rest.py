@@ -31,9 +31,9 @@ import datetime
 import struct
 
 from google.protobuf import json_format
+from google.storage.v2 import storage_pb2
 
 import testbench
-from google.storage.v2 import storage_pb2
 
 
 def __postprocess_rest_ubla(ubla):

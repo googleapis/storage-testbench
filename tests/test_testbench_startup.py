@@ -26,7 +26,8 @@ import unittest
 import grpc
 import requests
 
-from google.storage.v2 import storage_pb2, storage_pb2_grpc
+from google.storage.v2 import storage_pb2
+from google.storage.v2 import storage_pb2_grpc
 
 
 class TestTestbenchStartup(unittest.TestCase):
