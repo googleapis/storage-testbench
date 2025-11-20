@@ -23,9 +23,8 @@ import uuid
 
 import crc32c
 import flask
-import google.protobuf.any_pb2 as any_pb2
 import grpc
-from google.protobuf import json_format
+from google.protobuf import any_pb2, json_format
 from google.rpc import status_pb2
 from grpc_status import rpc_status
 
