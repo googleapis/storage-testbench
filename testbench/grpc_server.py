@@ -251,6 +251,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     unreachable_names = match.group(1).split(",")
                     self.db.dequeue_next_instruction(test_id, "storage.buckets.list")
 
+            if not unreachable_names:
+                unreachable_names = [
+                    b.metadata.name
+                    for b in all_buckets
+                    if "unreachable" in b.metadata.name
+                ]
+
         reachable_buckets = []
         unreachable_buckets = []
         for b in all_buckets:
