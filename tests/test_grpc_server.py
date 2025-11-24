@@ -2560,5 +2560,38 @@ class TestGrpc(unittest.TestCase):
         )
 
 
+def test_list_buckets_partial_success_naming_convention(self):
+    self.db.clear()
+    self.db.insert_supported_methods(["storage.buckets.list"])
+
+    self.grpc.CreateBucket(
+        storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="bucket-1",
+            bucket=storage_pb2.Bucket(),
+        ),
+        self.mock_context(),
+    )
+    self.grpc.CreateBucket(
+        storage_pb2.CreateBucketRequest(
+            parent="projects/test-project",
+            bucket_id="bucket-unreachable",
+            bucket=storage_pb2.Bucket(),
+        ),
+        self.mock_context(),
+    )
+
+    request = storage_pb2.ListBucketsRequest(
+        parent="projects/test-project", return_partial_success=True
+    )
+    context = self.mock_context()
+    response = self.grpc.ListBuckets(request, context)
+
+    self.assertEqual(len(response.buckets), 1)
+    self.assertEqual(response.buckets[0].bucket_id, "bucket-1")
+    self.assertEqual(len(response.unreachable), 1)
+    self.assertEqual(response.unreachable[0], "projects/_/buckets/bucket-unreachable")
+
+
 if __name__ == "__main__":
     unittest.main()
