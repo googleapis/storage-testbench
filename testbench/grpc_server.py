@@ -255,7 +255,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 unreachable_names = [
                     b.metadata.name
                     for b in all_buckets
-                    if "-unreachable" in b.metadata.name
+                    if "unreachable" in b.metadata.name
                 ]
 
         reachable_buckets = []
