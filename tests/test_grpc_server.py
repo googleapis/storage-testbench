@@ -2593,6 +2593,54 @@ class TestGrpc(unittest.TestCase):
             response.unreachable[0], "projects/_/buckets/bucket-unreachable"
         )
 
+    def test_bidi_empty_read(self):
+        for x in (0, 16):
+            media = TestGrpc._create_block(x * 1024).encode("utf-8")
+            r1 = storage_pb2.WriteObjectRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource={
+                        "name": f"object-{x}k",
+                        "bucket": "projects/_/buckets/bucket-name",
+                    },
+                    object_size=x * 1024,
+                ),
+                write_offset=0,
+                checksummed_data=storage_pb2.ChecksummedData(
+                    content=media, crc32c=crc32c.crc32c(media)
+                ),
+                finish_write=True,
+            )
+
+            write = self.grpc.WriteObject([r1], context=self.mock_context())
+            self.assertIsNotNone(write)
+            self.assertIsNotNone(write.resource)
+            blob = write.resource
+            self.assertIsNotNone(blob.generation)
+            self.assertEqual(blob.name, f"object-{x}k", msg=write)
+            self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
+
+            # Bidi read 0 bytes.
+            streamer = self.grpc.BidiReadObject(
+                [
+                    storage_pb2.BidiReadObjectRequest(
+                        read_object_spec=storage_pb2.BidiReadObjectSpec(
+                            bucket="projects/_/buckets/bucket-name",
+                            object=f"object-{x}k",
+                        ),
+                        read_ranges=[
+                            storage_pb2.ReadRange(read_offset=x * 1024),
+                        ],
+                    )
+                ],
+                context=self.mock_context(),
+            )
+            responses = list(streamer)
+            self.assertEqual(len(responses), 1)
+            self.assertEqual(len(responses[0].object_data_ranges), 1)
+            self.assertEqual(
+                len(responses[0].object_data_ranges[0].checksummed_data.content), 0
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
