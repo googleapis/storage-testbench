@@ -669,7 +669,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             if range.read_length > 0:
                 read_end = min(read_end, start + range.read_length)
 
-            while start < read_end:
+            while True:
                 end = min(start + size, read_end)
                 # Verify if there are no more bytes to read for the given ReadRange.
                 range_end = end == read_end
@@ -680,6 +680,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     "read_id": read_id,
                 }
                 yield (chunk, range_end, read_range)
+                if start >= read_end:
+                    break
                 start = end
 
         # We force all BidiReadObject streams to cancel on the server side after
