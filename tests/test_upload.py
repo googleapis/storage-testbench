@@ -33,6 +33,7 @@ import gcs
 import testbench
 from google.storage.v2 import storage_pb2
 
+
 class TestHolder(unittest.TestCase):
     def mock_context(self):
         context = unittest.mock.Mock()
@@ -1052,7 +1053,9 @@ class TestHolder(unittest.TestCase):
 
         upload.apply_final_checksums("crc32c=ExpectedChecksum")
 
-        self.assertEqual(upload.metadata.metadata.get("x_emulator_crc32c"), "ExpectedChecksum")
+        self.assertEqual(
+            upload.metadata.metadata.get("x_emulator_crc32c"), "ExpectedChecksum"
+        )
         self.assertNotIn("x_emulator_no_crc32c", upload.metadata.metadata)
 
         metadata = storage_pb2.Object()
