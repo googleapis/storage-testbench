@@ -1045,6 +1045,48 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertTrue(upload.complete)
+    
+    def test_apply_final_checksums(self):
+        metadata = storage_pb2.Object()
+        metadata.metadata["x_emulator_no_crc32c"] = "true"
+        upload = gcs.upload.Upload(metadata=metadata)
+        
+        upload.apply_final_checksums("crc32c=ExpectedChecksum")
+        
+        self.assertEqual(upload.metadata.metadata.get("x_emulator_crc32c"), "ExpectedChecksum")
+        self.assertNotIn("x_emulator_no_crc32c", upload.metadata.metadata)
+        
+        metadata = storage_pb2.Object()
+        metadata.metadata["x_emulator_no_md5"] = "true"
+        upload = gcs.upload.Upload(metadata=metadata)
+        
+        upload.apply_final_checksums("md5=ExpectedMD5")
+        
+        self.assertEqual(upload.metadata.metadata.get("x_emulator_md5"), "ExpectedMD5")
+        self.assertNotIn("x_emulator_no_md5", upload.metadata.metadata)
+
+        metadata = storage_pb2.Object()
+        metadata.metadata["x_emulator_no_crc32c"] = "true"
+        metadata.metadata["x_emulator_no_md5"] = "true"
+        upload = gcs.upload.Upload(metadata=metadata)
+        
+        upload.apply_final_checksums("crc32c=CrcVal,md5=Md5Val")
+        
+        self.assertEqual(upload.metadata.metadata.get("x_emulator_crc32c"), "CrcVal")
+        self.assertEqual(upload.metadata.metadata.get("x_emulator_md5"), "Md5Val")
+        self.assertNotIn("x_emulator_no_crc32c", upload.metadata.metadata)
+        self.assertNotIn("x_emulator_no_md5", upload.metadata.metadata)
+
+        metadata = storage_pb2.Object()
+        metadata.metadata["x_emulator_no_crc32c"] = "true"
+        upload = gcs.upload.Upload(metadata=metadata)
+        
+        upload.apply_final_checksums(None)
+        self.assertIn("x_emulator_no_crc32c", upload.metadata.metadata)
+        self.assertNotIn("x_emulator_crc32c", upload.metadata.metadata)
+        
+        upload.apply_final_checksums("")
+        self.assertIn("x_emulator_no_crc32c", upload.metadata.metadata)
 
 
 if __name__ == "__main__":
