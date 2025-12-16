@@ -692,4 +692,3 @@ class Upload(types.SimpleNamespace):
                 self.metadata.metadata["x_emulator_crc32c"] = checksum[7:]
                 # Remove the "no_crc32c" marker if it was set during init
                 self.metadata.metadata.pop("x_emulator_no_crc32c", None)
-
