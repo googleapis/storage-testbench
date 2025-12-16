@@ -1059,6 +1059,8 @@ def resumable_upload_chunk(bucket_name):
     upload = db.get_upload(upload_id, None)
     if upload.complete:
         return gcs_type.object.Object.rest(upload.metadata)
+    # We capture this now, but only apply it to the metadata if the upload completes successfully.
+    x_goog_hash = request.headers.get("x-goog-hash")
     last_byte_persisted = 0 if len(upload.media) == 0 else (len(upload.media) - 1)
     upload.transfer.add(request.environ.get("HTTP_TRANSFER_ENCODING", ""))
     content_length = request.headers.get("content-length", None)
@@ -1083,6 +1085,7 @@ def resumable_upload_chunk(bucket_name):
         if items[0] == "*":
             if items[1] != "*" and int(items[1]) == len(upload.media):
                 upload.complete = True
+                upload.apply_final_checksums(x_goog_hash)
                 blob, _ = gcs_type.object.Object.init(
                     upload.request,
                     upload.metadata,
@@ -1201,6 +1204,7 @@ def resumable_upload_chunk(bucket_name):
         upload.media += data
         upload.complete = True
     if upload.complete:
+        upload.apply_final_checksums(x_goog_hash)
         blob, _ = gcs_type.object.Object.init(
             upload.request, upload.metadata, upload.media, upload.bucket, False, None
         )
