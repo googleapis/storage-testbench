@@ -678,7 +678,7 @@ class Upload(types.SimpleNamespace):
             response.headers["X-Http-Status-Code-Override"] = "308"
             response.status_code = 200
         return response
-    
+
     def apply_final_checksums(self, hash_header):
         """Parses x-goog-hash header and updates emulator metadata."""
         if not hash_header:

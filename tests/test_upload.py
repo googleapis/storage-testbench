@@ -33,7 +33,6 @@ import gcs
 import testbench
 from google.storage.v2 import storage_pb2
 
-
 class TestHolder(unittest.TestCase):
     def mock_context(self):
         context = unittest.mock.Mock()
@@ -1045,7 +1044,7 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
         self.assertTrue(upload.complete)
-    
+
     def test_apply_final_checksums(self):
         metadata = storage_pb2.Object()
         metadata.metadata["x_emulator_no_crc32c"] = "true"
