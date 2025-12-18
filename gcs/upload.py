@@ -678,3 +678,17 @@ class Upload(types.SimpleNamespace):
             response.headers["X-Http-Status-Code-Override"] = "308"
             response.status_code = 200
         return response
+
+    def apply_final_checksums(self, hash_header):
+        """Parses x-goog-hash header and updates emulator metadata."""
+        if not hash_header:
+            return
+        for checksum in hash_header.split(","):
+            if checksum.startswith("md5="):
+                self.metadata.metadata["x_emulator_md5"] = checksum[4:]
+                # Remove the "no_md5" marker if it was set during init
+                self.metadata.metadata.pop("x_emulator_no_md5", None)
+            if checksum.startswith("crc32c="):
+                self.metadata.metadata["x_emulator_crc32c"] = checksum[7:]
+                # Remove the "no_crc32c" marker if it was set during init
+                self.metadata.metadata.pop("x_emulator_no_crc32c", None)
