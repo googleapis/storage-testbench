@@ -122,7 +122,10 @@ class Object:
                 testbench.error.mismatch("crc32c", actual_crc32c, cs.crc32c, context)
 
         # Check if checksum is present in x_emulator_crc32c field.
-        if "x_emulator_crc32c" in metadata.metadata and len(metadata.metadata["x_emulator_crc32c"]) != 0:
+        if (
+            "x_emulator_crc32c" in metadata.metadata
+            and len(metadata.metadata["x_emulator_crc32c"]) != 0
+        ):
             got_crc32c_encoded = metadata.metadata["x_emulator_crc32c"]
             # Decode to int32.
             got_crc32c = testbench.common.rest_crc32c_to_proto(got_crc32c_encoded)
@@ -130,7 +133,10 @@ class Object:
                 testbench.error.mismatch("crc32c", actual_crc32c, got_crc32c, context)
 
         # Check if md5h hash is present in x_emulator_md5 field.
-        if "x_emulator_md5" in metadata.metadata and len(metadata.metadata["x_emulator_md5"]) != 0:
+        if (
+            "x_emulator_md5" in metadata.metadata
+            and len(metadata.metadata["x_emulator_md5"]) != 0
+        ):
             got_md5_encoded = metadata.metadata["x_emulator_md5"]
             # Decode to bytes.
             got_md5 = testbench.common.rest_md5_to_proto(got_md5_encoded)
