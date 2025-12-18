@@ -30,6 +30,7 @@ import flask
 from google.protobuf import field_mask_pb2, json_format
 
 import testbench
+import testbench.common
 from google.storage.v2 import storage_pb2
 
 # Lock to prevent race condition while generating metadata versions:
@@ -115,10 +116,26 @@ class Object:
             cs = metadata.checksums
             if len(cs.md5_hash) != 0 and actual_md5Hash != cs.md5_hash:
                 testbench.error.mismatch(
-                    "md5Hash", cs.md5_hash, actual_md5Hash, context
+                    "md5Hash", actual_md5Hash, cs.md5_hash, context
                 )
             if cs.HasField("crc32c") and actual_crc32c != cs.crc32c:
-                testbench.error.mismatch("crc32c", cs.crc32c, actual_crc32c, context)
+                testbench.error.mismatch("crc32c", actual_crc32c, cs.crc32c, context)
+
+        # Check if checksum is present in x_emulator_crc32c field.
+        if "x_emulator_crc32c" in metadata.metadata and len(metadata.metadata["x_emulator_crc32c"]) != 0:
+            got_crc32c_encoded = metadata.metadata["x_emulator_crc32c"]
+            # Decode to int32.
+            got_crc32c = testbench.common.rest_crc32c_to_proto(got_crc32c_encoded)
+            if actual_crc32c != got_crc32c:
+                testbench.error.mismatch("crc32c", actual_crc32c, got_crc32c, context)
+
+        # Check if md5h hash is present in x_emulator_md5 field.
+        if "x_emulator_md5" in metadata.metadata and len(metadata.metadata["x_emulator_md5"]) != 0:
+            got_md5_encoded = metadata.metadata["x_emulator_md5"]
+            # Decode to bytes.
+            got_md5 = testbench.common.rest_md5_to_proto(got_md5_encoded)
+            if actual_md5Hash != got_md5:
+                testbench.error.mismatch("md5", actual_md5Hash, got_md5, context)
         metadata.checksums.md5_hash = actual_md5Hash
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
