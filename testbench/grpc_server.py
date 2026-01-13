@@ -586,12 +586,44 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     @retry_test(method="storage.objects.get")
     def BidiReadObject(self, request_iterator, context):
+        def abort_with_redirect_error(routing_token, handle=None):
+            err = storage_pb2.BidiReadObjectRedirectedError()
+            if handle is not None:
+                err.read_handle.handle = handle
+            err.routing_token = routing_token
+            detail = any_pb2.Any()
+            detail.Pack(err)
+            status_proto = status_pb2.Status(
+                code=grpc.StatusCode.ABORTED.value[0],
+                message=grpc.StatusCode.ABORTED.value[1],
+                details=[detail],
+            )
+            context.abort_with_status(rpc_status.to_status(status_proto))
+
+        # Check for expected redirect token in the request.
+        expected_token = testbench.common.get_expect_read_redirect_token(self.db, context)
+        if expected_token:
+            params = testbench.common.get_context_request_params(context)
+            if params and f"routing_token={expected_token}" in params:
+                test_id = testbench.common.get_retry_test_id_from_context(context)
+                self.db.dequeue_next_instruction(test_id, "storage.objects.get")
+
         # handle first message
         try:
             first_message = next(request_iterator)
         except StopIteration:
             # ok if no messages arrive from the client.
             return
+
+        # Routing-only redirect.
+        token_only = testbench.common.get_return_read_redirect_token(self.db, context)
+        if token_only:
+            abort_with_redirect_error(token_only)
+
+        # Redirect with handle.
+        token_w_handle = testbench.common.get_return_read_handle_and_redirect_token(self.db, context)
+        if token_w_handle:
+            abort_with_redirect_error(token_w_handle, handle=b"an-opaque-handle")
 
         obj_spec = first_message.read_object_spec
         blob = self.db.get_object(
@@ -614,9 +646,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
-        return_redirect_token = (
-            testbench.common.get_return_read_handle_and_redirect_token(self.db, context)
-        )
 
         # first_response is protected by GIL
         first_response = True
@@ -629,20 +658,6 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 resp.read_handle.handle = b"an-opaque-handle"
             # We ignore the read_mask for this test server
             return resp
-
-        if return_redirect_token and len(return_redirect_token):
-            detail = any_pb2.Any()
-            detail.Pack(
-                storage_pb2.BidiReadObjectRedirectedError(
-                    routing_token=return_redirect_token
-                )
-            )
-            status_proto = status_pb2.Status(
-                code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
-                details=[detail],
-            )
-            context.abort_with_status(rpc_status.to_status(status_proto))
 
         if not first_message.read_ranges:
             # always emit a response to the first request.
