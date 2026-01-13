@@ -479,7 +479,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -601,7 +604,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             context.abort_with_status(rpc_status.to_status(status_proto))
 
         # Check for expected redirect token in the request.
-        expected_token = testbench.common.get_expect_read_redirect_token(self.db, context)
+        expected_token = testbench.common.get_expect_read_redirect_token(
+            self.db, context
+        )
         if expected_token:
             params = testbench.common.get_context_request_params(context)
             if params and f"routing_token={expected_token}" in params:
@@ -621,7 +626,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             abort_with_redirect_error(token_only)
 
         # Redirect with handle.
-        token_w_handle = testbench.common.get_return_read_handle_and_redirect_token(self.db, context)
+        token_w_handle = testbench.common.get_return_read_handle_and_redirect_token(
+            self.db, context
+        )
         if token_w_handle:
             abort_with_redirect_error(token_w_handle, handle=b"an-opaque-handle")
 
