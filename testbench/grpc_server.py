@@ -476,6 +476,19 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 return None
             composed_media += source_blob.media
 
+            print("ComposeObject - source_blob: ", source_blob)
+            if request.delete_source_objects:
+                print("ComposeObject: Deleting source object: ", source.name)
+                self.db.delete_object(
+                    request.destination.bucket,
+                    source.name,
+                    generation=source.generation,
+                    context=context,
+                    preconditions=[precondition],
+                )
+            else:
+                print("ComposeObject: request.delete_source_objects not set")
+
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)

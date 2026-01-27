@@ -653,6 +653,18 @@ def objects_compose(bucket_name, object_name):
             context=None,
         )
         composed_media += source_object.media
+
+        print("ComposeObject - source_blob: ", source_object)
+        delete_source_objects = flask.request.args.get("delete_source_objects",
+                                                       None)
+        print("ComposeObject: delete_source_objects is: ",
+              delete_source_objects)
+        if delete_source_objects:
+            print("ComposeObject: Deleting source object: ",
+                  source_object_name)
+            object_delete(bucket_name, source_object_name)
+        else:
+            print("ComposeObject: delete_source_objects not set")
     metadata = {"name": object_name, "bucket": bucket_name}
     metadata.update(payload.get("destination", {}))
     composed_object, _ = gcs_type.object.Object.init_dict(
