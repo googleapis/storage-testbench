@@ -35,6 +35,8 @@ is expected to be used by Storage library maintainers.
     - [Delete a Retry Test resource](#delete-a-retry-test-resource)
     - [Causing a failure using x-retry-test-id header](#causing-a-failure-using-x-retry-test-id-header)
     - [Forced Failures Supported](#forced-failures-supported)
+  - [Developing for the testbench](#developing-for-the-testbench)
+    - [Writing and running tests](#writing-and-running-tests)
   - [Releasing the testbench](#releasing-the-testbench)
 
 ## Issue Policy
@@ -275,6 +277,17 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | redirect-send-token-T                     | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
 | redirect-send-handle-and-token-T          | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
 
+## Developing for the testbench
+
+### Writing and running tests
+
+Tests are located in the `tests/` directory. To run the tests locally, use 
+
+```bash
+python -m unittest [test_module.py] # runs all the tests in test_module.py
+python -m unittest [test_module.TestClass.test_method] # runs a single test
+python -m unittest discover -s tests/ # runs all the tests
+```
 
 ## Releasing the testbench
 
