@@ -761,6 +761,48 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
         )
 
+    def test_compose_object_delete_source_objects(self):
+        payloads = {
+            "fox": b"The quick brown fox jumps over the lazy dog\n",
+            "zebra": b"How vexingly quick daft zebras jump!\n",
+        }
+        source_objects = []
+        for name, media in payloads.items():
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=media, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.db.insert_object("bucket-name", blob, None)
+            source_objects.append(
+                storage_pb2.ComposeObjectRequest.SourceObject(
+                    name=name,
+                    generation=blob.metadata.generation,
+                )
+            )
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.MagicMock(return_value=dict())
+        response = self.grpc.ComposeObject(
+            storage_pb2.ComposeObjectRequest(
+                destination=storage_pb2.Object(
+                    name="composed-and-deleted", bucket="projects/_/buckets/bucket-name"
+                ),
+                source_objects=source_objects,
+                delete_source_objects=True,
+            ),
+            context,
+        )
+
+        # Verify the source objects are deleted
+        context = unittest.mock.Mock()
+        items, _ = self.db.list_object(
+            storage_pb2.ListObjectsRequest(parent="projects/_/buckets/bucket-name"),
+            "projects/_/buckets/bucket-name",
+            context,
+        )
+        names = {o.name for o in items}
+        for name in payloads.keys():
+            self.assertNotIn(name, names)
+
     def test_delete_object(self):
         media = b"The quick brown fox jumps over the lazy dog"
         request = testbench.common.FakeRequest(
