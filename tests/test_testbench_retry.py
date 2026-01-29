@@ -1442,6 +1442,125 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         # Verify the early break occurred during first message only.
         self.assertEqual(len(responses), 0)
 
+    def test_grpc_bidiread_create_routing_only_redirect(self):
+        # Setup a routing-only redirect instruction
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            "redirect-send-token-sometoken",
+                            "redirect-expect-token-sometoken",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        test_id = json.loads(response.data)["id"]
+
+        context = unittest.mock.Mock()
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", test_id),
+                (
+                    "x-goog-request-params",
+                    "bucket=projects/_/buckets/bucket-name",
+                ),
+            )
+        )
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+        )
+
+        with self.assertRaises(RpcError):
+            list(self.grpc.BidiReadObject(iter([r1]), context=context))
+
+        context.abort_with_status.assert_called()
+        status = context.abort_with_status.call_args.args[0]
+        self.assertEqual(status.code, StatusCode.ABORTED)
+
+        redirect_error = storage_pb2.BidiReadObjectRedirectedError()
+        self._unpack_details(status, redirect_error)
+
+        self.assertFalse(redirect_error.HasField("read_handle"))
+        self.assertEqual(redirect_error.routing_token, "sometoken")
+
+    def test_grpc_bidiread_redirect_expect_token_match(self):
+        token = "".join(random.choice(string.ascii_lowercase) for _ in range(5))
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            f"redirect-expect-token-{token}",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        test_id = json.loads(response.data)["id"]
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+            ),
+        )
+
+        context = unittest.mock.Mock()
+        context.abort_with_status = unittest.mock.MagicMock()
+        context.abort_with_status.side_effect = RpcError()
+
+        # With an incorrect routing token, the instruction should still be present
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", test_id),
+                (
+                    "x-goog-request-params",
+                    "bucket=projects/_/buckets/bucket-name&routing_token=incorrect_token",
+                ),
+            )
+        )
+        # We expect a failure here because no object exists yet, but the instruction
+        # check happens first.
+        try:
+            list(self.grpc.BidiReadObject(iter([r1]), context=context))
+        except Exception:
+            pass
+        self.assertIsNotNone(
+            rest_server.db.peek_next_instruction(test_id, "storage.objects.get")
+        )
+
+        # With the correct routing token, the instruction should be consumed
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", test_id),
+                (
+                    "x-goog-request-params",
+                    f"bucket=projects/_/buckets/bucket-name&routing_token={token}",
+                ),
+            )
+        )
+        try:
+            list(self.grpc.BidiReadObject(iter([r1]), context=context))
+        except Exception:
+            pass
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(test_id, "storage.objects.get")
+        )
+
     class _StatusAsCall:
         """_StatusAsCall wraps a status and pretends it is a client-side call"""
 
