@@ -85,7 +85,7 @@ class TestProto2Rest(unittest.TestCase):
 
     def test_object_as_rest(self):
         media = b"The quick brown fox jumps over the lazy dog"
-        # These checksums can be obtained using `gsutil hash`
+        # These checksums can be obtained using `gcloud storage hash`
         crc32c = "ImIEBA=="
         md5 = "nhB9nTcrtoJr2B01QqQZ1g=="
         object = storage_pb2.Object(

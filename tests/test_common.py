@@ -1071,7 +1071,7 @@ class TestCommonUtils(unittest.TestCase):
     def test_crc32c_to_from_proto(self):
         # used an external tool to get the CRC32C of:
         #    /bin/echo -n 'The quick brown fox jumps over the lazy dog' > fox.txt
-        #    gsutil hash fox.txt
+        #    gcloud storage hash fox.txt
         # it prints
         #    Hash (crc32c):		ImIEBA==
         # then use:
@@ -1086,7 +1086,7 @@ class TestCommonUtils(unittest.TestCase):
     def test_md5_to_from_proto(self):
         # used an external tool to get the CRC32C of:
         #    /bin/echo -n 'The quick brown fox jumps over the lazy dog' > fox.txt
-        #    gsutil hash fox.txt
+        #    gcloud storage hash fox.txt
         # it prints
         #    Hash (md5):		nhB9nTcrtoJr2B01QqQZ1g==
         # then use:
