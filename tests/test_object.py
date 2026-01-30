@@ -203,7 +203,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 412)
 
     def test_init_multipart_inconsistent_md5(self):
-        # The magic string is the MD5 hash for an empty object, computed using `gsutil hash`
+        # The magic string is the MD5 hash for an empty object, computed using `gcloud storage hash`
         boundary, payload = format_multipart_upload(
             {"name": "object", "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg=="},
             "How vexingly quick daft zebras jump!",
@@ -219,7 +219,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(rest.exception.code, 412)
 
     def test_init_multipart_inconsistent_crc32c(self):
-        # The magic string is the CRC32C checksum for an empty object, computed using `gsutil hash`
+        # The magic string is the CRC32C checksum for an empty object, computed using `gcloud storage hash`
         boundary, payload = format_multipart_upload(
             {"name": "object", "crc32c": "AAAAAA=="},
             "How vexingly quick daft zebras jump!",
@@ -241,7 +241,7 @@ class TestObject(unittest.TestCase):
                 base_url="http://localhost:8080",
                 content_type="text/plain",
                 headers={
-                    # This MD5 hash was obtained using `gsutil hash`
+                    # This MD5 hash was obtained using `gcloud storage hash`
                     "x-goog-hash": "md5=nhB9nTcrtoJr2B01QqQZ1g==",
                 },
                 content_length=len(media),
@@ -260,7 +260,7 @@ class TestObject(unittest.TestCase):
                 base_url="http://localhost:8080",
                 content_type="text/plain",
                 headers={
-                    # This CRC32C checksum was obtained using `gsutil hash`
+                    # This CRC32C checksum was obtained using `gcloud storage hash`
                     "x-goog-hash": "crc32c=ImIEBA==",
                 },
                 content_length=len(media),
