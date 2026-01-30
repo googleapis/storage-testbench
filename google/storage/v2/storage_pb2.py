@@ -23,9 +23,13 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
-
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC, 5, 29, 0, "", "google/storage/v2/storage.proto"
+    _runtime_version.Domain.PUBLIC,
+    5,
+    29,
+    0,
+    '',
+    'google/storage/v2/storage.proto'
 )
 # @@protoc_insertion_point(imports)
 
@@ -46,1546 +50,776 @@ from google.rpc import status_pb2 as google_dot_rpc_dot_status__pb2
 from google.type import date_pb2 as google_dot_type_dot_date__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\x1fgoogle/storage/v2/storage.proto\x12\x11google.storage.v2\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x18google/api/routing.proto\x1a\x1egoogle/iam/v1/iam_policy.proto\x1a\x1agoogle/iam/v1/policy.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\x1a\x16google/type/date.proto"\xd6\x01\n\x13\x44\x65leteBucketRequest\x12\x33\n\x04name\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match"\x95\x02\n\x10GetBucketRequest\x12\x33\n\x04name\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12\x32\n\tread_mask\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x02\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask"\x83\x02\n\x13\x43reateBucketRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\x12\x1dstorage.googleapis.com/Bucket\x12.\n\x06\x62ucket\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.BucketB\x03\xe0\x41\x01\x12\x16\n\tbucket_id\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12\x1b\n\x0epredefined_acl\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12*\n\x1dpredefined_default_object_acl\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12$\n\x17\x65nable_object_retention\x18\t \x01(\x08\x42\x03\xe0\x41\x01"\xf8\x01\n\x12ListBucketsRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\x12\x1dstorage.googleapis.com/Bucket\x12\x16\n\tpage_size\x18\x02 \x01(\x05\x42\x03\xe0\x41\x01\x12\x17\n\npage_token\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06prefix\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x00\x88\x01\x01\x12#\n\x16return_partial_success\x18\t \x01(\x08\x42\x03\xe0\x41\x01\x42\x0c\n\n_read_mask"o\n\x13ListBucketsResponse\x12*\n\x07\x62uckets\x18\x01 \x03(\x0b\x32\x19.google.storage.v2.Bucket\x12\x17\n\x0fnext_page_token\x18\x02 \x01(\t\x12\x13\n\x0bunreachable\x18\x03 \x03(\t"\x7f\n LockBucketRetentionPolicyRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03\x42\x03\xe0\x41\x02"\xd0\x02\n\x13UpdateBucketRequest\x12.\n\x06\x62ucket\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.BucketB\x03\xe0\x41\x02\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12\x1b\n\x0epredefined_acl\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12*\n\x1dpredefined_default_object_acl\x18\t \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_mask\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x03\xe0\x41\x02\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match"\x96\x06\n\x14\x43omposeObjectRequest\x12\x33\n\x0b\x64\x65stination\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12Q\n\x0esource_objects\x18\x02 \x03(\x0b\x32\x34.google.storage.v2.ComposeObjectRequest.SourceObjectB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x65stination_predefined_acl\x18\t \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12:\n\x07kms_key\x18\x06 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12W\n\x1c\x63ommon_object_request_params\x18\x07 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\n \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x1a\xf8\x01\n\x0cSourceObject\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x02 \x01(\x03\x42\x03\xe0\x41\x01\x12k\n\x14object_preconditions\x18\x03 \x01(\x0b\x32H.google.storage.v2.ComposeObjectRequest.SourceObject.ObjectPreconditionsB\x03\xe0\x41\x01\x1aO\n\x13ObjectPreconditions\x12 \n\x13if_generation_match\x18\x01 \x01(\x03H\x00\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_metageneration_match"\xdb\x03\n\x13\x44\x65leteObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x05 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x06 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x07 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x08 \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match"\xaa\x04\n\x14RestoreObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12\x1a\n\rrestore_token\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x03\x88\x01\x01\x12\x1c\n\x0f\x63opy_source_acl\x18\t \x01(\x08H\x04\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x12\n\x10_copy_source_acl"5\n\x1b\x43\x61ncelResumableWriteRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02"\x1e\n\x1c\x43\x61ncelResumableWriteResponse"\xce\x04\n\x11ReadObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12\x18\n\x0bread_offset\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12\x17\n\nread_limit\x18\x05 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x06 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x08 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\t \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x04\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask"\xe2\x04\n\x10GetObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12\x19\n\x0csoft_deleted\x18\x0b \x01(\x08H\x00\x88\x01\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x04\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\n \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x05\x88\x01\x01\x12\x1a\n\rrestore_token\x18\x0c \x01(\tB\x03\xe0\x41\x01\x42\x0f\n\r_soft_deletedB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask"\xf5\x01\n\x12ReadObjectResponse\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32".google.storage.v2.ChecksummedData\x12<\n\x10object_checksums\x18\x02 \x01(\x0b\x32".google.storage.v2.ObjectChecksums\x12\x36\n\rcontent_range\x18\x03 \x01(\x0b\x32\x1f.google.storage.v2.ContentRange\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object"\x9b\x05\n\x12\x42idiReadObjectSpec\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x36\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x02\x18\x01H\x04\x88\x01\x01\x12;\n\x0bread_handle\x18\r \x01(\x0b\x32!.google.storage.v2.BidiReadHandleH\x05\x88\x01\x01\x12\x1a\n\rrouting_token\x18\x0e \x01(\tH\x06\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_maskB\x0e\n\x0c_read_handleB\x10\n\x0e_routing_token"\x95\x01\n\x15\x42idiReadObjectRequest\x12\x44\n\x10read_object_spec\x18\x01 \x01(\x0b\x32%.google.storage.v2.BidiReadObjectSpecB\x03\xe0\x41\x01\x12\x36\n\x0bread_ranges\x18\x08 \x03(\x0b\x32\x1c.google.storage.v2.ReadRangeB\x03\xe0\x41\x01"\xbd\x01\n\x16\x42idiReadObjectResponse\x12>\n\x12object_data_ranges\x18\x06 \x03(\x0b\x32".google.storage.v2.ObjectRangeData\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object\x12\x36\n\x0bread_handle\x18\x07 \x01(\x0b\x32!.google.storage.v2.BidiReadHandle"\x85\x01\n\x1d\x42idiReadObjectRedirectedError\x12\x36\n\x0bread_handle\x18\x01 \x01(\x0b\x32!.google.storage.v2.BidiReadHandle\x12\x1a\n\rrouting_token\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\x10\n\x0e_routing_token"\xc6\x01\n\x1e\x42idiWriteObjectRedirectedError\x12\x1a\n\rrouting_token\x18\x01 \x01(\tH\x00\x88\x01\x01\x12=\n\x0cwrite_handle\x18\x02 \x01(\x0b\x32".google.storage.v2.BidiWriteHandleH\x01\x88\x01\x01\x12\x17\n\ngeneration\x18\x03 \x01(\x03H\x02\x88\x01\x01\x42\x10\n\x0e_routing_tokenB\x0f\n\r_write_handleB\r\n\x0b_generation"S\n\x13\x42idiReadObjectError\x12<\n\x11read_range_errors\x18\x01 \x03(\x0b\x32!.google.storage.v2.ReadRangeError"E\n\x0eReadRangeError\x12\x0f\n\x07read_id\x18\x01 \x01(\x03\x12"\n\x06status\x18\x02 \x01(\x0b\x32\x12.google.rpc.Status"U\n\tReadRange\x12\x18\n\x0bread_offset\x18\x01 \x01(\x03\x42\x03\xe0\x41\x02\x12\x18\n\x0bread_length\x18\x02 \x01(\x03\x42\x03\xe0\x41\x01\x12\x14\n\x07read_id\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02"\x94\x01\n\x0fObjectRangeData\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32".google.storage.v2.ChecksummedData\x12\x30\n\nread_range\x18\x02 \x01(\x0b\x32\x1c.google.storage.v2.ReadRange\x12\x11\n\trange_end\x18\x03 \x01(\x08"%\n\x0e\x42idiReadHandle\x12\x13\n\x06handle\x18\x01 \x01(\x0c\x42\x03\xe0\x41\x02"&\n\x0f\x42idiWriteHandle\x12\x13\n\x06handle\x18\x01 \x01(\x0c\x42\x03\xe0\x41\x02"\xba\x03\n\x0fWriteObjectSpec\x12\x30\n\x08resource\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12\x1b\n\x0epredefined_acl\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x03 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x12\x18\n\x0bobject_size\x18\x08 \x01(\x03H\x04\x88\x01\x01\x12\x17\n\nappendable\x18\t \x01(\x08H\x05\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0e\n\x0c_object_sizeB\r\n\x0b_appendable"\x95\x03\n\x12WriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32".google.storage.v2.WriteObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32".google.storage.v2.ChecksummedDataH\x01\x12\x41\n\x10object_checksums\x18\x06 \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x12\x19\n\x0c\x66inish_write\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta"n\n\x13WriteObjectResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status"\x81\x03\n\x10\x41ppendObjectSpec\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12$\n\x17if_metageneration_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12\x1a\n\rrouting_token\x18\x06 \x01(\tH\x02\x88\x01\x01\x12=\n\x0cwrite_handle\x18\x07 \x01(\x0b\x32".google.storage.v2.BidiWriteHandleH\x03\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x10\n\x0e_routing_tokenB\x0f\n\r_write_handle"\x8b\x04\n\x16\x42idiWriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32".google.storage.v2.WriteObjectSpecH\x00\x12\x41\n\x12\x61ppend_object_spec\x18\x0b \x01(\x0b\x32#.google.storage.v2.AppendObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32".google.storage.v2.ChecksummedDataH\x01\x12\x41\n\x10object_checksums\x18\x06 \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x12\x19\n\x0cstate_lookup\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12\x12\n\x05\x66lush\x18\x08 \x01(\x08\x42\x03\xe0\x41\x01\x12\x19\n\x0c\x66inish_write\x18\t \x01(\x08\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta"\xc2\x01\n\x17\x42idiWriteObjectResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x12=\n\x0cwrite_handle\x18\x03 \x01(\x0b\x32".google.storage.v2.BidiWriteHandleH\x01\x88\x01\x01\x42\x0e\n\x0cwrite_statusB\x0f\n\r_write_handle"\xe0\x03\n\x12ListObjectsRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x16\n\tpage_size\x18\x02 \x01(\x05\x42\x03\xe0\x41\x01\x12\x17\n\npage_token\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x16\n\tdelimiter\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\'\n\x1ainclude_trailing_delimiter\x18\x05 \x01(\x08\x42\x03\xe0\x41\x01\x12\x13\n\x06prefix\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x15\n\x08versions\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x00\x88\x01\x01\x12 \n\x13lexicographic_start\x18\n \x01(\tB\x03\xe0\x41\x01\x12\x1e\n\x11lexicographic_end\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12\x19\n\x0csoft_deleted\x18\x0c \x01(\x08\x42\x03\xe0\x41\x01\x12(\n\x1binclude_folders_as_prefixes\x18\r \x01(\x08\x42\x03\xe0\x41\x01\x12\x17\n\nmatch_glob\x18\x0e \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x66ilter\x18\x0f \x01(\tB\x03\xe0\x41\x01\x42\x0c\n\n_read_mask"\x8a\x01\n\x17QueryWriteStatusRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x02 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01"s\n\x18QueryWriteStatusResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status"\xdd\n\n\x14RewriteObjectRequest\x12 \n\x10\x64\x65stination_name\x18\x18 \x01(\tB\x06\xe0\x41\x02\xe0\x41\x05\x12\x44\n\x12\x64\x65stination_bucket\x18\x19 \x01(\tB(\xe0\x41\x02\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x46\n\x13\x64\x65stination_kms_key\x18\x1b \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x33\n\x0b\x64\x65stination\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x01\x12<\n\rsource_bucket\x18\x02 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x1a\n\rsource_object\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12\x1e\n\x11source_generation\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12\x1a\n\rrewrite_token\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x65stination_predefined_acl\x18\x1c \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x07 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x08 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\t \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\n \x01(\x03H\x03\x88\x01\x01\x12\'\n\x1aif_source_generation_match\x18\x0b \x01(\x03H\x04\x88\x01\x01\x12+\n\x1eif_source_generation_not_match\x18\x0c \x01(\x03H\x05\x88\x01\x01\x12+\n\x1eif_source_metageneration_match\x18\r \x01(\x03H\x06\x88\x01\x01\x12/\n"if_source_metageneration_not_match\x18\x0e \x01(\x03H\x07\x88\x01\x01\x12)\n\x1cmax_bytes_rewritten_per_call\x18\x0f \x01(\x03\x42\x03\xe0\x41\x01\x12-\n copy_source_encryption_algorithm\x18\x10 \x01(\tB\x03\xe0\x41\x01\x12-\n copy_source_encryption_key_bytes\x18\x15 \x01(\x0c\x42\x03\xe0\x41\x01\x12\x34\n\'copy_source_encryption_key_sha256_bytes\x18\x16 \x01(\x0c\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x13 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\x1d \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x1d\n\x1b_if_source_generation_matchB!\n\x1f_if_source_generation_not_matchB!\n\x1f_if_source_metageneration_matchB%\n#_if_source_metageneration_not_match"\x97\x01\n\x0fRewriteResponse\x12\x1d\n\x15total_bytes_rewritten\x18\x01 \x01(\x03\x12\x13\n\x0bobject_size\x18\x02 \x01(\x03\x12\x0c\n\x04\x64one\x18\x03 \x01(\x08\x12\x15\n\rrewrite_token\x18\x04 \x01(\t\x12+\n\x08resource\x18\x05 \x01(\x0b\x32\x19.google.storage.v2.Object"\xf7\x05\n\x11MoveObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x1a\n\rsource_object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x1f\n\x12\x64\x65stination_object\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12,\n\x1aif_source_generation_match\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01H\x00\x88\x01\x01\x12\x30\n\x1eif_source_generation_not_match\x18\x05 \x01(\x03\x42\x03\xe0\x41\x01H\x01\x88\x01\x01\x12\x30\n\x1eif_source_metageneration_match\x18\x06 \x01(\x03\x42\x03\xe0\x41\x01H\x02\x88\x01\x01\x12\x34\n"if_source_metageneration_not_match\x18\x07 \x01(\x03\x42\x03\xe0\x41\x01H\x03\x88\x01\x01\x12%\n\x13if_generation_match\x18\x08 \x01(\x03\x42\x03\xe0\x41\x01H\x04\x88\x01\x01\x12)\n\x17if_generation_not_match\x18\t \x01(\x03\x42\x03\xe0\x41\x01H\x05\x88\x01\x01\x12)\n\x17if_metageneration_match\x18\n \x01(\x03\x42\x03\xe0\x41\x01H\x06\x88\x01\x01\x12-\n\x1bif_metageneration_not_match\x18\x0b \x01(\x03\x42\x03\xe0\x41\x01H\x07\x88\x01\x01\x42\x1d\n\x1b_if_source_generation_matchB!\n\x1f_if_source_generation_not_matchB!\n\x1f_if_source_metageneration_matchB%\n#_if_source_metageneration_not_matchB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match"\xfc\x01\n\x1aStartResumableWriteRequest\x12\x42\n\x11write_object_spec\x18\x01 \x01(\x0b\x32".google.storage.v2.WriteObjectSpecB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x03 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\x05 \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01"0\n\x1bStartResumableWriteResponse\x12\x11\n\tupload_id\x18\x01 \x01(\t"\xa3\x04\n\x13UpdateObjectRequest\x12.\n\x06object\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12 \n\x13if_generation_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x04 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x05 \x01(\x03H\x03\x88\x01\x01\x12\x1b\n\x0epredefined_acl\x18\n \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_mask\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12(\n\x1boverride_unlocked_retention\x18\x0b \x01(\x08\x42\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match"\x8b\x01\n\x19\x43ommonObjectRequestParams\x12!\n\x14\x65ncryption_algorithm\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12!\n\x14\x65ncryption_key_bytes\x18\x04 \x01(\x0c\x42\x03\xe0\x41\x01\x12(\n\x1b\x65ncryption_key_sha256_bytes\x18\x05 \x01(\x0c\x42\x03\xe0\x41\x01"\xca\x05\n\x10ServiceConstants"\xb5\x05\n\x06Values\x12\x16\n\x12VALUES_UNSPECIFIED\x10\x00\x12\x1b\n\x14MAX_READ_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x1c\n\x15MAX_WRITE_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x19\n\x12MAX_OBJECT_SIZE_MB\x10\x80\x80\xc0\x02\x12)\n$MAX_CUSTOM_METADATA_FIELD_NAME_BYTES\x10\x80\x08\x12*\n%MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES\x10\x80 \x12)\n$MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES\x10\x80@\x12*\n$MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES\x10\x80\xa0\x01\x12\'\n#MAX_NOTIFICATION_CONFIGS_PER_BUCKET\x10\x64\x12"\n\x1eMAX_LIFECYCLE_RULES_PER_BUCKET\x10\x64\x12&\n"MAX_NOTIFICATION_CUSTOM_ATTRIBUTES\x10\x05\x12\x31\n,MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH\x10\x80\x02\x12\x33\n.MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_VALUE_LENGTH\x10\x80\x08\x12\x1c\n\x18MAX_LABELS_ENTRIES_COUNT\x10@\x12\x1f\n\x1bMAX_LABELS_KEY_VALUE_LENGTH\x10?\x12\x1f\n\x1aMAX_LABELS_KEY_VALUE_BYTES\x10\x80\x01\x12.\n)MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST\x10\xe8\x07\x12\x1e\n\x1aSPLIT_TOKEN_MAX_VALID_DAYS\x10\x0e\x1a\x02\x10\x01"\xba,\n\x06\x42ucket\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x08\x12\x16\n\tbucket_id\x18\x02 \x01(\tB\x03\xe0\x41\x03\x12\x0c\n\x04\x65tag\x18\x1d \x01(\t\x12\x44\n\x07project\x18\x03 \x01(\tB3\xe0\x41\x05\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\x08location\x18\x05 \x01(\tB\x03\xe0\x41\x05\x12\x1a\n\rlocation_type\x18\x06 \x01(\tB\x03\xe0\x41\x03\x12\x1a\n\rstorage_class\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12\x10\n\x03rpo\x18\x1b \x01(\tB\x03\xe0\x41\x01\x12\x38\n\x03\x61\x63l\x18\x08 \x03(\x0b\x32&.google.storage.v2.BucketAccessControlB\x03\xe0\x41\x01\x12G\n\x12\x64\x65\x66\x61ult_object_acl\x18\t \x03(\x0b\x32&.google.storage.v2.ObjectAccessControlB\x03\xe0\x41\x01\x12;\n\tlifecycle\x18\n \x01(\x0b\x32#.google.storage.v2.Bucket.LifecycleB\x03\xe0\x41\x01\x12\x34\n\x0b\x63reate_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x31\n\x04\x63ors\x18\x0c \x03(\x0b\x32\x1e.google.storage.v2.Bucket.CorsB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_time\x18\r \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12%\n\x18\x64\x65\x66\x61ult_event_based_hold\x18\x0e \x01(\x08\x42\x03\xe0\x41\x01\x12:\n\x06labels\x18\x0f \x03(\x0b\x32%.google.storage.v2.Bucket.LabelsEntryB\x03\xe0\x41\x01\x12\x37\n\x07website\x18\x10 \x01(\x0b\x32!.google.storage.v2.Bucket.WebsiteB\x03\xe0\x41\x01\x12=\n\nversioning\x18\x11 \x01(\x0b\x32$.google.storage.v2.Bucket.VersioningB\x03\xe0\x41\x01\x12\x37\n\x07logging\x18\x12 \x01(\x0b\x32!.google.storage.v2.Bucket.LoggingB\x03\xe0\x41\x01\x12,\n\x05owner\x18\x13 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12=\n\nencryption\x18\x14 \x01(\x0b\x32$.google.storage.v2.Bucket.EncryptionB\x03\xe0\x41\x01\x12\x37\n\x07\x62illing\x18\x15 \x01(\x0b\x32!.google.storage.v2.Bucket.BillingB\x03\xe0\x41\x01\x12H\n\x10retention_policy\x18\x16 \x01(\x0b\x32).google.storage.v2.Bucket.RetentionPolicyB\x03\xe0\x41\x01\x12<\n\niam_config\x18\x17 \x01(\x0b\x32#.google.storage.v2.Bucket.IamConfigB\x03\xe0\x41\x01\x12\x1a\n\rsatisfies_pzs\x18\x19 \x01(\x08\x42\x03\xe0\x41\x01\x12U\n\x17\x63ustom_placement_config\x18\x1a \x01(\x0b\x32/.google.storage.v2.Bucket.CustomPlacementConfigB\x03\xe0\x41\x01\x12;\n\tautoclass\x18\x1c \x01(\x0b\x32#.google.storage.v2.Bucket.AutoclassB\x03\xe0\x41\x01\x12T\n\x16hierarchical_namespace\x18  \x01(\x0b\x32/.google.storage.v2.Bucket.HierarchicalNamespaceB\x03\xe0\x41\x01\x12K\n\x12soft_delete_policy\x18\x1f \x01(\x0b\x32*.google.storage.v2.Bucket.SoftDeletePolicyB\x03\xe0\x41\x01\x12H\n\x10object_retention\x18! \x01(\x0b\x32).google.storage.v2.Bucket.ObjectRetentionB\x03\xe0\x41\x01\x12?\n\tip_filter\x18& \x01(\x0b\x32".google.storage.v2.Bucket.IpFilterB\x03\xe0\x41\x01H\x00\x88\x01\x01\x1a&\n\x07\x42illing\x12\x1b\n\x0erequester_pays\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1al\n\x04\x43ors\x12\x13\n\x06origin\x18\x01 \x03(\tB\x03\xe0\x41\x01\x12\x13\n\x06method\x18\x02 \x03(\tB\x03\xe0\x41\x01\x12\x1c\n\x0fresponse_header\x18\x03 \x03(\tB\x03\xe0\x41\x01\x12\x1c\n\x0fmax_age_seconds\x18\x04 \x01(\x05\x42\x03\xe0\x41\x01\x1a\xae\t\n\nEncryption\x12\x42\n\x0f\x64\x65\x66\x61ult_kms_key\x18\x01 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x8d\x01\n,google_managed_encryption_enforcement_config\x18\x02 \x01(\x0b\x32M.google.storage.v2.Bucket.Encryption.GoogleManagedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x00\x88\x01\x01\x12\x91\x01\n.customer_managed_encryption_enforcement_config\x18\x03 \x01(\x0b\x32O.google.storage.v2.Bucket.Encryption.CustomerManagedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x01\x88\x01\x01\x12\x93\x01\n/customer_supplied_encryption_enforcement_config\x18\x04 \x01(\x0b\x32P.google.storage.v2.Bucket.Encryption.CustomerSuppliedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x02\x88\x01\x01\x1a\xaa\x01\n(GoogleManagedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_time\x1a\xac\x01\n*CustomerManagedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_time\x1a\xad\x01\n+CustomerSuppliedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_timeB/\n-_google_managed_encryption_enforcement_configB1\n/_customer_managed_encryption_enforcement_configB2\n0_customer_supplied_encryption_enforcement_config\x1a\x80\x02\n\tIamConfig\x12\x66\n\x1buniform_bucket_level_access\x18\x01 \x01(\x0b\x32<.google.storage.v2.Bucket.IamConfig.UniformBucketLevelAccessB\x03\xe0\x41\x01\x12%\n\x18public_access_prevention\x18\x03 \x01(\tB\x03\xe0\x41\x01\x1a\x64\n\x18UniformBucketLevelAccess\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x12\x32\n\tlock_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x1a\xaa\x06\n\tLifecycle\x12;\n\x04rule\x18\x01 \x03(\x0b\x32(.google.storage.v2.Bucket.Lifecycle.RuleB\x03\xe0\x41\x01\x1a\xdf\x05\n\x04Rule\x12\x44\n\x06\x61\x63tion\x18\x01 \x01(\x0b\x32/.google.storage.v2.Bucket.Lifecycle.Rule.ActionB\x03\xe0\x41\x01\x12J\n\tcondition\x18\x02 \x01(\x0b\x32\x32.google.storage.v2.Bucket.Lifecycle.Rule.ConditionB\x03\xe0\x41\x01\x1a\x37\n\x06\x41\x63tion\x12\x11\n\x04type\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1a\n\rstorage_class\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a\x8b\x04\n\tCondition\x12\x15\n\x08\x61ge_days\x18\x01 \x01(\x05H\x00\x88\x01\x01\x12.\n\x0e\x63reated_before\x18\x02 \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\x14\n\x07is_live\x18\x03 \x01(\x08H\x01\x88\x01\x01\x12\x1f\n\x12num_newer_versions\x18\x04 \x01(\x05H\x02\x88\x01\x01\x12"\n\x15matches_storage_class\x18\x05 \x03(\tB\x03\xe0\x41\x01\x12#\n\x16\x64\x61ys_since_custom_time\x18\x07 \x01(\x05H\x03\x88\x01\x01\x12\x32\n\x12\x63ustom_time_before\x18\x08 \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x61ys_since_noncurrent_time\x18\t \x01(\x05H\x04\x88\x01\x01\x12\x36\n\x16noncurrent_time_before\x18\n \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\x1b\n\x0ematches_prefix\x18\x0b \x03(\tB\x03\xe0\x41\x01\x12\x1b\n\x0ematches_suffix\x18\x0c \x03(\tB\x03\xe0\x41\x01\x42\x0b\n\t_age_daysB\n\n\x08_is_liveB\x15\n\x13_num_newer_versionsB\x19\n\x17_days_since_custom_timeB\x1d\n\x1b_days_since_noncurrent_time\x1a\x42\n\x07Logging\x12\x17\n\nlog_bucket\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1e\n\x11log_object_prefix\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a*\n\x0fObjectRetention\x12\x17\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x06\xe0\x41\x01\xe0\x41\x03\x1a\x9e\x01\n\x0fRetentionPolicy\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12\x16\n\tis_locked\x18\x02 \x01(\x08\x42\x03\xe0\x41\x01\x12:\n\x12retention_duration\x18\x04 \x01(\x0b\x32\x19.google.protobuf.DurationB\x03\xe0\x41\x01\x1a\xb1\x01\n\x10SoftDeletePolicy\x12:\n\x12retention_duration\x18\x01 \x01(\x0b\x32\x19.google.protobuf.DurationH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x15\n\x13_retention_durationB\x11\n\x0f_effective_time\x1a"\n\nVersioning\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1a\x45\n\x07Website\x12\x1d\n\x10main_page_suffix\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1b\n\x0enot_found_page\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a\x34\n\x15\x43ustomPlacementConfig\x12\x1b\n\x0e\x64\x61ta_locations\x18\x01 \x03(\tB\x03\xe0\x41\x01\x1a\x90\x02\n\tAutoclass\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x12\x34\n\x0btoggle_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12#\n\x16terminal_storage_class\x18\x03 \x01(\tH\x00\x88\x01\x01\x12P\n"terminal_storage_class_update_time\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x01\x88\x01\x01\x42\x19\n\x17_terminal_storage_classB%\n#_terminal_storage_class_update_time\x1a\xfd\x03\n\x08IpFilter\x12\x11\n\x04mode\x18\x01 \x01(\tH\x00\x88\x01\x01\x12Z\n\x15public_network_source\x18\x02 \x01(\x0b\x32\x36.google.storage.v2.Bucket.IpFilter.PublicNetworkSourceH\x01\x88\x01\x01\x12U\n\x13vpc_network_sources\x18\x03 \x03(\x0b\x32\x33.google.storage.v2.Bucket.IpFilter.VpcNetworkSourceB\x03\xe0\x41\x01\x12!\n\x14\x61llow_cross_org_vpcs\x18\x04 \x01(\x08\x42\x03\xe0\x41\x01\x12+\n\x1e\x61llow_all_service_agent_access\x18\x05 \x01(\x08H\x02\x88\x01\x01\x1a:\n\x13PublicNetworkSource\x12#\n\x16\x61llowed_ip_cidr_ranges\x18\x01 \x03(\tB\x03\xe0\x41\x01\x1aY\n\x10VpcNetworkSource\x12\x14\n\x07network\x18\x01 \x01(\tH\x00\x88\x01\x01\x12#\n\x16\x61llowed_ip_cidr_ranges\x18\x02 \x03(\tB\x03\xe0\x41\x01\x42\n\n\x08_networkB\x07\n\x05_modeB\x18\n\x16_public_network_sourceB!\n\x1f_allow_all_service_agent_access\x1a-\n\x15HierarchicalNamespace\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01:X\xea\x41U\n\x1dstorage.googleapis.com/Bucket\x12#projects/{project}/buckets/{bucket}*\x07\x62uckets2\x06\x62ucketB\x0c\n\n_ip_filter"\xf6\x01\n\x13\x42ucketAccessControl\x12\x11\n\x04role\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x0f\n\x02id\x18\x02 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x65ntity\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x17\n\nentity_alt\x18\t \x01(\tB\x03\xe0\x41\x03\x12\x16\n\tentity_id\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04\x65tag\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x12\n\x05\x65mail\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x64omain\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x39\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeamB\x03\xe0\x41\x01"I\n\x0f\x43hecksummedData\x12\x16\n\x07\x63ontent\x18\x01 \x01(\x0c\x42\x05\x08\x01\xe0\x41\x01\x12\x13\n\x06\x63rc32c\x18\x02 \x01(\x07H\x00\x88\x01\x01\x42\t\n\x07_crc32c"H\n\x0fObjectChecksums\x12\x13\n\x06\x63rc32c\x18\x01 \x01(\x07H\x00\x88\x01\x01\x12\x15\n\x08md5_hash\x18\x02 \x01(\x0c\x42\x03\xe0\x41\x01\x42\t\n\x07_crc32c"\x9c\x01\n\x1aObjectCustomContextPayload\x12\x12\n\x05value\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12\x34\n\x0b\x63reate_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03"\xb2\x01\n\x0eObjectContexts\x12\x42\n\x06\x63ustom\x18\x01 \x03(\x0b\x32-.google.storage.v2.ObjectContexts.CustomEntryB\x03\xe0\x41\x01\x1a\\\n\x0b\x43ustomEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12<\n\x05value\x18\x02 \x01(\x0b\x32-.google.storage.v2.ObjectCustomContextPayload:\x02\x38\x01"V\n\x12\x43ustomerEncryption\x12!\n\x14\x65ncryption_algorithm\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1d\n\x10key_sha256_bytes\x18\x03 \x01(\x0c\x42\x03\xe0\x41\x01"\x91\x0e\n\x06Object\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x35\n\x06\x62ucket\x18\x02 \x01(\tB%\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x11\n\x04\x65tag\x18\x1b \x01(\tB\x03\xe0\x41\x01\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x05\x12\x1f\n\rrestore_token\x18# \x01(\tB\x03\xe0\x41\x03H\x00\x88\x01\x01\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x1a\n\rstorage_class\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04size\x18\x06 \x01(\x03\x42\x03\xe0\x41\x03\x12\x1d\n\x10\x63ontent_encoding\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12 \n\x13\x63ontent_disposition\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x1a\n\rcache_control\x18\t \x01(\tB\x03\xe0\x41\x01\x12\x38\n\x03\x61\x63l\x18\n \x03(\x0b\x32&.google.storage.v2.ObjectAccessControlB\x03\xe0\x41\x01\x12\x1d\n\x10\x63ontent_language\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0b\x64\x65lete_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x36\n\rfinalize_time\x18$ \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x19\n\x0c\x63ontent_type\x18\r \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0b\x63reate_time\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1c\n\x0f\x63omponent_count\x18\x0f \x01(\x05\x42\x03\xe0\x41\x03\x12:\n\tchecksums\x18\x10 \x01(\x0b\x32".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x11 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12:\n\x07kms_key\x18\x12 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x42\n\x19update_storage_class_time\x18\x13 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1b\n\x0etemporary_hold\x18\x14 \x01(\x08\x42\x03\xe0\x41\x01\x12>\n\x15retention_expire_time\x18\x15 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12>\n\x08metadata\x18\x16 \x03(\x0b\x32\'.google.storage.v2.Object.MetadataEntryB\x03\xe0\x41\x01\x12\x38\n\x08\x63ontexts\x18& \x01(\x0b\x32!.google.storage.v2.ObjectContextsB\x03\xe0\x41\x01\x12\x1d\n\x10\x65vent_based_hold\x18\x17 \x01(\x08H\x01\x88\x01\x01\x12,\n\x05owner\x18\x18 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12G\n\x13\x63ustomer_encryption\x18\x19 \x01(\x0b\x32%.google.storage.v2.CustomerEncryptionB\x03\xe0\x41\x01\x12\x34\n\x0b\x63ustom_time\x18\x1a \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12>\n\x10soft_delete_time\x18\x1c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x02\x88\x01\x01\x12>\n\x10hard_delete_time\x18\x1d \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x03\x88\x01\x01\x12;\n\tretention\x18\x1e \x01(\x0b\x32#.google.storage.v2.Object.RetentionB\x03\xe0\x41\x01\x1a\xbc\x01\n\tRetention\x12;\n\x04mode\x18\x01 \x01(\x0e\x32(.google.storage.v2.Object.Retention.ModeB\x03\xe0\x41\x01\x12:\n\x11retain_until_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01"6\n\x04Mode\x12\x14\n\x10MODE_UNSPECIFIED\x10\x00\x12\x0c\n\x08UNLOCKED\x10\x01\x12\n\n\x06LOCKED\x10\x02\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x10\n\x0e_restore_tokenB\x13\n\x11_event_based_holdB\x13\n\x11_soft_delete_timeB\x13\n\x11_hard_delete_time"\xf6\x01\n\x13ObjectAccessControl\x12\x11\n\x04role\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x0f\n\x02id\x18\x02 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x65ntity\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x17\n\nentity_alt\x18\t \x01(\tB\x03\xe0\x41\x03\x12\x16\n\tentity_id\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04\x65tag\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x12\n\x05\x65mail\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x64omain\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x39\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeamB\x03\xe0\x41\x01"l\n\x13ListObjectsResponse\x12*\n\x07objects\x18\x01 \x03(\x0b\x32\x19.google.storage.v2.Object\x12\x10\n\x08prefixes\x18\x02 \x03(\t\x12\x17\n\x0fnext_page_token\x18\x03 \x01(\t"=\n\x0bProjectTeam\x12\x1b\n\x0eproject_number\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04team\x18\x02 \x01(\tB\x03\xe0\x41\x01"4\n\x05Owner\x12\x13\n\x06\x65ntity\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x16\n\tentity_id\x18\x02 \x01(\tB\x03\xe0\x41\x01"C\n\x0c\x43ontentRange\x12\r\n\x05start\x18\x01 \x01(\x03\x12\x0b\n\x03\x65nd\x18\x02 \x01(\x03\x12\x17\n\x0f\x63omplete_length\x18\x03 \x01(\x03\x32\x9f\x1f\n\x07Storage\x12r\n\x0c\x44\x65leteBucket\x12&.google.storage.v2.DeleteBucketRequest\x1a\x16.google.protobuf.Empty""\xda\x41\x04name\x8a\xd3\xe4\x93\x02\x15\x12\x13\n\x04name\x12\x0b{bucket=**}\x12o\n\tGetBucket\x12#.google.storage.v2.GetBucketRequest\x1a\x19.google.storage.v2.Bucket""\xda\x41\x04name\x8a\xd3\xe4\x93\x02\x15\x12\x13\n\x04name\x12\x0b{bucket=**}\x12\xab\x01\n\x0c\x43reateBucket\x12&.google.storage.v2.CreateBucketRequest\x1a\x19.google.storage.v2.Bucket"X\xda\x41\x17parent,bucket,bucket_id\x8a\xd3\xe4\x93\x02\x38\x12\x16\n\x06parent\x12\x0c{project=**}\x12\x1e\n\x0e\x62ucket.project\x12\x0c{project=**}\x12\x85\x01\n\x0bListBuckets\x12%.google.storage.v2.ListBucketsRequest\x1a&.google.storage.v2.ListBucketsResponse"\'\xda\x41\x06parent\x8a\xd3\xe4\x93\x02\x18\x12\x16\n\x06parent\x12\x0c{project=**}\x12\x93\x01\n\x19LockBucketRetentionPolicy\x12\x33.google.storage.v2.LockBucketRetentionPolicyRequest\x1a\x19.google.storage.v2.Bucket"&\xda\x41\x06\x62ucket\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xa3\x01\n\x0cGetIamPolicy\x12".google.iam.v1.GetIamPolicyRequest\x1a\x15.google.iam.v1.Policy"X\xda\x41\x08resource\x8a\xd3\xe4\x93\x02G\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12,\n\x08resource\x12 {bucket=projects/*/buckets/*}/**\x12\xaa\x01\n\x0cSetIamPolicy\x12".google.iam.v1.SetIamPolicyRequest\x1a\x15.google.iam.v1.Policy"_\xda\x41\x0fresource,policy\x8a\xd3\xe4\x93\x02G\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12,\n\x08resource\x12 {bucket=projects/*/buckets/*}/**\x12\x96\x02\n\x12TestIamPermissions\x12(.google.iam.v1.TestIamPermissionsRequest\x1a).google.iam.v1.TestIamPermissionsResponse"\xaa\x01\xda\x41\x14resource,permissions\x8a\xd3\xe4\x93\x02\x8c\x01\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12\x34\n\x08resource\x12({bucket=projects/*/buckets/*}/objects/**\x12;\n\x08resource\x12/{bucket=projects/*/buckets/*}/managedFolders/**\x12\x8a\x01\n\x0cUpdateBucket\x12&.google.storage.v2.UpdateBucketRequest\x1a\x19.google.storage.v2.Bucket"7\xda\x41\x12\x62ucket,update_mask\x8a\xd3\xe4\x93\x02\x1c\x12\x1a\n\x0b\x62ucket.name\x12\x0b{bucket=**}\x12~\n\rComposeObject\x12\'.google.storage.v2.ComposeObjectRequest\x1a\x19.google.storage.v2.Object")\x8a\xd3\xe4\x93\x02#\x12!\n\x12\x64\x65stination.bucket\x12\x0b{bucket=**}\x12\x98\x01\n\x0c\x44\x65leteObject\x12&.google.storage.v2.DeleteObjectRequest\x1a\x16.google.protobuf.Empty"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\x8d\x01\n\rRestoreObject\x12\'.google.storage.v2.RestoreObjectRequest\x1a\x19.google.storage.v2.Object"8\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xba\x01\n\x14\x43\x61ncelResumableWrite\x12..google.storage.v2.CancelResumableWriteRequest\x1a/.google.storage.v2.CancelResumableWriteResponse"A\xda\x41\tupload_id\x8a\xd3\xe4\x93\x02/\x12-\n\tupload_id\x12 {bucket=projects/*/buckets/*}/**\x12\x95\x01\n\tGetObject\x12#.google.storage.v2.GetObjectRequest\x1a\x19.google.storage.v2.Object"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xa5\x01\n\nReadObject\x12$.google.storage.v2.ReadObjectRequest\x1a%.google.storage.v2.ReadObjectResponse"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}0\x01\x12\x99\x01\n\x0e\x42idiReadObject\x12(.google.storage.v2.BidiReadObjectRequest\x1a).google.storage.v2.BidiReadObjectResponse".\x8a\xd3\xe4\x93\x02(\x12&\n\x17read_object_spec.bucket\x12\x0b{bucket=**}(\x01\x30\x01\x12\x8c\x01\n\x0cUpdateObject\x12&.google.storage.v2.UpdateObjectRequest\x1a\x19.google.storage.v2.Object"9\xda\x41\x12object,update_mask\x8a\xd3\xe4\x93\x02\x1e\x12\x1c\n\robject.bucket\x12\x0b{bucket=**}\x12`\n\x0bWriteObject\x12%.google.storage.v2.WriteObjectRequest\x1a&.google.storage.v2.WriteObjectResponse"\x00(\x01\x12n\n\x0f\x42idiWriteObject\x12).google.storage.v2.BidiWriteObjectRequest\x1a*.google.storage.v2.BidiWriteObjectResponse"\x00(\x01\x30\x01\x12\x84\x01\n\x0bListObjects\x12%.google.storage.v2.ListObjectsRequest\x1a&.google.storage.v2.ListObjectsResponse"&\xda\x41\x06parent\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06parent\x12\x0b{bucket=**}\x12\x98\x01\n\rRewriteObject\x12\'.google.storage.v2.RewriteObjectRequest\x1a".google.storage.v2.RewriteResponse":\x8a\xd3\xe4\x93\x02\x34\x12\x0f\n\rsource_bucket\x12!\n\x12\x64\x65stination_bucket\x12\x0b{bucket=**}\x12\xae\x01\n\x13StartResumableWrite\x12-.google.storage.v2.StartResumableWriteRequest\x1a..google.storage.v2.StartResumableWriteResponse"8\x8a\xd3\xe4\x93\x02\x32\x12\x30\n!write_object_spec.resource.bucket\x12\x0b{bucket=**}\x12\xae\x01\n\x10QueryWriteStatus\x12*.google.storage.v2.QueryWriteStatusRequest\x1a+.google.storage.v2.QueryWriteStatusResponse"A\xda\x41\tupload_id\x8a\xd3\xe4\x93\x02/\x12-\n\tupload_id\x12 {bucket=projects/*/buckets/*}/**\x12\x96\x01\n\nMoveObject\x12$.google.storage.v2.MoveObjectRequest\x1a\x19.google.storage.v2.Object"G\xda\x41\'bucket,source_object,destination_object\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x1a\xa7\x02\xca\x41\x16storage.googleapis.com\xd2\x41\x8a\x02https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_writeB\xe2\x01\n\x15\x63om.google.storage.v2B\x0cStorageProtoP\x01Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\xea\x41x\n!cloudkms.googleapis.com/CryptoKey\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}b\x06proto3'
-)
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1fgoogle/storage/v2/storage.proto\x12\x11google.storage.v2\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x18google/api/routing.proto\x1a\x1egoogle/iam/v1/iam_policy.proto\x1a\x1agoogle/iam/v1/policy.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\x1a\x16google/type/date.proto\"\xd6\x01\n\x13\x44\x65leteBucketRequest\x12\x33\n\x04name\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\x95\x02\n\x10GetBucketRequest\x12\x33\n\x04name\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12\x32\n\tread_mask\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x02\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask\"\x83\x02\n\x13\x43reateBucketRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\x12\x1dstorage.googleapis.com/Bucket\x12.\n\x06\x62ucket\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.BucketB\x03\xe0\x41\x01\x12\x16\n\tbucket_id\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12\x1b\n\x0epredefined_acl\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12*\n\x1dpredefined_default_object_acl\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12$\n\x17\x65nable_object_retention\x18\t \x01(\x08\x42\x03\xe0\x41\x01\"\xf8\x01\n\x12ListBucketsRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\x12\x1dstorage.googleapis.com/Bucket\x12\x16\n\tpage_size\x18\x02 \x01(\x05\x42\x03\xe0\x41\x01\x12\x17\n\npage_token\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06prefix\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x00\x88\x01\x01\x12#\n\x16return_partial_success\x18\t \x01(\x08\x42\x03\xe0\x41\x01\x42\x0c\n\n_read_mask\"o\n\x13ListBucketsResponse\x12*\n\x07\x62uckets\x18\x01 \x03(\x0b\x32\x19.google.storage.v2.Bucket\x12\x17\n\x0fnext_page_token\x18\x02 \x01(\t\x12\x13\n\x0bunreachable\x18\x03 \x03(\t\"\x7f\n LockBucketRetentionPolicyRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03\x42\x03\xe0\x41\x02\"\xd0\x02\n\x13UpdateBucketRequest\x12.\n\x06\x62ucket\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.BucketB\x03\xe0\x41\x02\x12$\n\x17if_metageneration_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12\x1b\n\x0epredefined_acl\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12*\n\x1dpredefined_default_object_acl\x18\t \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_mask\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x03\xe0\x41\x02\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\xd4\x06\n\x14\x43omposeObjectRequest\x12\x33\n\x0b\x64\x65stination\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12Q\n\x0esource_objects\x18\x02 \x03(\x0b\x32\x34.google.storage.v2.ComposeObjectRequest.SourceObjectB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x65stination_predefined_acl\x18\t \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12:\n\x07kms_key\x18\x06 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12W\n\x1c\x63ommon_object_request_params\x18\x07 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\n \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x12\"\n\x15\x64\x65lete_source_objects\x18\x0b \x01(\x08H\x02\x88\x01\x01\x1a\xf8\x01\n\x0cSourceObject\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x02 \x01(\x03\x42\x03\xe0\x41\x01\x12k\n\x14object_preconditions\x18\x03 \x01(\x0b\x32H.google.storage.v2.ComposeObjectRequest.SourceObject.ObjectPreconditionsB\x03\xe0\x41\x01\x1aO\n\x13ObjectPreconditions\x12 \n\x13if_generation_match\x18\x01 \x01(\x03H\x00\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_metageneration_matchB\x18\n\x16_delete_source_objects\"\xdb\x03\n\x13\x44\x65leteObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x05 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x06 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x07 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x08 \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\xaa\x04\n\x14RestoreObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12\x1a\n\rrestore_token\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x03\x88\x01\x01\x12\x1c\n\x0f\x63opy_source_acl\x18\t \x01(\x08H\x04\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x12\n\x10_copy_source_acl\"5\n\x1b\x43\x61ncelResumableWriteRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02\"\x1e\n\x1c\x43\x61ncelResumableWriteResponse\"\xce\x04\n\x11ReadObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12\x18\n\x0bread_offset\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12\x17\n\nread_limit\x18\x05 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x06 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x08 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\t \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x04\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask\"\xe2\x04\n\x10GetObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12\x19\n\x0csoft_deleted\x18\x0b \x01(\x08H\x00\x88\x01\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x04\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\n \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x05\x88\x01\x01\x12\x1a\n\rrestore_token\x18\x0c \x01(\tB\x03\xe0\x41\x01\x42\x0f\n\r_soft_deletedB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_mask\"\xf5\x01\n\x12ReadObjectResponse\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32\".google.storage.v2.ChecksummedData\x12<\n\x10object_checksums\x18\x02 \x01(\x0b\x32\".google.storage.v2.ObjectChecksums\x12\x36\n\rcontent_range\x18\x03 \x01(\x0b\x32\x1f.google.storage.v2.ContentRange\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object\"\x9b\x05\n\x12\x42idiReadObjectSpec\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x06 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x07 \x01(\x03H\x03\x88\x01\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x36\n\tread_mask\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x02\x18\x01H\x04\x88\x01\x01\x12;\n\x0bread_handle\x18\r \x01(\x0b\x32!.google.storage.v2.BidiReadHandleH\x05\x88\x01\x01\x12\x1a\n\rrouting_token\x18\x0e \x01(\tH\x06\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0c\n\n_read_maskB\x0e\n\x0c_read_handleB\x10\n\x0e_routing_token\"\x95\x01\n\x15\x42idiReadObjectRequest\x12\x44\n\x10read_object_spec\x18\x01 \x01(\x0b\x32%.google.storage.v2.BidiReadObjectSpecB\x03\xe0\x41\x01\x12\x36\n\x0bread_ranges\x18\x08 \x03(\x0b\x32\x1c.google.storage.v2.ReadRangeB\x03\xe0\x41\x01\"\xbd\x01\n\x16\x42idiReadObjectResponse\x12>\n\x12object_data_ranges\x18\x06 \x03(\x0b\x32\".google.storage.v2.ObjectRangeData\x12+\n\x08metadata\x18\x04 \x01(\x0b\x32\x19.google.storage.v2.Object\x12\x36\n\x0bread_handle\x18\x07 \x01(\x0b\x32!.google.storage.v2.BidiReadHandle\"\x85\x01\n\x1d\x42idiReadObjectRedirectedError\x12\x36\n\x0bread_handle\x18\x01 \x01(\x0b\x32!.google.storage.v2.BidiReadHandle\x12\x1a\n\rrouting_token\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\x10\n\x0e_routing_token\"\xc6\x01\n\x1e\x42idiWriteObjectRedirectedError\x12\x1a\n\rrouting_token\x18\x01 \x01(\tH\x00\x88\x01\x01\x12=\n\x0cwrite_handle\x18\x02 \x01(\x0b\x32\".google.storage.v2.BidiWriteHandleH\x01\x88\x01\x01\x12\x17\n\ngeneration\x18\x03 \x01(\x03H\x02\x88\x01\x01\x42\x10\n\x0e_routing_tokenB\x0f\n\r_write_handleB\r\n\x0b_generation\"S\n\x13\x42idiReadObjectError\x12<\n\x11read_range_errors\x18\x01 \x03(\x0b\x32!.google.storage.v2.ReadRangeError\"E\n\x0eReadRangeError\x12\x0f\n\x07read_id\x18\x01 \x01(\x03\x12\"\n\x06status\x18\x02 \x01(\x0b\x32\x12.google.rpc.Status\"U\n\tReadRange\x12\x18\n\x0bread_offset\x18\x01 \x01(\x03\x42\x03\xe0\x41\x02\x12\x18\n\x0bread_length\x18\x02 \x01(\x03\x42\x03\xe0\x41\x01\x12\x14\n\x07read_id\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\"\x94\x01\n\x0fObjectRangeData\x12<\n\x10\x63hecksummed_data\x18\x01 \x01(\x0b\x32\".google.storage.v2.ChecksummedData\x12\x30\n\nread_range\x18\x02 \x01(\x0b\x32\x1c.google.storage.v2.ReadRange\x12\x11\n\trange_end\x18\x03 \x01(\x08\"%\n\x0e\x42idiReadHandle\x12\x13\n\x06handle\x18\x01 \x01(\x0c\x42\x03\xe0\x41\x02\"&\n\x0f\x42idiWriteHandle\x12\x13\n\x06handle\x18\x01 \x01(\x0c\x42\x03\xe0\x41\x02\"\xba\x03\n\x0fWriteObjectSpec\x12\x30\n\x08resource\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12\x1b\n\x0epredefined_acl\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x03 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x04 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x05 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x06 \x01(\x03H\x03\x88\x01\x01\x12\x18\n\x0bobject_size\x18\x08 \x01(\x03H\x04\x88\x01\x01\x12\x17\n\nappendable\x18\t \x01(\x08H\x05\x88\x01\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x0e\n\x0c_object_sizeB\r\n\x0b_appendable\"\x95\x03\n\x12WriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32\".google.storage.v2.ChecksummedDataH\x01\x12\x41\n\x10object_checksums\x18\x06 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x12\x19\n\x0c\x66inish_write\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta\"n\n\x13WriteObjectResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\x81\x03\n\x10\x41ppendObjectSpec\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x13\n\x06object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12$\n\x17if_metageneration_match\x18\x04 \x01(\x03H\x00\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x05 \x01(\x03H\x01\x88\x01\x01\x12\x1a\n\rrouting_token\x18\x06 \x01(\tH\x02\x88\x01\x01\x12=\n\x0cwrite_handle\x18\x07 \x01(\x0b\x32\".google.storage.v2.BidiWriteHandleH\x03\x88\x01\x01\x42\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x10\n\x0e_routing_tokenB\x0f\n\r_write_handle\"\x8b\x04\n\x16\x42idiWriteObjectRequest\x12\x13\n\tupload_id\x18\x01 \x01(\tH\x00\x12?\n\x11write_object_spec\x18\x02 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpecH\x00\x12\x41\n\x12\x61ppend_object_spec\x18\x0b \x01(\x0b\x32#.google.storage.v2.AppendObjectSpecH\x00\x12\x19\n\x0cwrite_offset\x18\x03 \x01(\x03\x42\x03\xe0\x41\x02\x12>\n\x10\x63hecksummed_data\x18\x04 \x01(\x0b\x32\".google.storage.v2.ChecksummedDataH\x01\x12\x41\n\x10object_checksums\x18\x06 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x12\x19\n\x0cstate_lookup\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12\x12\n\x05\x66lush\x18\x08 \x01(\x08\x42\x03\xe0\x41\x01\x12\x19\n\x0c\x66inish_write\x18\t \x01(\x08\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\n \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x42\x0f\n\rfirst_messageB\x06\n\x04\x64\x61ta\"\xc2\x01\n\x17\x42idiWriteObjectResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x12=\n\x0cwrite_handle\x18\x03 \x01(\x0b\x32\".google.storage.v2.BidiWriteHandleH\x01\x88\x01\x01\x42\x0e\n\x0cwrite_statusB\x0f\n\r_write_handle\"\xe0\x03\n\x12ListObjectsRequest\x12\x35\n\x06parent\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x16\n\tpage_size\x18\x02 \x01(\x05\x42\x03\xe0\x41\x01\x12\x17\n\npage_token\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x16\n\tdelimiter\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\'\n\x1ainclude_trailing_delimiter\x18\x05 \x01(\x08\x42\x03\xe0\x41\x01\x12\x13\n\x06prefix\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x15\n\x08versions\x18\x07 \x01(\x08\x42\x03\xe0\x41\x01\x12\x32\n\tread_mask\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskH\x00\x88\x01\x01\x12 \n\x13lexicographic_start\x18\n \x01(\tB\x03\xe0\x41\x01\x12\x1e\n\x11lexicographic_end\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12\x19\n\x0csoft_deleted\x18\x0c \x01(\x08\x42\x03\xe0\x41\x01\x12(\n\x1binclude_folders_as_prefixes\x18\r \x01(\x08\x42\x03\xe0\x41\x01\x12\x17\n\nmatch_glob\x18\x0e \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x66ilter\x18\x0f \x01(\tB\x03\xe0\x41\x01\x42\x0c\n\n_read_mask\"\x8a\x01\n\x17QueryWriteStatusRequest\x12\x16\n\tupload_id\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x02 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\"s\n\x18QueryWriteStatusResponse\x12\x18\n\x0epersisted_size\x18\x01 \x01(\x03H\x00\x12-\n\x08resource\x18\x02 \x01(\x0b\x32\x19.google.storage.v2.ObjectH\x00\x42\x0e\n\x0cwrite_status\"\xdd\n\n\x14RewriteObjectRequest\x12 \n\x10\x64\x65stination_name\x18\x18 \x01(\tB\x06\xe0\x41\x02\xe0\x41\x05\x12\x44\n\x12\x64\x65stination_bucket\x18\x19 \x01(\tB(\xe0\x41\x02\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x46\n\x13\x64\x65stination_kms_key\x18\x1b \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x33\n\x0b\x64\x65stination\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x01\x12<\n\rsource_bucket\x18\x02 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x1a\n\rsource_object\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12\x1e\n\x11source_generation\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01\x12\x1a\n\rrewrite_token\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x65stination_predefined_acl\x18\x1c \x01(\tB\x03\xe0\x41\x01\x12 \n\x13if_generation_match\x18\x07 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x08 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\t \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\n \x01(\x03H\x03\x88\x01\x01\x12\'\n\x1aif_source_generation_match\x18\x0b \x01(\x03H\x04\x88\x01\x01\x12+\n\x1eif_source_generation_not_match\x18\x0c \x01(\x03H\x05\x88\x01\x01\x12+\n\x1eif_source_metageneration_match\x18\r \x01(\x03H\x06\x88\x01\x01\x12/\n\"if_source_metageneration_not_match\x18\x0e \x01(\x03H\x07\x88\x01\x01\x12)\n\x1cmax_bytes_rewritten_per_call\x18\x0f \x01(\x03\x42\x03\xe0\x41\x01\x12-\n copy_source_encryption_algorithm\x18\x10 \x01(\tB\x03\xe0\x41\x01\x12-\n copy_source_encryption_key_bytes\x18\x15 \x01(\x0c\x42\x03\xe0\x41\x01\x12\x34\n\'copy_source_encryption_key_sha256_bytes\x18\x16 \x01(\x0c\x42\x03\xe0\x41\x01\x12W\n\x1c\x63ommon_object_request_params\x18\x13 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\x1d \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_matchB\x1d\n\x1b_if_source_generation_matchB!\n\x1f_if_source_generation_not_matchB!\n\x1f_if_source_metageneration_matchB%\n#_if_source_metageneration_not_match\"\x97\x01\n\x0fRewriteResponse\x12\x1d\n\x15total_bytes_rewritten\x18\x01 \x01(\x03\x12\x13\n\x0bobject_size\x18\x02 \x01(\x03\x12\x0c\n\x04\x64one\x18\x03 \x01(\x08\x12\x15\n\rrewrite_token\x18\x04 \x01(\t\x12+\n\x08resource\x18\x05 \x01(\x0b\x32\x19.google.storage.v2.Object\"\xf7\x05\n\x11MoveObjectRequest\x12\x35\n\x06\x62ucket\x18\x01 \x01(\tB%\xe0\x41\x02\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x1a\n\rsource_object\x18\x02 \x01(\tB\x03\xe0\x41\x02\x12\x1f\n\x12\x64\x65stination_object\x18\x03 \x01(\tB\x03\xe0\x41\x02\x12,\n\x1aif_source_generation_match\x18\x04 \x01(\x03\x42\x03\xe0\x41\x01H\x00\x88\x01\x01\x12\x30\n\x1eif_source_generation_not_match\x18\x05 \x01(\x03\x42\x03\xe0\x41\x01H\x01\x88\x01\x01\x12\x30\n\x1eif_source_metageneration_match\x18\x06 \x01(\x03\x42\x03\xe0\x41\x01H\x02\x88\x01\x01\x12\x34\n\"if_source_metageneration_not_match\x18\x07 \x01(\x03\x42\x03\xe0\x41\x01H\x03\x88\x01\x01\x12%\n\x13if_generation_match\x18\x08 \x01(\x03\x42\x03\xe0\x41\x01H\x04\x88\x01\x01\x12)\n\x17if_generation_not_match\x18\t \x01(\x03\x42\x03\xe0\x41\x01H\x05\x88\x01\x01\x12)\n\x17if_metageneration_match\x18\n \x01(\x03\x42\x03\xe0\x41\x01H\x06\x88\x01\x01\x12-\n\x1bif_metageneration_not_match\x18\x0b \x01(\x03\x42\x03\xe0\x41\x01H\x07\x88\x01\x01\x42\x1d\n\x1b_if_source_generation_matchB!\n\x1f_if_source_generation_not_matchB!\n\x1f_if_source_metageneration_matchB%\n#_if_source_metageneration_not_matchB\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\xfc\x01\n\x1aStartResumableWriteRequest\x12\x42\n\x11write_object_spec\x18\x01 \x01(\x0b\x32\".google.storage.v2.WriteObjectSpecB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x03 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12\x41\n\x10object_checksums\x18\x05 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x01\"0\n\x1bStartResumableWriteResponse\x12\x11\n\tupload_id\x18\x01 \x01(\t\"\xa3\x04\n\x13UpdateObjectRequest\x12.\n\x06object\x18\x01 \x01(\x0b\x32\x19.google.storage.v2.ObjectB\x03\xe0\x41\x02\x12 \n\x13if_generation_match\x18\x02 \x01(\x03H\x00\x88\x01\x01\x12$\n\x17if_generation_not_match\x18\x03 \x01(\x03H\x01\x88\x01\x01\x12$\n\x17if_metageneration_match\x18\x04 \x01(\x03H\x02\x88\x01\x01\x12(\n\x1bif_metageneration_not_match\x18\x05 \x01(\x03H\x03\x88\x01\x01\x12\x1b\n\x0epredefined_acl\x18\n \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_mask\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskB\x03\xe0\x41\x02\x12W\n\x1c\x63ommon_object_request_params\x18\x08 \x01(\x0b\x32,.google.storage.v2.CommonObjectRequestParamsB\x03\xe0\x41\x01\x12(\n\x1boverride_unlocked_retention\x18\x0b \x01(\x08\x42\x03\xe0\x41\x01\x42\x16\n\x14_if_generation_matchB\x1a\n\x18_if_generation_not_matchB\x1a\n\x18_if_metageneration_matchB\x1e\n\x1c_if_metageneration_not_match\"\x8b\x01\n\x19\x43ommonObjectRequestParams\x12!\n\x14\x65ncryption_algorithm\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12!\n\x14\x65ncryption_key_bytes\x18\x04 \x01(\x0c\x42\x03\xe0\x41\x01\x12(\n\x1b\x65ncryption_key_sha256_bytes\x18\x05 \x01(\x0c\x42\x03\xe0\x41\x01\"\xca\x05\n\x10ServiceConstants\"\xb5\x05\n\x06Values\x12\x16\n\x12VALUES_UNSPECIFIED\x10\x00\x12\x1b\n\x14MAX_READ_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x1c\n\x15MAX_WRITE_CHUNK_BYTES\x10\x80\x80\x80\x01\x12\x19\n\x12MAX_OBJECT_SIZE_MB\x10\x80\x80\xc0\x02\x12)\n$MAX_CUSTOM_METADATA_FIELD_NAME_BYTES\x10\x80\x08\x12*\n%MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES\x10\x80 \x12)\n$MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES\x10\x80@\x12*\n$MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES\x10\x80\xa0\x01\x12\'\n#MAX_NOTIFICATION_CONFIGS_PER_BUCKET\x10\x64\x12\"\n\x1eMAX_LIFECYCLE_RULES_PER_BUCKET\x10\x64\x12&\n\"MAX_NOTIFICATION_CUSTOM_ATTRIBUTES\x10\x05\x12\x31\n,MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH\x10\x80\x02\x12\x33\n.MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_VALUE_LENGTH\x10\x80\x08\x12\x1c\n\x18MAX_LABELS_ENTRIES_COUNT\x10@\x12\x1f\n\x1bMAX_LABELS_KEY_VALUE_LENGTH\x10?\x12\x1f\n\x1aMAX_LABELS_KEY_VALUE_BYTES\x10\x80\x01\x12.\n)MAX_OBJECT_IDS_PER_DELETE_OBJECTS_REQUEST\x10\xe8\x07\x12\x1e\n\x1aSPLIT_TOKEN_MAX_VALID_DAYS\x10\x0e\x1a\x02\x10\x01\"\xba,\n\x06\x42ucket\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x08\x12\x16\n\tbucket_id\x18\x02 \x01(\tB\x03\xe0\x41\x03\x12\x0c\n\x04\x65tag\x18\x1d \x01(\t\x12\x44\n\x07project\x18\x03 \x01(\tB3\xe0\x41\x05\xfa\x41-\n+cloudresourcemanager.googleapis.com/Project\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x15\n\x08location\x18\x05 \x01(\tB\x03\xe0\x41\x05\x12\x1a\n\rlocation_type\x18\x06 \x01(\tB\x03\xe0\x41\x03\x12\x1a\n\rstorage_class\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12\x10\n\x03rpo\x18\x1b \x01(\tB\x03\xe0\x41\x01\x12\x38\n\x03\x61\x63l\x18\x08 \x03(\x0b\x32&.google.storage.v2.BucketAccessControlB\x03\xe0\x41\x01\x12G\n\x12\x64\x65\x66\x61ult_object_acl\x18\t \x03(\x0b\x32&.google.storage.v2.ObjectAccessControlB\x03\xe0\x41\x01\x12;\n\tlifecycle\x18\n \x01(\x0b\x32#.google.storage.v2.Bucket.LifecycleB\x03\xe0\x41\x01\x12\x34\n\x0b\x63reate_time\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x31\n\x04\x63ors\x18\x0c \x03(\x0b\x32\x1e.google.storage.v2.Bucket.CorsB\x03\xe0\x41\x01\x12\x34\n\x0bupdate_time\x18\r \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12%\n\x18\x64\x65\x66\x61ult_event_based_hold\x18\x0e \x01(\x08\x42\x03\xe0\x41\x01\x12:\n\x06labels\x18\x0f \x03(\x0b\x32%.google.storage.v2.Bucket.LabelsEntryB\x03\xe0\x41\x01\x12\x37\n\x07website\x18\x10 \x01(\x0b\x32!.google.storage.v2.Bucket.WebsiteB\x03\xe0\x41\x01\x12=\n\nversioning\x18\x11 \x01(\x0b\x32$.google.storage.v2.Bucket.VersioningB\x03\xe0\x41\x01\x12\x37\n\x07logging\x18\x12 \x01(\x0b\x32!.google.storage.v2.Bucket.LoggingB\x03\xe0\x41\x01\x12,\n\x05owner\x18\x13 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12=\n\nencryption\x18\x14 \x01(\x0b\x32$.google.storage.v2.Bucket.EncryptionB\x03\xe0\x41\x01\x12\x37\n\x07\x62illing\x18\x15 \x01(\x0b\x32!.google.storage.v2.Bucket.BillingB\x03\xe0\x41\x01\x12H\n\x10retention_policy\x18\x16 \x01(\x0b\x32).google.storage.v2.Bucket.RetentionPolicyB\x03\xe0\x41\x01\x12<\n\niam_config\x18\x17 \x01(\x0b\x32#.google.storage.v2.Bucket.IamConfigB\x03\xe0\x41\x01\x12\x1a\n\rsatisfies_pzs\x18\x19 \x01(\x08\x42\x03\xe0\x41\x01\x12U\n\x17\x63ustom_placement_config\x18\x1a \x01(\x0b\x32/.google.storage.v2.Bucket.CustomPlacementConfigB\x03\xe0\x41\x01\x12;\n\tautoclass\x18\x1c \x01(\x0b\x32#.google.storage.v2.Bucket.AutoclassB\x03\xe0\x41\x01\x12T\n\x16hierarchical_namespace\x18  \x01(\x0b\x32/.google.storage.v2.Bucket.HierarchicalNamespaceB\x03\xe0\x41\x01\x12K\n\x12soft_delete_policy\x18\x1f \x01(\x0b\x32*.google.storage.v2.Bucket.SoftDeletePolicyB\x03\xe0\x41\x01\x12H\n\x10object_retention\x18! \x01(\x0b\x32).google.storage.v2.Bucket.ObjectRetentionB\x03\xe0\x41\x01\x12?\n\tip_filter\x18& \x01(\x0b\x32\".google.storage.v2.Bucket.IpFilterB\x03\xe0\x41\x01H\x00\x88\x01\x01\x1a&\n\x07\x42illing\x12\x1b\n\x0erequester_pays\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1al\n\x04\x43ors\x12\x13\n\x06origin\x18\x01 \x03(\tB\x03\xe0\x41\x01\x12\x13\n\x06method\x18\x02 \x03(\tB\x03\xe0\x41\x01\x12\x1c\n\x0fresponse_header\x18\x03 \x03(\tB\x03\xe0\x41\x01\x12\x1c\n\x0fmax_age_seconds\x18\x04 \x01(\x05\x42\x03\xe0\x41\x01\x1a\xae\t\n\nEncryption\x12\x42\n\x0f\x64\x65\x66\x61ult_kms_key\x18\x01 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x8d\x01\n,google_managed_encryption_enforcement_config\x18\x02 \x01(\x0b\x32M.google.storage.v2.Bucket.Encryption.GoogleManagedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x00\x88\x01\x01\x12\x91\x01\n.customer_managed_encryption_enforcement_config\x18\x03 \x01(\x0b\x32O.google.storage.v2.Bucket.Encryption.CustomerManagedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x01\x88\x01\x01\x12\x93\x01\n/customer_supplied_encryption_enforcement_config\x18\x04 \x01(\x0b\x32P.google.storage.v2.Bucket.Encryption.CustomerSuppliedEncryptionEnforcementConfigB\x03\xe0\x41\x01H\x02\x88\x01\x01\x1a\xaa\x01\n(GoogleManagedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_time\x1a\xac\x01\n*CustomerManagedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_time\x1a\xad\x01\n+CustomerSuppliedEncryptionEnforcementConfig\x12\x1d\n\x10restriction_mode\x18\x03 \x01(\tH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x13\n\x11_restriction_modeB\x11\n\x0f_effective_timeB/\n-_google_managed_encryption_enforcement_configB1\n/_customer_managed_encryption_enforcement_configB2\n0_customer_supplied_encryption_enforcement_config\x1a\x80\x02\n\tIamConfig\x12\x66\n\x1buniform_bucket_level_access\x18\x01 \x01(\x0b\x32<.google.storage.v2.Bucket.IamConfig.UniformBucketLevelAccessB\x03\xe0\x41\x01\x12%\n\x18public_access_prevention\x18\x03 \x01(\tB\x03\xe0\x41\x01\x1a\x64\n\x18UniformBucketLevelAccess\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x12\x32\n\tlock_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x1a\xaa\x06\n\tLifecycle\x12;\n\x04rule\x18\x01 \x03(\x0b\x32(.google.storage.v2.Bucket.Lifecycle.RuleB\x03\xe0\x41\x01\x1a\xdf\x05\n\x04Rule\x12\x44\n\x06\x61\x63tion\x18\x01 \x01(\x0b\x32/.google.storage.v2.Bucket.Lifecycle.Rule.ActionB\x03\xe0\x41\x01\x12J\n\tcondition\x18\x02 \x01(\x0b\x32\x32.google.storage.v2.Bucket.Lifecycle.Rule.ConditionB\x03\xe0\x41\x01\x1a\x37\n\x06\x41\x63tion\x12\x11\n\x04type\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1a\n\rstorage_class\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a\x8b\x04\n\tCondition\x12\x15\n\x08\x61ge_days\x18\x01 \x01(\x05H\x00\x88\x01\x01\x12.\n\x0e\x63reated_before\x18\x02 \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\x14\n\x07is_live\x18\x03 \x01(\x08H\x01\x88\x01\x01\x12\x1f\n\x12num_newer_versions\x18\x04 \x01(\x05H\x02\x88\x01\x01\x12\"\n\x15matches_storage_class\x18\x05 \x03(\tB\x03\xe0\x41\x01\x12#\n\x16\x64\x61ys_since_custom_time\x18\x07 \x01(\x05H\x03\x88\x01\x01\x12\x32\n\x12\x63ustom_time_before\x18\x08 \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\'\n\x1a\x64\x61ys_since_noncurrent_time\x18\t \x01(\x05H\x04\x88\x01\x01\x12\x36\n\x16noncurrent_time_before\x18\n \x01(\x0b\x32\x11.google.type.DateB\x03\xe0\x41\x01\x12\x1b\n\x0ematches_prefix\x18\x0b \x03(\tB\x03\xe0\x41\x01\x12\x1b\n\x0ematches_suffix\x18\x0c \x03(\tB\x03\xe0\x41\x01\x42\x0b\n\t_age_daysB\n\n\x08_is_liveB\x15\n\x13_num_newer_versionsB\x19\n\x17_days_since_custom_timeB\x1d\n\x1b_days_since_noncurrent_time\x1a\x42\n\x07Logging\x12\x17\n\nlog_bucket\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1e\n\x11log_object_prefix\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a*\n\x0fObjectRetention\x12\x17\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x06\xe0\x41\x01\xe0\x41\x03\x1a\x9e\x01\n\x0fRetentionPolicy\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12\x16\n\tis_locked\x18\x02 \x01(\x08\x42\x03\xe0\x41\x01\x12:\n\x12retention_duration\x18\x04 \x01(\x0b\x32\x19.google.protobuf.DurationB\x03\xe0\x41\x01\x1a\xb1\x01\n\x10SoftDeletePolicy\x12:\n\x12retention_duration\x18\x01 \x01(\x0b\x32\x19.google.protobuf.DurationH\x00\x88\x01\x01\x12\x37\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x01\x88\x01\x01\x42\x15\n\x13_retention_durationB\x11\n\x0f_effective_time\x1a\"\n\nVersioning\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1a\x45\n\x07Website\x12\x1d\n\x10main_page_suffix\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1b\n\x0enot_found_page\x18\x02 \x01(\tB\x03\xe0\x41\x01\x1a\x34\n\x15\x43ustomPlacementConfig\x12\x1b\n\x0e\x64\x61ta_locations\x18\x01 \x03(\tB\x03\xe0\x41\x01\x1a\x90\x02\n\tAutoclass\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x12\x34\n\x0btoggle_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12#\n\x16terminal_storage_class\x18\x03 \x01(\tH\x00\x88\x01\x01\x12P\n\"terminal_storage_class_update_time\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x01\x88\x01\x01\x42\x19\n\x17_terminal_storage_classB%\n#_terminal_storage_class_update_time\x1a\xfd\x03\n\x08IpFilter\x12\x11\n\x04mode\x18\x01 \x01(\tH\x00\x88\x01\x01\x12Z\n\x15public_network_source\x18\x02 \x01(\x0b\x32\x36.google.storage.v2.Bucket.IpFilter.PublicNetworkSourceH\x01\x88\x01\x01\x12U\n\x13vpc_network_sources\x18\x03 \x03(\x0b\x32\x33.google.storage.v2.Bucket.IpFilter.VpcNetworkSourceB\x03\xe0\x41\x01\x12!\n\x14\x61llow_cross_org_vpcs\x18\x04 \x01(\x08\x42\x03\xe0\x41\x01\x12+\n\x1e\x61llow_all_service_agent_access\x18\x05 \x01(\x08H\x02\x88\x01\x01\x1a:\n\x13PublicNetworkSource\x12#\n\x16\x61llowed_ip_cidr_ranges\x18\x01 \x03(\tB\x03\xe0\x41\x01\x1aY\n\x10VpcNetworkSource\x12\x14\n\x07network\x18\x01 \x01(\tH\x00\x88\x01\x01\x12#\n\x16\x61llowed_ip_cidr_ranges\x18\x02 \x03(\tB\x03\xe0\x41\x01\x42\n\n\x08_networkB\x07\n\x05_modeB\x18\n\x16_public_network_sourceB!\n\x1f_allow_all_service_agent_access\x1a-\n\x15HierarchicalNamespace\x12\x14\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x03\xe0\x41\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01:X\xea\x41U\n\x1dstorage.googleapis.com/Bucket\x12#projects/{project}/buckets/{bucket}*\x07\x62uckets2\x06\x62ucketB\x0c\n\n_ip_filter\"\xf6\x01\n\x13\x42ucketAccessControl\x12\x11\n\x04role\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x0f\n\x02id\x18\x02 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x65ntity\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x17\n\nentity_alt\x18\t \x01(\tB\x03\xe0\x41\x03\x12\x16\n\tentity_id\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04\x65tag\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x12\n\x05\x65mail\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x64omain\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x39\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeamB\x03\xe0\x41\x01\"I\n\x0f\x43hecksummedData\x12\x16\n\x07\x63ontent\x18\x01 \x01(\x0c\x42\x05\x08\x01\xe0\x41\x01\x12\x13\n\x06\x63rc32c\x18\x02 \x01(\x07H\x00\x88\x01\x01\x42\t\n\x07_crc32c\"H\n\x0fObjectChecksums\x12\x13\n\x06\x63rc32c\x18\x01 \x01(\x07H\x00\x88\x01\x01\x12\x15\n\x08md5_hash\x18\x02 \x01(\x0c\x42\x03\xe0\x41\x01\x42\t\n\x07_crc32c\"\x9c\x01\n\x1aObjectCustomContextPayload\x12\x12\n\x05value\x18\x01 \x01(\tB\x03\xe0\x41\x02\x12\x34\n\x0b\x63reate_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\"\xb2\x01\n\x0eObjectContexts\x12\x42\n\x06\x63ustom\x18\x01 \x03(\x0b\x32-.google.storage.v2.ObjectContexts.CustomEntryB\x03\xe0\x41\x01\x1a\\\n\x0b\x43ustomEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12<\n\x05value\x18\x02 \x01(\x0b\x32-.google.storage.v2.ObjectCustomContextPayload:\x02\x38\x01\"V\n\x12\x43ustomerEncryption\x12!\n\x14\x65ncryption_algorithm\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x1d\n\x10key_sha256_bytes\x18\x03 \x01(\x0c\x42\x03\xe0\x41\x01\"\x91\x0e\n\x06Object\x12\x11\n\x04name\x18\x01 \x01(\tB\x03\xe0\x41\x05\x12\x35\n\x06\x62ucket\x18\x02 \x01(\tB%\xe0\x41\x05\xfa\x41\x1f\n\x1dstorage.googleapis.com/Bucket\x12\x11\n\x04\x65tag\x18\x1b \x01(\tB\x03\xe0\x41\x01\x12\x17\n\ngeneration\x18\x03 \x01(\x03\x42\x03\xe0\x41\x05\x12\x1f\n\rrestore_token\x18# \x01(\tB\x03\xe0\x41\x03H\x00\x88\x01\x01\x12\x1b\n\x0emetageneration\x18\x04 \x01(\x03\x42\x03\xe0\x41\x03\x12\x1a\n\rstorage_class\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04size\x18\x06 \x01(\x03\x42\x03\xe0\x41\x03\x12\x1d\n\x10\x63ontent_encoding\x18\x07 \x01(\tB\x03\xe0\x41\x01\x12 \n\x13\x63ontent_disposition\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x1a\n\rcache_control\x18\t \x01(\tB\x03\xe0\x41\x01\x12\x38\n\x03\x61\x63l\x18\n \x03(\x0b\x32&.google.storage.v2.ObjectAccessControlB\x03\xe0\x41\x01\x12\x1d\n\x10\x63ontent_language\x18\x0b \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0b\x64\x65lete_time\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x36\n\rfinalize_time\x18$ \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x19\n\x0c\x63ontent_type\x18\r \x01(\tB\x03\xe0\x41\x01\x12\x34\n\x0b\x63reate_time\x18\x0e \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1c\n\x0f\x63omponent_count\x18\x0f \x01(\x05\x42\x03\xe0\x41\x03\x12:\n\tchecksums\x18\x10 \x01(\x0b\x32\".google.storage.v2.ObjectChecksumsB\x03\xe0\x41\x03\x12\x34\n\x0bupdate_time\x18\x11 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12:\n\x07kms_key\x18\x12 \x01(\tB)\xe0\x41\x01\xfa\x41#\n!cloudkms.googleapis.com/CryptoKey\x12\x42\n\x19update_storage_class_time\x18\x13 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03\x12\x1b\n\x0etemporary_hold\x18\x14 \x01(\x08\x42\x03\xe0\x41\x01\x12>\n\x15retention_expire_time\x18\x15 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12>\n\x08metadata\x18\x16 \x03(\x0b\x32\'.google.storage.v2.Object.MetadataEntryB\x03\xe0\x41\x01\x12\x38\n\x08\x63ontexts\x18& \x01(\x0b\x32!.google.storage.v2.ObjectContextsB\x03\xe0\x41\x01\x12\x1d\n\x10\x65vent_based_hold\x18\x17 \x01(\x08H\x01\x88\x01\x01\x12,\n\x05owner\x18\x18 \x01(\x0b\x32\x18.google.storage.v2.OwnerB\x03\xe0\x41\x03\x12G\n\x13\x63ustomer_encryption\x18\x19 \x01(\x0b\x32%.google.storage.v2.CustomerEncryptionB\x03\xe0\x41\x01\x12\x34\n\x0b\x63ustom_time\x18\x1a \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\x12>\n\x10soft_delete_time\x18\x1c \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x02\x88\x01\x01\x12>\n\x10hard_delete_time\x18\x1d \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x03H\x03\x88\x01\x01\x12;\n\tretention\x18\x1e \x01(\x0b\x32#.google.storage.v2.Object.RetentionB\x03\xe0\x41\x01\x1a\xbc\x01\n\tRetention\x12;\n\x04mode\x18\x01 \x01(\x0e\x32(.google.storage.v2.Object.Retention.ModeB\x03\xe0\x41\x01\x12:\n\x11retain_until_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampB\x03\xe0\x41\x01\"6\n\x04Mode\x12\x14\n\x10MODE_UNSPECIFIED\x10\x00\x12\x0c\n\x08UNLOCKED\x10\x01\x12\n\n\x06LOCKED\x10\x02\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x10\n\x0e_restore_tokenB\x13\n\x11_event_based_holdB\x13\n\x11_soft_delete_timeB\x13\n\x11_hard_delete_time\"\xf6\x01\n\x13ObjectAccessControl\x12\x11\n\x04role\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x0f\n\x02id\x18\x02 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x65ntity\x18\x03 \x01(\tB\x03\xe0\x41\x01\x12\x17\n\nentity_alt\x18\t \x01(\tB\x03\xe0\x41\x03\x12\x16\n\tentity_id\x18\x04 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04\x65tag\x18\x08 \x01(\tB\x03\xe0\x41\x01\x12\x12\n\x05\x65mail\x18\x05 \x01(\tB\x03\xe0\x41\x01\x12\x13\n\x06\x64omain\x18\x06 \x01(\tB\x03\xe0\x41\x01\x12\x39\n\x0cproject_team\x18\x07 \x01(\x0b\x32\x1e.google.storage.v2.ProjectTeamB\x03\xe0\x41\x01\"l\n\x13ListObjectsResponse\x12*\n\x07objects\x18\x01 \x03(\x0b\x32\x19.google.storage.v2.Object\x12\x10\n\x08prefixes\x18\x02 \x03(\t\x12\x17\n\x0fnext_page_token\x18\x03 \x01(\t\"=\n\x0bProjectTeam\x12\x1b\n\x0eproject_number\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x11\n\x04team\x18\x02 \x01(\tB\x03\xe0\x41\x01\"4\n\x05Owner\x12\x13\n\x06\x65ntity\x18\x01 \x01(\tB\x03\xe0\x41\x01\x12\x16\n\tentity_id\x18\x02 \x01(\tB\x03\xe0\x41\x01\"C\n\x0c\x43ontentRange\x12\r\n\x05start\x18\x01 \x01(\x03\x12\x0b\n\x03\x65nd\x18\x02 \x01(\x03\x12\x17\n\x0f\x63omplete_length\x18\x03 \x01(\x03\x32\x9f\x1f\n\x07Storage\x12r\n\x0c\x44\x65leteBucket\x12&.google.storage.v2.DeleteBucketRequest\x1a\x16.google.protobuf.Empty\"\"\xda\x41\x04name\x8a\xd3\xe4\x93\x02\x15\x12\x13\n\x04name\x12\x0b{bucket=**}\x12o\n\tGetBucket\x12#.google.storage.v2.GetBucketRequest\x1a\x19.google.storage.v2.Bucket\"\"\xda\x41\x04name\x8a\xd3\xe4\x93\x02\x15\x12\x13\n\x04name\x12\x0b{bucket=**}\x12\xab\x01\n\x0c\x43reateBucket\x12&.google.storage.v2.CreateBucketRequest\x1a\x19.google.storage.v2.Bucket\"X\xda\x41\x17parent,bucket,bucket_id\x8a\xd3\xe4\x93\x02\x38\x12\x16\n\x06parent\x12\x0c{project=**}\x12\x1e\n\x0e\x62ucket.project\x12\x0c{project=**}\x12\x85\x01\n\x0bListBuckets\x12%.google.storage.v2.ListBucketsRequest\x1a&.google.storage.v2.ListBucketsResponse\"\'\xda\x41\x06parent\x8a\xd3\xe4\x93\x02\x18\x12\x16\n\x06parent\x12\x0c{project=**}\x12\x93\x01\n\x19LockBucketRetentionPolicy\x12\x33.google.storage.v2.LockBucketRetentionPolicyRequest\x1a\x19.google.storage.v2.Bucket\"&\xda\x41\x06\x62ucket\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xa3\x01\n\x0cGetIamPolicy\x12\".google.iam.v1.GetIamPolicyRequest\x1a\x15.google.iam.v1.Policy\"X\xda\x41\x08resource\x8a\xd3\xe4\x93\x02G\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12,\n\x08resource\x12 {bucket=projects/*/buckets/*}/**\x12\xaa\x01\n\x0cSetIamPolicy\x12\".google.iam.v1.SetIamPolicyRequest\x1a\x15.google.iam.v1.Policy\"_\xda\x41\x0fresource,policy\x8a\xd3\xe4\x93\x02G\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12,\n\x08resource\x12 {bucket=projects/*/buckets/*}/**\x12\x96\x02\n\x12TestIamPermissions\x12(.google.iam.v1.TestIamPermissionsRequest\x1a).google.iam.v1.TestIamPermissionsResponse\"\xaa\x01\xda\x41\x14resource,permissions\x8a\xd3\xe4\x93\x02\x8c\x01\x12\x17\n\x08resource\x12\x0b{bucket=**}\x12\x34\n\x08resource\x12({bucket=projects/*/buckets/*}/objects/**\x12;\n\x08resource\x12/{bucket=projects/*/buckets/*}/managedFolders/**\x12\x8a\x01\n\x0cUpdateBucket\x12&.google.storage.v2.UpdateBucketRequest\x1a\x19.google.storage.v2.Bucket\"7\xda\x41\x12\x62ucket,update_mask\x8a\xd3\xe4\x93\x02\x1c\x12\x1a\n\x0b\x62ucket.name\x12\x0b{bucket=**}\x12~\n\rComposeObject\x12\'.google.storage.v2.ComposeObjectRequest\x1a\x19.google.storage.v2.Object\")\x8a\xd3\xe4\x93\x02#\x12!\n\x12\x64\x65stination.bucket\x12\x0b{bucket=**}\x12\x98\x01\n\x0c\x44\x65leteObject\x12&.google.storage.v2.DeleteObjectRequest\x1a\x16.google.protobuf.Empty\"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\x8d\x01\n\rRestoreObject\x12\'.google.storage.v2.RestoreObjectRequest\x1a\x19.google.storage.v2.Object\"8\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xba\x01\n\x14\x43\x61ncelResumableWrite\x12..google.storage.v2.CancelResumableWriteRequest\x1a/.google.storage.v2.CancelResumableWriteResponse\"A\xda\x41\tupload_id\x8a\xd3\xe4\x93\x02/\x12-\n\tupload_id\x12 {bucket=projects/*/buckets/*}/**\x12\x95\x01\n\tGetObject\x12#.google.storage.v2.GetObjectRequest\x1a\x19.google.storage.v2.Object\"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x12\xa5\x01\n\nReadObject\x12$.google.storage.v2.ReadObjectRequest\x1a%.google.storage.v2.ReadObjectResponse\"H\xda\x41\rbucket,object\xda\x41\x18\x62ucket,object,generation\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}0\x01\x12\x99\x01\n\x0e\x42idiReadObject\x12(.google.storage.v2.BidiReadObjectRequest\x1a).google.storage.v2.BidiReadObjectResponse\".\x8a\xd3\xe4\x93\x02(\x12&\n\x17read_object_spec.bucket\x12\x0b{bucket=**}(\x01\x30\x01\x12\x8c\x01\n\x0cUpdateObject\x12&.google.storage.v2.UpdateObjectRequest\x1a\x19.google.storage.v2.Object\"9\xda\x41\x12object,update_mask\x8a\xd3\xe4\x93\x02\x1e\x12\x1c\n\robject.bucket\x12\x0b{bucket=**}\x12`\n\x0bWriteObject\x12%.google.storage.v2.WriteObjectRequest\x1a&.google.storage.v2.WriteObjectResponse\"\x00(\x01\x12n\n\x0f\x42idiWriteObject\x12).google.storage.v2.BidiWriteObjectRequest\x1a*.google.storage.v2.BidiWriteObjectResponse\"\x00(\x01\x30\x01\x12\x84\x01\n\x0bListObjects\x12%.google.storage.v2.ListObjectsRequest\x1a&.google.storage.v2.ListObjectsResponse\"&\xda\x41\x06parent\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06parent\x12\x0b{bucket=**}\x12\x98\x01\n\rRewriteObject\x12\'.google.storage.v2.RewriteObjectRequest\x1a\".google.storage.v2.RewriteResponse\":\x8a\xd3\xe4\x93\x02\x34\x12\x0f\n\rsource_bucket\x12!\n\x12\x64\x65stination_bucket\x12\x0b{bucket=**}\x12\xae\x01\n\x13StartResumableWrite\x12-.google.storage.v2.StartResumableWriteRequest\x1a..google.storage.v2.StartResumableWriteResponse\"8\x8a\xd3\xe4\x93\x02\x32\x12\x30\n!write_object_spec.resource.bucket\x12\x0b{bucket=**}\x12\xae\x01\n\x10QueryWriteStatus\x12*.google.storage.v2.QueryWriteStatusRequest\x1a+.google.storage.v2.QueryWriteStatusResponse\"A\xda\x41\tupload_id\x8a\xd3\xe4\x93\x02/\x12-\n\tupload_id\x12 {bucket=projects/*/buckets/*}/**\x12\x96\x01\n\nMoveObject\x12$.google.storage.v2.MoveObjectRequest\x1a\x19.google.storage.v2.Object\"G\xda\x41\'bucket,source_object,destination_object\x8a\xd3\xe4\x93\x02\x17\x12\x15\n\x06\x62ucket\x12\x0b{bucket=**}\x1a\xa7\x02\xca\x41\x16storage.googleapis.com\xd2\x41\x8a\x02https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_writeB\xe2\x01\n\x15\x63om.google.storage.v2B\x0cStorageProtoP\x01Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\xea\x41x\n!cloudkms.googleapis.com/CryptoKey\x12Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(
-    DESCRIPTOR, "google.storage.v2.storage_pb2", _globals
-)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'google.storage.v2.storage_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-    _globals["DESCRIPTOR"]._loaded_options = None
-    _globals[
-        "DESCRIPTOR"
-    ]._serialized_options = b"\n\025com.google.storage.v2B\014StorageProtoP\001Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\352Ax\n!cloudkms.googleapis.com/CryptoKey\022Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}"
-    _globals["_DELETEBUCKETREQUEST"].fields_by_name["name"]._loaded_options = None
-    _globals["_DELETEBUCKETREQUEST"].fields_by_name[
-        "name"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_GETBUCKETREQUEST"].fields_by_name["name"]._loaded_options = None
-    _globals["_GETBUCKETREQUEST"].fields_by_name[
-        "name"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name["parent"]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "parent"
-    ]._serialized_options = b"\340A\002\372A\037\022\035storage.googleapis.com/Bucket"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name["bucket_id"]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "bucket_id"
-    ]._serialized_options = b"\340A\002"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "predefined_default_object_acl"
-    ]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "predefined_default_object_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "enable_object_retention"
-    ]._loaded_options = None
-    _globals["_CREATEBUCKETREQUEST"].fields_by_name[
-        "enable_object_retention"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name["parent"]._loaded_options = None
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "parent"
-    ]._serialized_options = b"\340A\002\372A\037\022\035storage.googleapis.com/Bucket"
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name["page_size"]._loaded_options = None
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "page_size"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name["page_token"]._loaded_options = None
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "page_token"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name["prefix"]._loaded_options = None
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "prefix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "return_partial_success"
-    ]._loaded_options = None
-    _globals["_LISTBUCKETSREQUEST"].fields_by_name[
-        "return_partial_success"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"].fields_by_name[
-        "bucket"
-    ]._loaded_options = None
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"].fields_by_name[
-        "if_metageneration_match"
-    ]._loaded_options = None
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"].fields_by_name[
-        "if_metageneration_match"
-    ]._serialized_options = b"\340A\002"
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002"
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._loaded_options = None
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "predefined_default_object_acl"
-    ]._loaded_options = None
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "predefined_default_object_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "update_mask"
-    ]._loaded_options = None
-    _globals["_UPDATEBUCKETREQUEST"].fields_by_name[
-        "update_mask"
-    ]._serialized_options = b"\340A\002"
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "name"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "name"
-    ]._serialized_options = b"\340A\002"
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "generation"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "object_preconditions"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"].fields_by_name[
-        "object_preconditions"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "destination"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "destination"
-    ]._serialized_options = b"\340A\002"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "source_objects"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "source_objects"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "destination_predefined_acl"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "destination_predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name["kms_key"]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "kms_key"
-    ]._serialized_options = b"\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._loaded_options = None
-    _globals["_COMPOSEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._serialized_options = b"\340A\001"
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name["object"]._loaded_options = None
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name["generation"]._loaded_options = None
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_DELETEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name["object"]._loaded_options = None
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "generation"
-    ]._loaded_options = None
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\002"
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "restore_token"
-    ]._loaded_options = None
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "restore_token"
-    ]._serialized_options = b"\340A\001"
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_RESTOREOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CANCELRESUMABLEWRITEREQUEST"].fields_by_name[
-        "upload_id"
-    ]._loaded_options = None
-    _globals["_CANCELRESUMABLEWRITEREQUEST"].fields_by_name[
-        "upload_id"
-    ]._serialized_options = b"\340A\002"
-    _globals["_READOBJECTREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_READOBJECTREQUEST"].fields_by_name["object"]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_READOBJECTREQUEST"].fields_by_name["generation"]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_READOBJECTREQUEST"].fields_by_name["read_offset"]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "read_offset"
-    ]._serialized_options = b"\340A\001"
-    _globals["_READOBJECTREQUEST"].fields_by_name["read_limit"]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "read_limit"
-    ]._serialized_options = b"\340A\001"
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_READOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_GETOBJECTREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_GETOBJECTREQUEST"].fields_by_name["object"]._loaded_options = None
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_GETOBJECTREQUEST"].fields_by_name["generation"]._loaded_options = None
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_GETOBJECTREQUEST"].fields_by_name["restore_token"]._loaded_options = None
-    _globals["_GETOBJECTREQUEST"].fields_by_name[
-        "restore_token"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name["object"]._loaded_options = None
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name["generation"]._loaded_options = None
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name["read_mask"]._loaded_options = None
-    _globals["_BIDIREADOBJECTSPEC"].fields_by_name[
-        "read_mask"
-    ]._serialized_options = b"\030\001"
-    _globals["_BIDIREADOBJECTREQUEST"].fields_by_name[
-        "read_object_spec"
-    ]._loaded_options = None
-    _globals["_BIDIREADOBJECTREQUEST"].fields_by_name[
-        "read_object_spec"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIREADOBJECTREQUEST"].fields_by_name[
-        "read_ranges"
-    ]._loaded_options = None
-    _globals["_BIDIREADOBJECTREQUEST"].fields_by_name[
-        "read_ranges"
-    ]._serialized_options = b"\340A\001"
-    _globals["_READRANGE"].fields_by_name["read_offset"]._loaded_options = None
-    _globals["_READRANGE"].fields_by_name[
-        "read_offset"
-    ]._serialized_options = b"\340A\002"
-    _globals["_READRANGE"].fields_by_name["read_length"]._loaded_options = None
-    _globals["_READRANGE"].fields_by_name[
-        "read_length"
-    ]._serialized_options = b"\340A\001"
-    _globals["_READRANGE"].fields_by_name["read_id"]._loaded_options = None
-    _globals["_READRANGE"].fields_by_name["read_id"]._serialized_options = b"\340A\002"
-    _globals["_BIDIREADHANDLE"].fields_by_name["handle"]._loaded_options = None
-    _globals["_BIDIREADHANDLE"].fields_by_name[
-        "handle"
-    ]._serialized_options = b"\340A\002"
-    _globals["_BIDIWRITEHANDLE"].fields_by_name["handle"]._loaded_options = None
-    _globals["_BIDIWRITEHANDLE"].fields_by_name[
-        "handle"
-    ]._serialized_options = b"\340A\002"
-    _globals["_WRITEOBJECTSPEC"].fields_by_name["resource"]._loaded_options = None
-    _globals["_WRITEOBJECTSPEC"].fields_by_name[
-        "resource"
-    ]._serialized_options = b"\340A\002"
-    _globals["_WRITEOBJECTSPEC"].fields_by_name["predefined_acl"]._loaded_options = None
-    _globals["_WRITEOBJECTSPEC"].fields_by_name[
-        "predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "write_offset"
-    ]._loaded_options = None
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "write_offset"
-    ]._serialized_options = b"\340A\002"
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._loaded_options = None
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._serialized_options = b"\340A\001"
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "finish_write"
-    ]._loaded_options = None
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "finish_write"
-    ]._serialized_options = b"\340A\001"
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_WRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_APPENDOBJECTSPEC"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_APPENDOBJECTSPEC"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_APPENDOBJECTSPEC"].fields_by_name["object"]._loaded_options = None
-    _globals["_APPENDOBJECTSPEC"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_APPENDOBJECTSPEC"].fields_by_name["generation"]._loaded_options = None
-    _globals["_APPENDOBJECTSPEC"].fields_by_name[
-        "generation"
-    ]._serialized_options = b"\340A\002"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "write_offset"
-    ]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "write_offset"
-    ]._serialized_options = b"\340A\002"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "state_lookup"
-    ]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "state_lookup"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name["flush"]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "flush"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "finish_write"
-    ]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "finish_write"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_BIDIWRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["parent"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "parent"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["page_size"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "page_size"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["page_token"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "page_token"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["delimiter"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "delimiter"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "include_trailing_delimiter"
-    ]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "include_trailing_delimiter"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["prefix"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "prefix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["versions"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "versions"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "lexicographic_start"
-    ]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "lexicographic_start"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "lexicographic_end"
-    ]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "lexicographic_end"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "soft_deleted"
-    ]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "soft_deleted"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "include_folders_as_prefixes"
-    ]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "include_folders_as_prefixes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["match_glob"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "match_glob"
-    ]._serialized_options = b"\340A\001"
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name["filter"]._loaded_options = None
-    _globals["_LISTOBJECTSREQUEST"].fields_by_name[
-        "filter"
-    ]._serialized_options = b"\340A\001"
-    _globals["_QUERYWRITESTATUSREQUEST"].fields_by_name[
-        "upload_id"
-    ]._loaded_options = None
-    _globals["_QUERYWRITESTATUSREQUEST"].fields_by_name[
-        "upload_id"
-    ]._serialized_options = b"\340A\002"
-    _globals["_QUERYWRITESTATUSREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_QUERYWRITESTATUSREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_name"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_name"
-    ]._serialized_options = b"\340A\002\340A\005"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_bucket"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_bucket"
-    ]._serialized_options = (
-        b"\340A\002\340A\005\372A\037\n\035storage.googleapis.com/Bucket"
-    )
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_kms_key"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_kms_key"
-    ]._serialized_options = b"\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_bucket"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_object"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_generation"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "source_generation"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "rewrite_token"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "rewrite_token"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_predefined_acl"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "destination_predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "max_bytes_rewritten_per_call"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "max_bytes_rewritten_per_call"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_algorithm"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_algorithm"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_key_bytes"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_key_bytes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_key_sha256_bytes"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "copy_source_encryption_key_sha256_bytes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._loaded_options = None
-    _globals["_REWRITEOBJECTREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\002\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "source_object"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "source_object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "destination_object"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "destination_object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_generation_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_generation_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_generation_not_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_generation_not_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_metageneration_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_metageneration_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_metageneration_not_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_source_metageneration_not_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_generation_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_generation_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_generation_not_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_generation_not_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_metageneration_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_metageneration_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_metageneration_not_match"
-    ]._loaded_options = None
-    _globals["_MOVEOBJECTREQUEST"].fields_by_name[
-        "if_metageneration_not_match"
-    ]._serialized_options = b"\340A\001"
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "write_object_spec"
-    ]._loaded_options = None
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "write_object_spec"
-    ]._serialized_options = b"\340A\002"
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._loaded_options = None
-    _globals["_STARTRESUMABLEWRITEREQUEST"].fields_by_name[
-        "object_checksums"
-    ]._serialized_options = b"\340A\001"
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name["object"]._loaded_options = None
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "object"
-    ]._serialized_options = b"\340A\002"
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._loaded_options = None
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "predefined_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "update_mask"
-    ]._loaded_options = None
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "update_mask"
-    ]._serialized_options = b"\340A\002"
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._loaded_options = None
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "common_object_request_params"
-    ]._serialized_options = b"\340A\001"
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "override_unlocked_retention"
-    ]._loaded_options = None
-    _globals["_UPDATEOBJECTREQUEST"].fields_by_name[
-        "override_unlocked_retention"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_algorithm"
-    ]._loaded_options = None
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_algorithm"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_key_bytes"
-    ]._loaded_options = None
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_key_bytes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_key_sha256_bytes"
-    ]._loaded_options = None
-    _globals["_COMMONOBJECTREQUESTPARAMS"].fields_by_name[
-        "encryption_key_sha256_bytes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_SERVICECONSTANTS_VALUES"]._loaded_options = None
-    _globals["_SERVICECONSTANTS_VALUES"]._serialized_options = b"\020\001"
-    _globals["_BUCKET_BILLING"].fields_by_name["requester_pays"]._loaded_options = None
-    _globals["_BUCKET_BILLING"].fields_by_name[
-        "requester_pays"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_CORS"].fields_by_name["origin"]._loaded_options = None
-    _globals["_BUCKET_CORS"].fields_by_name["origin"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_CORS"].fields_by_name["method"]._loaded_options = None
-    _globals["_BUCKET_CORS"].fields_by_name["method"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_CORS"].fields_by_name["response_header"]._loaded_options = None
-    _globals["_BUCKET_CORS"].fields_by_name[
-        "response_header"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_CORS"].fields_by_name["max_age_seconds"]._loaded_options = None
-    _globals["_BUCKET_CORS"].fields_by_name[
-        "max_age_seconds"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "default_kms_key"
-    ]._loaded_options = None
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "default_kms_key"
-    ]._serialized_options = b"\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey"
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "google_managed_encryption_enforcement_config"
-    ]._loaded_options = None
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "google_managed_encryption_enforcement_config"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "customer_managed_encryption_enforcement_config"
-    ]._loaded_options = None
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "customer_managed_encryption_enforcement_config"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "customer_supplied_encryption_enforcement_config"
-    ]._loaded_options = None
-    _globals["_BUCKET_ENCRYPTION"].fields_by_name[
-        "customer_supplied_encryption_enforcement_config"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"].fields_by_name[
-        "enabled"
-    ]._loaded_options = None
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"].fields_by_name[
-        "enabled"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"].fields_by_name[
-        "lock_time"
-    ]._loaded_options = None
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"].fields_by_name[
-        "lock_time"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IAMCONFIG"].fields_by_name[
-        "uniform_bucket_level_access"
-    ]._loaded_options = None
-    _globals["_BUCKET_IAMCONFIG"].fields_by_name[
-        "uniform_bucket_level_access"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IAMCONFIG"].fields_by_name[
-        "public_access_prevention"
-    ]._loaded_options = None
-    _globals["_BUCKET_IAMCONFIG"].fields_by_name[
-        "public_access_prevention"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"].fields_by_name[
-        "type"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"].fields_by_name[
-        "type"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"].fields_by_name[
-        "storage_class"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"].fields_by_name[
-        "storage_class"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "created_before"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "created_before"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_storage_class"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_storage_class"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "custom_time_before"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "custom_time_before"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "noncurrent_time_before"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "noncurrent_time_before"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_prefix"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_prefix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_suffix"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"].fields_by_name[
-        "matches_suffix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE"].fields_by_name["action"]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE"].fields_by_name[
-        "action"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE_RULE"].fields_by_name[
-        "condition"
-    ]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE_RULE"].fields_by_name[
-        "condition"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LIFECYCLE"].fields_by_name["rule"]._loaded_options = None
-    _globals["_BUCKET_LIFECYCLE"].fields_by_name[
-        "rule"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LOGGING"].fields_by_name["log_bucket"]._loaded_options = None
-    _globals["_BUCKET_LOGGING"].fields_by_name[
-        "log_bucket"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LOGGING"].fields_by_name[
-        "log_object_prefix"
-    ]._loaded_options = None
-    _globals["_BUCKET_LOGGING"].fields_by_name[
-        "log_object_prefix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_OBJECTRETENTION"].fields_by_name["enabled"]._loaded_options = None
-    _globals["_BUCKET_OBJECTRETENTION"].fields_by_name[
-        "enabled"
-    ]._serialized_options = b"\340A\001\340A\003"
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "effective_time"
-    ]._loaded_options = None
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "effective_time"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "is_locked"
-    ]._loaded_options = None
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "is_locked"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "retention_duration"
-    ]._loaded_options = None
-    _globals["_BUCKET_RETENTIONPOLICY"].fields_by_name[
-        "retention_duration"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_VERSIONING"].fields_by_name["enabled"]._loaded_options = None
-    _globals["_BUCKET_VERSIONING"].fields_by_name[
-        "enabled"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_WEBSITE"].fields_by_name[
-        "main_page_suffix"
-    ]._loaded_options = None
-    _globals["_BUCKET_WEBSITE"].fields_by_name[
-        "main_page_suffix"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_WEBSITE"].fields_by_name["not_found_page"]._loaded_options = None
-    _globals["_BUCKET_WEBSITE"].fields_by_name[
-        "not_found_page"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_CUSTOMPLACEMENTCONFIG"].fields_by_name[
-        "data_locations"
-    ]._loaded_options = None
-    _globals["_BUCKET_CUSTOMPLACEMENTCONFIG"].fields_by_name[
-        "data_locations"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name["enabled"]._loaded_options = None
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name[
-        "enabled"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name["toggle_time"]._loaded_options = None
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name[
-        "toggle_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name[
-        "terminal_storage_class_update_time"
-    ]._loaded_options = None
-    _globals["_BUCKET_AUTOCLASS"].fields_by_name[
-        "terminal_storage_class_update_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_BUCKET_IPFILTER_PUBLICNETWORKSOURCE"].fields_by_name[
-        "allowed_ip_cidr_ranges"
-    ]._loaded_options = None
-    _globals["_BUCKET_IPFILTER_PUBLICNETWORKSOURCE"].fields_by_name[
-        "allowed_ip_cidr_ranges"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IPFILTER_VPCNETWORKSOURCE"].fields_by_name[
-        "allowed_ip_cidr_ranges"
-    ]._loaded_options = None
-    _globals["_BUCKET_IPFILTER_VPCNETWORKSOURCE"].fields_by_name[
-        "allowed_ip_cidr_ranges"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IPFILTER"].fields_by_name[
-        "vpc_network_sources"
-    ]._loaded_options = None
-    _globals["_BUCKET_IPFILTER"].fields_by_name[
-        "vpc_network_sources"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_IPFILTER"].fields_by_name[
-        "allow_cross_org_vpcs"
-    ]._loaded_options = None
-    _globals["_BUCKET_IPFILTER"].fields_by_name[
-        "allow_cross_org_vpcs"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_HIERARCHICALNAMESPACE"].fields_by_name[
-        "enabled"
-    ]._loaded_options = None
-    _globals["_BUCKET_HIERARCHICALNAMESPACE"].fields_by_name[
-        "enabled"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET_LABELSENTRY"]._loaded_options = None
-    _globals["_BUCKET_LABELSENTRY"]._serialized_options = b"8\001"
-    _globals["_BUCKET"].fields_by_name["name"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["name"]._serialized_options = b"\340A\010"
-    _globals["_BUCKET"].fields_by_name["bucket_id"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["bucket_id"]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name["project"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "project"
-    ]._serialized_options = (
-        b"\340A\005\372A-\n+cloudresourcemanager.googleapis.com/Project"
-    )
-    _globals["_BUCKET"].fields_by_name["metageneration"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "metageneration"
-    ]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name["location"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["location"]._serialized_options = b"\340A\005"
-    _globals["_BUCKET"].fields_by_name["location_type"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "location_type"
-    ]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name["storage_class"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "storage_class"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["rpo"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["rpo"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["acl"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["acl"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["default_object_acl"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "default_object_acl"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["lifecycle"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["lifecycle"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["create_time"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["create_time"]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name["cors"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["cors"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["update_time"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["update_time"]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name[
-        "default_event_based_hold"
-    ]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "default_event_based_hold"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["labels"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["labels"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["website"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["website"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["versioning"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["versioning"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["logging"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["logging"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["owner"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["owner"]._serialized_options = b"\340A\003"
-    _globals["_BUCKET"].fields_by_name["encryption"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["encryption"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["billing"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["billing"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["retention_policy"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "retention_policy"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["iam_config"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["iam_config"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["satisfies_pzs"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "satisfies_pzs"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["custom_placement_config"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "custom_placement_config"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["autoclass"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["autoclass"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["hierarchical_namespace"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "hierarchical_namespace"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["soft_delete_policy"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "soft_delete_policy"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["object_retention"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name[
-        "object_retention"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"].fields_by_name["ip_filter"]._loaded_options = None
-    _globals["_BUCKET"].fields_by_name["ip_filter"]._serialized_options = b"\340A\001"
-    _globals["_BUCKET"]._loaded_options = None
-    _globals[
-        "_BUCKET"
-    ]._serialized_options = b"\352AU\n\035storage.googleapis.com/Bucket\022#projects/{project}/buckets/{bucket}*\007buckets2\006bucket"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["role"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "role"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["id"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "id"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["entity"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "entity"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["entity_alt"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "entity_alt"
-    ]._serialized_options = b"\340A\003"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["entity_id"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "entity_id"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["etag"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "etag"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["email"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "email"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name["domain"]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "domain"
-    ]._serialized_options = b"\340A\001"
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "project_team"
-    ]._loaded_options = None
-    _globals["_BUCKETACCESSCONTROL"].fields_by_name[
-        "project_team"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CHECKSUMMEDDATA"].fields_by_name["content"]._loaded_options = None
-    _globals["_CHECKSUMMEDDATA"].fields_by_name[
-        "content"
-    ]._serialized_options = b"\010\001\340A\001"
-    _globals["_OBJECTCHECKSUMS"].fields_by_name["md5_hash"]._loaded_options = None
-    _globals["_OBJECTCHECKSUMS"].fields_by_name[
-        "md5_hash"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "value"
-    ]._loaded_options = None
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "value"
-    ]._serialized_options = b"\340A\002"
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "create_time"
-    ]._loaded_options = None
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "create_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "update_time"
-    ]._loaded_options = None
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"].fields_by_name[
-        "update_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECTCONTEXTS_CUSTOMENTRY"]._loaded_options = None
-    _globals["_OBJECTCONTEXTS_CUSTOMENTRY"]._serialized_options = b"8\001"
-    _globals["_OBJECTCONTEXTS"].fields_by_name["custom"]._loaded_options = None
-    _globals["_OBJECTCONTEXTS"].fields_by_name[
-        "custom"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CUSTOMERENCRYPTION"].fields_by_name[
-        "encryption_algorithm"
-    ]._loaded_options = None
-    _globals["_CUSTOMERENCRYPTION"].fields_by_name[
-        "encryption_algorithm"
-    ]._serialized_options = b"\340A\001"
-    _globals["_CUSTOMERENCRYPTION"].fields_by_name[
-        "key_sha256_bytes"
-    ]._loaded_options = None
-    _globals["_CUSTOMERENCRYPTION"].fields_by_name[
-        "key_sha256_bytes"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT_RETENTION"].fields_by_name["mode"]._loaded_options = None
-    _globals["_OBJECT_RETENTION"].fields_by_name[
-        "mode"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT_RETENTION"].fields_by_name[
-        "retain_until_time"
-    ]._loaded_options = None
-    _globals["_OBJECT_RETENTION"].fields_by_name[
-        "retain_until_time"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT_METADATAENTRY"]._loaded_options = None
-    _globals["_OBJECT_METADATAENTRY"]._serialized_options = b"8\001"
-    _globals["_OBJECT"].fields_by_name["name"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["name"]._serialized_options = b"\340A\005"
-    _globals["_OBJECT"].fields_by_name["bucket"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "bucket"
-    ]._serialized_options = b"\340A\005\372A\037\n\035storage.googleapis.com/Bucket"
-    _globals["_OBJECT"].fields_by_name["etag"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["etag"]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["generation"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["generation"]._serialized_options = b"\340A\005"
-    _globals["_OBJECT"].fields_by_name["restore_token"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "restore_token"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["metageneration"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "metageneration"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["storage_class"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "storage_class"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["size"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["size"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["content_encoding"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "content_encoding"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["content_disposition"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "content_disposition"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["cache_control"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "cache_control"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["acl"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["acl"]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["content_language"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "content_language"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["delete_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["delete_time"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["finalize_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "finalize_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["content_type"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "content_type"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["create_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["create_time"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["component_count"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "component_count"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["checksums"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["checksums"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["update_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["update_time"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["kms_key"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "kms_key"
-    ]._serialized_options = b"\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey"
-    _globals["_OBJECT"].fields_by_name[
-        "update_storage_class_time"
-    ]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "update_storage_class_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["temporary_hold"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "temporary_hold"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["retention_expire_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "retention_expire_time"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["metadata"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["metadata"]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["contexts"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["contexts"]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["owner"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["owner"]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["customer_encryption"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "customer_encryption"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["custom_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["custom_time"]._serialized_options = b"\340A\001"
-    _globals["_OBJECT"].fields_by_name["soft_delete_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "soft_delete_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["hard_delete_time"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name[
-        "hard_delete_time"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECT"].fields_by_name["retention"]._loaded_options = None
-    _globals["_OBJECT"].fields_by_name["retention"]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["role"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "role"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["id"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "id"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["entity"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "entity"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["entity_alt"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "entity_alt"
-    ]._serialized_options = b"\340A\003"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["entity_id"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "entity_id"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["etag"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "etag"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["email"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "email"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name["domain"]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "domain"
-    ]._serialized_options = b"\340A\001"
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "project_team"
-    ]._loaded_options = None
-    _globals["_OBJECTACCESSCONTROL"].fields_by_name[
-        "project_team"
-    ]._serialized_options = b"\340A\001"
-    _globals["_PROJECTTEAM"].fields_by_name["project_number"]._loaded_options = None
-    _globals["_PROJECTTEAM"].fields_by_name[
-        "project_number"
-    ]._serialized_options = b"\340A\001"
-    _globals["_PROJECTTEAM"].fields_by_name["team"]._loaded_options = None
-    _globals["_PROJECTTEAM"].fields_by_name["team"]._serialized_options = b"\340A\001"
-    _globals["_OWNER"].fields_by_name["entity"]._loaded_options = None
-    _globals["_OWNER"].fields_by_name["entity"]._serialized_options = b"\340A\001"
-    _globals["_OWNER"].fields_by_name["entity_id"]._loaded_options = None
-    _globals["_OWNER"].fields_by_name["entity_id"]._serialized_options = b"\340A\001"
-    _globals["_STORAGE"]._loaded_options = None
-    _globals[
-        "_STORAGE"
-    ]._serialized_options = b"\312A\026storage.googleapis.com\322A\212\002https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_write"
-    _globals["_STORAGE"].methods_by_name["DeleteBucket"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "DeleteBucket"
-    ]._serialized_options = (
-        b"\332A\004name\212\323\344\223\002\025\022\023\n\004name\022\013{bucket=**}"
-    )
-    _globals["_STORAGE"].methods_by_name["GetBucket"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "GetBucket"
-    ]._serialized_options = (
-        b"\332A\004name\212\323\344\223\002\025\022\023\n\004name\022\013{bucket=**}"
-    )
-    _globals["_STORAGE"].methods_by_name["CreateBucket"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "CreateBucket"
-    ]._serialized_options = b"\332A\027parent,bucket,bucket_id\212\323\344\223\0028\022\026\n\006parent\022\014{project=**}\022\036\n\016bucket.project\022\014{project=**}"
-    _globals["_STORAGE"].methods_by_name["ListBuckets"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "ListBuckets"
-    ]._serialized_options = b"\332A\006parent\212\323\344\223\002\030\022\026\n\006parent\022\014{project=**}"
-    _globals["_STORAGE"].methods_by_name[
-        "LockBucketRetentionPolicy"
-    ]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "LockBucketRetentionPolicy"
-    ]._serialized_options = b"\332A\006bucket\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["GetIamPolicy"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "GetIamPolicy"
-    ]._serialized_options = b"\332A\010resource\212\323\344\223\002G\022\027\n\010resource\022\013{bucket=**}\022,\n\010resource\022 {bucket=projects/*/buckets/*}/**"
-    _globals["_STORAGE"].methods_by_name["SetIamPolicy"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "SetIamPolicy"
-    ]._serialized_options = b"\332A\017resource,policy\212\323\344\223\002G\022\027\n\010resource\022\013{bucket=**}\022,\n\010resource\022 {bucket=projects/*/buckets/*}/**"
-    _globals["_STORAGE"].methods_by_name["TestIamPermissions"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "TestIamPermissions"
-    ]._serialized_options = b"\332A\024resource,permissions\212\323\344\223\002\214\001\022\027\n\010resource\022\013{bucket=**}\0224\n\010resource\022({bucket=projects/*/buckets/*}/objects/**\022;\n\010resource\022/{bucket=projects/*/buckets/*}/managedFolders/**"
-    _globals["_STORAGE"].methods_by_name["UpdateBucket"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "UpdateBucket"
-    ]._serialized_options = b"\332A\022bucket,update_mask\212\323\344\223\002\034\022\032\n\013bucket.name\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["ComposeObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "ComposeObject"
-    ]._serialized_options = (
-        b"\212\323\344\223\002#\022!\n\022destination.bucket\022\013{bucket=**}"
-    )
-    _globals["_STORAGE"].methods_by_name["DeleteObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "DeleteObject"
-    ]._serialized_options = b"\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["RestoreObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "RestoreObject"
-    ]._serialized_options = b"\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["CancelResumableWrite"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "CancelResumableWrite"
-    ]._serialized_options = b"\332A\tupload_id\212\323\344\223\002/\022-\n\tupload_id\022 {bucket=projects/*/buckets/*}/**"
-    _globals["_STORAGE"].methods_by_name["GetObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "GetObject"
-    ]._serialized_options = b"\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["ReadObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "ReadObject"
-    ]._serialized_options = b"\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["BidiReadObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "BidiReadObject"
-    ]._serialized_options = (
-        b"\212\323\344\223\002(\022&\n\027read_object_spec.bucket\022\013{bucket=**}"
-    )
-    _globals["_STORAGE"].methods_by_name["UpdateObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "UpdateObject"
-    ]._serialized_options = b"\332A\022object,update_mask\212\323\344\223\002\036\022\034\n\robject.bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["ListObjects"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "ListObjects"
-    ]._serialized_options = b"\332A\006parent\212\323\344\223\002\027\022\025\n\006parent\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["RewriteObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "RewriteObject"
-    ]._serialized_options = b"\212\323\344\223\0024\022\017\n\rsource_bucket\022!\n\022destination_bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["StartResumableWrite"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "StartResumableWrite"
-    ]._serialized_options = b"\212\323\344\223\0022\0220\n!write_object_spec.resource.bucket\022\013{bucket=**}"
-    _globals["_STORAGE"].methods_by_name["QueryWriteStatus"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "QueryWriteStatus"
-    ]._serialized_options = b"\332A\tupload_id\212\323\344\223\002/\022-\n\tupload_id\022 {bucket=projects/*/buckets/*}/**"
-    _globals["_STORAGE"].methods_by_name["MoveObject"]._loaded_options = None
-    _globals["_STORAGE"].methods_by_name[
-        "MoveObject"
-    ]._serialized_options = b"\332A'bucket,source_object,destination_object\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}"
-    _globals["_DELETEBUCKETREQUEST"]._serialized_start = 403
-    _globals["_DELETEBUCKETREQUEST"]._serialized_end = 617
-    _globals["_GETBUCKETREQUEST"]._serialized_start = 620
-    _globals["_GETBUCKETREQUEST"]._serialized_end = 897
-    _globals["_CREATEBUCKETREQUEST"]._serialized_start = 900
-    _globals["_CREATEBUCKETREQUEST"]._serialized_end = 1159
-    _globals["_LISTBUCKETSREQUEST"]._serialized_start = 1162
-    _globals["_LISTBUCKETSREQUEST"]._serialized_end = 1410
-    _globals["_LISTBUCKETSRESPONSE"]._serialized_start = 1412
-    _globals["_LISTBUCKETSRESPONSE"]._serialized_end = 1523
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"]._serialized_start = 1525
-    _globals["_LOCKBUCKETRETENTIONPOLICYREQUEST"]._serialized_end = 1652
-    _globals["_UPDATEBUCKETREQUEST"]._serialized_start = 1655
-    _globals["_UPDATEBUCKETREQUEST"]._serialized_end = 1991
-    _globals["_COMPOSEOBJECTREQUEST"]._serialized_start = 1994
-    _globals["_COMPOSEOBJECTREQUEST"]._serialized_end = 2784
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"]._serialized_start = 2484
-    _globals["_COMPOSEOBJECTREQUEST_SOURCEOBJECT"]._serialized_end = 2732
-    _globals[
-        "_COMPOSEOBJECTREQUEST_SOURCEOBJECT_OBJECTPRECONDITIONS"
-    ]._serialized_start = 2653
-    _globals[
-        "_COMPOSEOBJECTREQUEST_SOURCEOBJECT_OBJECTPRECONDITIONS"
-    ]._serialized_end = 2732
-    _globals["_DELETEOBJECTREQUEST"]._serialized_start = 2787
-    _globals["_DELETEOBJECTREQUEST"]._serialized_end = 3262
-    _globals["_RESTOREOBJECTREQUEST"]._serialized_start = 3265
-    _globals["_RESTOREOBJECTREQUEST"]._serialized_end = 3819
-    _globals["_CANCELRESUMABLEWRITEREQUEST"]._serialized_start = 3821
-    _globals["_CANCELRESUMABLEWRITEREQUEST"]._serialized_end = 3874
-    _globals["_CANCELRESUMABLEWRITERESPONSE"]._serialized_start = 3876
-    _globals["_CANCELRESUMABLEWRITERESPONSE"]._serialized_end = 3906
-    _globals["_READOBJECTREQUEST"]._serialized_start = 3909
-    _globals["_READOBJECTREQUEST"]._serialized_end = 4499
-    _globals["_GETOBJECTREQUEST"]._serialized_start = 4502
-    _globals["_GETOBJECTREQUEST"]._serialized_end = 5112
-    _globals["_READOBJECTRESPONSE"]._serialized_start = 5115
-    _globals["_READOBJECTRESPONSE"]._serialized_end = 5360
-    _globals["_BIDIREADOBJECTSPEC"]._serialized_start = 5363
-    _globals["_BIDIREADOBJECTSPEC"]._serialized_end = 6030
-    _globals["_BIDIREADOBJECTREQUEST"]._serialized_start = 6033
-    _globals["_BIDIREADOBJECTREQUEST"]._serialized_end = 6182
-    _globals["_BIDIREADOBJECTRESPONSE"]._serialized_start = 6185
-    _globals["_BIDIREADOBJECTRESPONSE"]._serialized_end = 6374
-    _globals["_BIDIREADOBJECTREDIRECTEDERROR"]._serialized_start = 6377
-    _globals["_BIDIREADOBJECTREDIRECTEDERROR"]._serialized_end = 6510
-    _globals["_BIDIWRITEOBJECTREDIRECTEDERROR"]._serialized_start = 6513
-    _globals["_BIDIWRITEOBJECTREDIRECTEDERROR"]._serialized_end = 6711
-    _globals["_BIDIREADOBJECTERROR"]._serialized_start = 6713
-    _globals["_BIDIREADOBJECTERROR"]._serialized_end = 6796
-    _globals["_READRANGEERROR"]._serialized_start = 6798
-    _globals["_READRANGEERROR"]._serialized_end = 6867
-    _globals["_READRANGE"]._serialized_start = 6869
-    _globals["_READRANGE"]._serialized_end = 6954
-    _globals["_OBJECTRANGEDATA"]._serialized_start = 6957
-    _globals["_OBJECTRANGEDATA"]._serialized_end = 7105
-    _globals["_BIDIREADHANDLE"]._serialized_start = 7107
-    _globals["_BIDIREADHANDLE"]._serialized_end = 7144
-    _globals["_BIDIWRITEHANDLE"]._serialized_start = 7146
-    _globals["_BIDIWRITEHANDLE"]._serialized_end = 7184
-    _globals["_WRITEOBJECTSPEC"]._serialized_start = 7187
-    _globals["_WRITEOBJECTSPEC"]._serialized_end = 7629
-    _globals["_WRITEOBJECTREQUEST"]._serialized_start = 7632
-    _globals["_WRITEOBJECTREQUEST"]._serialized_end = 8037
-    _globals["_WRITEOBJECTRESPONSE"]._serialized_start = 8039
-    _globals["_WRITEOBJECTRESPONSE"]._serialized_end = 8149
-    _globals["_APPENDOBJECTSPEC"]._serialized_start = 8152
-    _globals["_APPENDOBJECTSPEC"]._serialized_end = 8537
-    _globals["_BIDIWRITEOBJECTREQUEST"]._serialized_start = 8540
-    _globals["_BIDIWRITEOBJECTREQUEST"]._serialized_end = 9063
-    _globals["_BIDIWRITEOBJECTRESPONSE"]._serialized_start = 9066
-    _globals["_BIDIWRITEOBJECTRESPONSE"]._serialized_end = 9260
-    _globals["_LISTOBJECTSREQUEST"]._serialized_start = 9263
-    _globals["_LISTOBJECTSREQUEST"]._serialized_end = 9743
-    _globals["_QUERYWRITESTATUSREQUEST"]._serialized_start = 9746
-    _globals["_QUERYWRITESTATUSREQUEST"]._serialized_end = 9884
-    _globals["_QUERYWRITESTATUSRESPONSE"]._serialized_start = 9886
-    _globals["_QUERYWRITESTATUSRESPONSE"]._serialized_end = 10001
-    _globals["_REWRITEOBJECTREQUEST"]._serialized_start = 10004
-    _globals["_REWRITEOBJECTREQUEST"]._serialized_end = 11377
-    _globals["_REWRITERESPONSE"]._serialized_start = 11380
-    _globals["_REWRITERESPONSE"]._serialized_end = 11531
-    _globals["_MOVEOBJECTREQUEST"]._serialized_start = 11534
-    _globals["_MOVEOBJECTREQUEST"]._serialized_end = 12293
-    _globals["_STARTRESUMABLEWRITEREQUEST"]._serialized_start = 12296
-    _globals["_STARTRESUMABLEWRITEREQUEST"]._serialized_end = 12548
-    _globals["_STARTRESUMABLEWRITERESPONSE"]._serialized_start = 12550
-    _globals["_STARTRESUMABLEWRITERESPONSE"]._serialized_end = 12598
-    _globals["_UPDATEOBJECTREQUEST"]._serialized_start = 12601
-    _globals["_UPDATEOBJECTREQUEST"]._serialized_end = 13148
-    _globals["_COMMONOBJECTREQUESTPARAMS"]._serialized_start = 13151
-    _globals["_COMMONOBJECTREQUESTPARAMS"]._serialized_end = 13290
-    _globals["_SERVICECONSTANTS"]._serialized_start = 13293
-    _globals["_SERVICECONSTANTS"]._serialized_end = 14007
-    _globals["_SERVICECONSTANTS_VALUES"]._serialized_start = 13314
-    _globals["_SERVICECONSTANTS_VALUES"]._serialized_end = 14007
-    _globals["_BUCKET"]._serialized_start = 14010
-    _globals["_BUCKET"]._serialized_end = 19700
-    _globals["_BUCKET_BILLING"]._serialized_start = 15680
-    _globals["_BUCKET_BILLING"]._serialized_end = 15718
-    _globals["_BUCKET_CORS"]._serialized_start = 15720
-    _globals["_BUCKET_CORS"]._serialized_end = 15828
-    _globals["_BUCKET_ENCRYPTION"]._serialized_start = 15831
-    _globals["_BUCKET_ENCRYPTION"]._serialized_end = 17029
-    _globals[
-        "_BUCKET_ENCRYPTION_GOOGLEMANAGEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_start = 16356
-    _globals[
-        "_BUCKET_ENCRYPTION_GOOGLEMANAGEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_end = 16526
-    _globals[
-        "_BUCKET_ENCRYPTION_CUSTOMERMANAGEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_start = 16529
-    _globals[
-        "_BUCKET_ENCRYPTION_CUSTOMERMANAGEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_end = 16701
-    _globals[
-        "_BUCKET_ENCRYPTION_CUSTOMERSUPPLIEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_start = 16704
-    _globals[
-        "_BUCKET_ENCRYPTION_CUSTOMERSUPPLIEDENCRYPTIONENFORCEMENTCONFIG"
-    ]._serialized_end = 16877
-    _globals["_BUCKET_IAMCONFIG"]._serialized_start = 17032
-    _globals["_BUCKET_IAMCONFIG"]._serialized_end = 17288
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"]._serialized_start = 17188
-    _globals["_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS"]._serialized_end = 17288
-    _globals["_BUCKET_LIFECYCLE"]._serialized_start = 17291
-    _globals["_BUCKET_LIFECYCLE"]._serialized_end = 18101
-    _globals["_BUCKET_LIFECYCLE_RULE"]._serialized_start = 17366
-    _globals["_BUCKET_LIFECYCLE_RULE"]._serialized_end = 18101
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"]._serialized_start = 17520
-    _globals["_BUCKET_LIFECYCLE_RULE_ACTION"]._serialized_end = 17575
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"]._serialized_start = 17578
-    _globals["_BUCKET_LIFECYCLE_RULE_CONDITION"]._serialized_end = 18101
-    _globals["_BUCKET_LOGGING"]._serialized_start = 18103
-    _globals["_BUCKET_LOGGING"]._serialized_end = 18169
-    _globals["_BUCKET_OBJECTRETENTION"]._serialized_start = 18171
-    _globals["_BUCKET_OBJECTRETENTION"]._serialized_end = 18213
-    _globals["_BUCKET_RETENTIONPOLICY"]._serialized_start = 18216
-    _globals["_BUCKET_RETENTIONPOLICY"]._serialized_end = 18374
-    _globals["_BUCKET_SOFTDELETEPOLICY"]._serialized_start = 18377
-    _globals["_BUCKET_SOFTDELETEPOLICY"]._serialized_end = 18554
-    _globals["_BUCKET_VERSIONING"]._serialized_start = 18556
-    _globals["_BUCKET_VERSIONING"]._serialized_end = 18590
-    _globals["_BUCKET_WEBSITE"]._serialized_start = 18592
-    _globals["_BUCKET_WEBSITE"]._serialized_end = 18661
-    _globals["_BUCKET_CUSTOMPLACEMENTCONFIG"]._serialized_start = 18663
-    _globals["_BUCKET_CUSTOMPLACEMENTCONFIG"]._serialized_end = 18715
-    _globals["_BUCKET_AUTOCLASS"]._serialized_start = 18718
-    _globals["_BUCKET_AUTOCLASS"]._serialized_end = 18990
-    _globals["_BUCKET_IPFILTER"]._serialized_start = 18993
-    _globals["_BUCKET_IPFILTER"]._serialized_end = 19502
-    _globals["_BUCKET_IPFILTER_PUBLICNETWORKSOURCE"]._serialized_start = 19283
-    _globals["_BUCKET_IPFILTER_PUBLICNETWORKSOURCE"]._serialized_end = 19341
-    _globals["_BUCKET_IPFILTER_VPCNETWORKSOURCE"]._serialized_start = 19343
-    _globals["_BUCKET_IPFILTER_VPCNETWORKSOURCE"]._serialized_end = 19432
-    _globals["_BUCKET_HIERARCHICALNAMESPACE"]._serialized_start = 19504
-    _globals["_BUCKET_HIERARCHICALNAMESPACE"]._serialized_end = 19549
-    _globals["_BUCKET_LABELSENTRY"]._serialized_start = 19551
-    _globals["_BUCKET_LABELSENTRY"]._serialized_end = 19596
-    _globals["_BUCKETACCESSCONTROL"]._serialized_start = 19703
-    _globals["_BUCKETACCESSCONTROL"]._serialized_end = 19949
-    _globals["_CHECKSUMMEDDATA"]._serialized_start = 19951
-    _globals["_CHECKSUMMEDDATA"]._serialized_end = 20024
-    _globals["_OBJECTCHECKSUMS"]._serialized_start = 20026
-    _globals["_OBJECTCHECKSUMS"]._serialized_end = 20098
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"]._serialized_start = 20101
-    _globals["_OBJECTCUSTOMCONTEXTPAYLOAD"]._serialized_end = 20257
-    _globals["_OBJECTCONTEXTS"]._serialized_start = 20260
-    _globals["_OBJECTCONTEXTS"]._serialized_end = 20438
-    _globals["_OBJECTCONTEXTS_CUSTOMENTRY"]._serialized_start = 20346
-    _globals["_OBJECTCONTEXTS_CUSTOMENTRY"]._serialized_end = 20438
-    _globals["_CUSTOMERENCRYPTION"]._serialized_start = 20440
-    _globals["_CUSTOMERENCRYPTION"]._serialized_end = 20526
-    _globals["_OBJECT"]._serialized_start = 20529
-    _globals["_OBJECT"]._serialized_end = 22338
-    _globals["_OBJECT_RETENTION"]._serialized_start = 22020
-    _globals["_OBJECT_RETENTION"]._serialized_end = 22208
-    _globals["_OBJECT_RETENTION_MODE"]._serialized_start = 22154
-    _globals["_OBJECT_RETENTION_MODE"]._serialized_end = 22208
-    _globals["_OBJECT_METADATAENTRY"]._serialized_start = 22210
-    _globals["_OBJECT_METADATAENTRY"]._serialized_end = 22257
-    _globals["_OBJECTACCESSCONTROL"]._serialized_start = 22341
-    _globals["_OBJECTACCESSCONTROL"]._serialized_end = 22587
-    _globals["_LISTOBJECTSRESPONSE"]._serialized_start = 22589
-    _globals["_LISTOBJECTSRESPONSE"]._serialized_end = 22697
-    _globals["_PROJECTTEAM"]._serialized_start = 22699
-    _globals["_PROJECTTEAM"]._serialized_end = 22760
-    _globals["_OWNER"]._serialized_start = 22762
-    _globals["_OWNER"]._serialized_end = 22814
-    _globals["_CONTENTRANGE"]._serialized_start = 22816
-    _globals["_CONTENTRANGE"]._serialized_end = 22883
-    _globals["_STORAGE"]._serialized_start = 22886
-    _globals["_STORAGE"]._serialized_end = 26885
+  _globals['DESCRIPTOR']._loaded_options = None
+  _globals['DESCRIPTOR']._serialized_options = b'\n\025com.google.storage.v2B\014StorageProtoP\001Z>cloud.google.com/go/storage/internal/apiv2/storagepb;storagepb\352Ax\n!cloudkms.googleapis.com/CryptoKey\022Sprojects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}'
+  _globals['_DELETEBUCKETREQUEST'].fields_by_name['name']._loaded_options = None
+  _globals['_DELETEBUCKETREQUEST'].fields_by_name['name']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_GETBUCKETREQUEST'].fields_by_name['name']._loaded_options = None
+  _globals['_GETBUCKETREQUEST'].fields_by_name['name']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['parent']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['parent']._serialized_options = b'\340A\002\372A\037\022\035storage.googleapis.com/Bucket'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\001'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['bucket_id']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['bucket_id']._serialized_options = b'\340A\002'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['predefined_acl']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['predefined_default_object_acl']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['predefined_default_object_acl']._serialized_options = b'\340A\001'
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['enable_object_retention']._loaded_options = None
+  _globals['_CREATEBUCKETREQUEST'].fields_by_name['enable_object_retention']._serialized_options = b'\340A\001'
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['parent']._loaded_options = None
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['parent']._serialized_options = b'\340A\002\372A\037\022\035storage.googleapis.com/Bucket'
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['page_size']._loaded_options = None
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['page_size']._serialized_options = b'\340A\001'
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['page_token']._loaded_options = None
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['page_token']._serialized_options = b'\340A\001'
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['prefix']._loaded_options = None
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['prefix']._serialized_options = b'\340A\001'
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['return_partial_success']._loaded_options = None
+  _globals['_LISTBUCKETSREQUEST'].fields_by_name['return_partial_success']._serialized_options = b'\340A\001'
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST'].fields_by_name['if_metageneration_match']._loaded_options = None
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST'].fields_by_name['if_metageneration_match']._serialized_options = b'\340A\002'
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002'
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['predefined_acl']._loaded_options = None
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['predefined_default_object_acl']._loaded_options = None
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['predefined_default_object_acl']._serialized_options = b'\340A\001'
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['update_mask']._loaded_options = None
+  _globals['_UPDATEBUCKETREQUEST'].fields_by_name['update_mask']._serialized_options = b'\340A\002'
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['name']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['name']._serialized_options = b'\340A\002'
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['generation']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['generation']._serialized_options = b'\340A\001'
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['object_preconditions']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT'].fields_by_name['object_preconditions']._serialized_options = b'\340A\001'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['destination']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['destination']._serialized_options = b'\340A\002'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['source_objects']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['source_objects']._serialized_options = b'\340A\001'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['destination_predefined_acl']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['destination_predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['kms_key']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['kms_key']._serialized_options = b'\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['object_checksums']._loaded_options = None
+  _globals['_COMPOSEOBJECTREQUEST'].fields_by_name['object_checksums']._serialized_options = b'\340A\001'
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['object']._loaded_options = None
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['generation']._loaded_options = None
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['generation']._serialized_options = b'\340A\001'
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_DELETEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['object']._loaded_options = None
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['generation']._loaded_options = None
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['generation']._serialized_options = b'\340A\002'
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['restore_token']._loaded_options = None
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['restore_token']._serialized_options = b'\340A\001'
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_RESTOREOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_CANCELRESUMABLEWRITEREQUEST'].fields_by_name['upload_id']._loaded_options = None
+  _globals['_CANCELRESUMABLEWRITEREQUEST'].fields_by_name['upload_id']._serialized_options = b'\340A\002'
+  _globals['_READOBJECTREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_READOBJECTREQUEST'].fields_by_name['object']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_READOBJECTREQUEST'].fields_by_name['generation']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['generation']._serialized_options = b'\340A\001'
+  _globals['_READOBJECTREQUEST'].fields_by_name['read_offset']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['read_offset']._serialized_options = b'\340A\001'
+  _globals['_READOBJECTREQUEST'].fields_by_name['read_limit']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['read_limit']._serialized_options = b'\340A\001'
+  _globals['_READOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_READOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_GETOBJECTREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_GETOBJECTREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_GETOBJECTREQUEST'].fields_by_name['object']._loaded_options = None
+  _globals['_GETOBJECTREQUEST'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_GETOBJECTREQUEST'].fields_by_name['generation']._loaded_options = None
+  _globals['_GETOBJECTREQUEST'].fields_by_name['generation']._serialized_options = b'\340A\001'
+  _globals['_GETOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_GETOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_GETOBJECTREQUEST'].fields_by_name['restore_token']._loaded_options = None
+  _globals['_GETOBJECTREQUEST'].fields_by_name['restore_token']._serialized_options = b'\340A\001'
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['bucket']._loaded_options = None
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['object']._loaded_options = None
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['generation']._loaded_options = None
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['generation']._serialized_options = b'\340A\001'
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['read_mask']._loaded_options = None
+  _globals['_BIDIREADOBJECTSPEC'].fields_by_name['read_mask']._serialized_options = b'\030\001'
+  _globals['_BIDIREADOBJECTREQUEST'].fields_by_name['read_object_spec']._loaded_options = None
+  _globals['_BIDIREADOBJECTREQUEST'].fields_by_name['read_object_spec']._serialized_options = b'\340A\001'
+  _globals['_BIDIREADOBJECTREQUEST'].fields_by_name['read_ranges']._loaded_options = None
+  _globals['_BIDIREADOBJECTREQUEST'].fields_by_name['read_ranges']._serialized_options = b'\340A\001'
+  _globals['_READRANGE'].fields_by_name['read_offset']._loaded_options = None
+  _globals['_READRANGE'].fields_by_name['read_offset']._serialized_options = b'\340A\002'
+  _globals['_READRANGE'].fields_by_name['read_length']._loaded_options = None
+  _globals['_READRANGE'].fields_by_name['read_length']._serialized_options = b'\340A\001'
+  _globals['_READRANGE'].fields_by_name['read_id']._loaded_options = None
+  _globals['_READRANGE'].fields_by_name['read_id']._serialized_options = b'\340A\002'
+  _globals['_BIDIREADHANDLE'].fields_by_name['handle']._loaded_options = None
+  _globals['_BIDIREADHANDLE'].fields_by_name['handle']._serialized_options = b'\340A\002'
+  _globals['_BIDIWRITEHANDLE'].fields_by_name['handle']._loaded_options = None
+  _globals['_BIDIWRITEHANDLE'].fields_by_name['handle']._serialized_options = b'\340A\002'
+  _globals['_WRITEOBJECTSPEC'].fields_by_name['resource']._loaded_options = None
+  _globals['_WRITEOBJECTSPEC'].fields_by_name['resource']._serialized_options = b'\340A\002'
+  _globals['_WRITEOBJECTSPEC'].fields_by_name['predefined_acl']._loaded_options = None
+  _globals['_WRITEOBJECTSPEC'].fields_by_name['predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['write_offset']._loaded_options = None
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['write_offset']._serialized_options = b'\340A\002'
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['object_checksums']._loaded_options = None
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['object_checksums']._serialized_options = b'\340A\001'
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['finish_write']._loaded_options = None
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['finish_write']._serialized_options = b'\340A\001'
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_WRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['bucket']._loaded_options = None
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['object']._loaded_options = None
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['generation']._loaded_options = None
+  _globals['_APPENDOBJECTSPEC'].fields_by_name['generation']._serialized_options = b'\340A\002'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['write_offset']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['write_offset']._serialized_options = b'\340A\002'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['object_checksums']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['object_checksums']._serialized_options = b'\340A\001'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['state_lookup']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['state_lookup']._serialized_options = b'\340A\001'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['flush']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['flush']._serialized_options = b'\340A\001'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['finish_write']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['finish_write']._serialized_options = b'\340A\001'
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_BIDIWRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['parent']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['parent']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['page_size']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['page_size']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['page_token']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['page_token']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['delimiter']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['delimiter']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['include_trailing_delimiter']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['include_trailing_delimiter']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['prefix']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['prefix']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['versions']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['versions']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['lexicographic_start']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['lexicographic_start']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['lexicographic_end']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['lexicographic_end']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['soft_deleted']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['soft_deleted']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['include_folders_as_prefixes']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['include_folders_as_prefixes']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['match_glob']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['match_glob']._serialized_options = b'\340A\001'
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['filter']._loaded_options = None
+  _globals['_LISTOBJECTSREQUEST'].fields_by_name['filter']._serialized_options = b'\340A\001'
+  _globals['_QUERYWRITESTATUSREQUEST'].fields_by_name['upload_id']._loaded_options = None
+  _globals['_QUERYWRITESTATUSREQUEST'].fields_by_name['upload_id']._serialized_options = b'\340A\002'
+  _globals['_QUERYWRITESTATUSREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_QUERYWRITESTATUSREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_name']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_name']._serialized_options = b'\340A\002\340A\005'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_bucket']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_bucket']._serialized_options = b'\340A\002\340A\005\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_kms_key']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_kms_key']._serialized_options = b'\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_bucket']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_object']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_object']._serialized_options = b'\340A\002'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_generation']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['source_generation']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['rewrite_token']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['rewrite_token']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_predefined_acl']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['destination_predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['max_bytes_rewritten_per_call']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['max_bytes_rewritten_per_call']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_algorithm']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_algorithm']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_key_bytes']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_key_bytes']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_key_sha256_bytes']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['copy_source_encryption_key_sha256_bytes']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['object_checksums']._loaded_options = None
+  _globals['_REWRITEOBJECTREQUEST'].fields_by_name['object_checksums']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['bucket']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['bucket']._serialized_options = b'\340A\002\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['source_object']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['source_object']._serialized_options = b'\340A\002'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['destination_object']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['destination_object']._serialized_options = b'\340A\002'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_generation_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_generation_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_generation_not_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_generation_not_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_metageneration_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_metageneration_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_metageneration_not_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_source_metageneration_not_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_generation_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_generation_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_generation_not_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_generation_not_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_metageneration_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_metageneration_match']._serialized_options = b'\340A\001'
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_metageneration_not_match']._loaded_options = None
+  _globals['_MOVEOBJECTREQUEST'].fields_by_name['if_metageneration_not_match']._serialized_options = b'\340A\001'
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['write_object_spec']._loaded_options = None
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['write_object_spec']._serialized_options = b'\340A\002'
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['object_checksums']._loaded_options = None
+  _globals['_STARTRESUMABLEWRITEREQUEST'].fields_by_name['object_checksums']._serialized_options = b'\340A\001'
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['object']._loaded_options = None
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['object']._serialized_options = b'\340A\002'
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['predefined_acl']._loaded_options = None
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['predefined_acl']._serialized_options = b'\340A\001'
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['update_mask']._loaded_options = None
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['update_mask']._serialized_options = b'\340A\002'
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['common_object_request_params']._loaded_options = None
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['common_object_request_params']._serialized_options = b'\340A\001'
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['override_unlocked_retention']._loaded_options = None
+  _globals['_UPDATEOBJECTREQUEST'].fields_by_name['override_unlocked_retention']._serialized_options = b'\340A\001'
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_algorithm']._loaded_options = None
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_algorithm']._serialized_options = b'\340A\001'
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_key_bytes']._loaded_options = None
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_key_bytes']._serialized_options = b'\340A\001'
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_key_sha256_bytes']._loaded_options = None
+  _globals['_COMMONOBJECTREQUESTPARAMS'].fields_by_name['encryption_key_sha256_bytes']._serialized_options = b'\340A\001'
+  _globals['_SERVICECONSTANTS_VALUES']._loaded_options = None
+  _globals['_SERVICECONSTANTS_VALUES']._serialized_options = b'\020\001'
+  _globals['_BUCKET_BILLING'].fields_by_name['requester_pays']._loaded_options = None
+  _globals['_BUCKET_BILLING'].fields_by_name['requester_pays']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_CORS'].fields_by_name['origin']._loaded_options = None
+  _globals['_BUCKET_CORS'].fields_by_name['origin']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_CORS'].fields_by_name['method']._loaded_options = None
+  _globals['_BUCKET_CORS'].fields_by_name['method']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_CORS'].fields_by_name['response_header']._loaded_options = None
+  _globals['_BUCKET_CORS'].fields_by_name['response_header']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_CORS'].fields_by_name['max_age_seconds']._loaded_options = None
+  _globals['_BUCKET_CORS'].fields_by_name['max_age_seconds']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['default_kms_key']._loaded_options = None
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['default_kms_key']._serialized_options = b'\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey'
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['google_managed_encryption_enforcement_config']._loaded_options = None
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['google_managed_encryption_enforcement_config']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['customer_managed_encryption_enforcement_config']._loaded_options = None
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['customer_managed_encryption_enforcement_config']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['customer_supplied_encryption_enforcement_config']._loaded_options = None
+  _globals['_BUCKET_ENCRYPTION'].fields_by_name['customer_supplied_encryption_enforcement_config']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS'].fields_by_name['enabled']._loaded_options = None
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS'].fields_by_name['enabled']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS'].fields_by_name['lock_time']._loaded_options = None
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS'].fields_by_name['lock_time']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IAMCONFIG'].fields_by_name['uniform_bucket_level_access']._loaded_options = None
+  _globals['_BUCKET_IAMCONFIG'].fields_by_name['uniform_bucket_level_access']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IAMCONFIG'].fields_by_name['public_access_prevention']._loaded_options = None
+  _globals['_BUCKET_IAMCONFIG'].fields_by_name['public_access_prevention']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION'].fields_by_name['type']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION'].fields_by_name['type']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION'].fields_by_name['storage_class']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION'].fields_by_name['storage_class']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['created_before']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['created_before']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_storage_class']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_storage_class']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['custom_time_before']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['custom_time_before']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['noncurrent_time_before']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['noncurrent_time_before']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_prefix']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_prefix']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_suffix']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION'].fields_by_name['matches_suffix']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE'].fields_by_name['action']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE'].fields_by_name['action']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE_RULE'].fields_by_name['condition']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE_RULE'].fields_by_name['condition']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LIFECYCLE'].fields_by_name['rule']._loaded_options = None
+  _globals['_BUCKET_LIFECYCLE'].fields_by_name['rule']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LOGGING'].fields_by_name['log_bucket']._loaded_options = None
+  _globals['_BUCKET_LOGGING'].fields_by_name['log_bucket']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LOGGING'].fields_by_name['log_object_prefix']._loaded_options = None
+  _globals['_BUCKET_LOGGING'].fields_by_name['log_object_prefix']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_OBJECTRETENTION'].fields_by_name['enabled']._loaded_options = None
+  _globals['_BUCKET_OBJECTRETENTION'].fields_by_name['enabled']._serialized_options = b'\340A\001\340A\003'
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['effective_time']._loaded_options = None
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['effective_time']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['is_locked']._loaded_options = None
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['is_locked']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['retention_duration']._loaded_options = None
+  _globals['_BUCKET_RETENTIONPOLICY'].fields_by_name['retention_duration']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_VERSIONING'].fields_by_name['enabled']._loaded_options = None
+  _globals['_BUCKET_VERSIONING'].fields_by_name['enabled']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_WEBSITE'].fields_by_name['main_page_suffix']._loaded_options = None
+  _globals['_BUCKET_WEBSITE'].fields_by_name['main_page_suffix']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_WEBSITE'].fields_by_name['not_found_page']._loaded_options = None
+  _globals['_BUCKET_WEBSITE'].fields_by_name['not_found_page']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_CUSTOMPLACEMENTCONFIG'].fields_by_name['data_locations']._loaded_options = None
+  _globals['_BUCKET_CUSTOMPLACEMENTCONFIG'].fields_by_name['data_locations']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['enabled']._loaded_options = None
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['enabled']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['toggle_time']._loaded_options = None
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['toggle_time']._serialized_options = b'\340A\003'
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['terminal_storage_class_update_time']._loaded_options = None
+  _globals['_BUCKET_AUTOCLASS'].fields_by_name['terminal_storage_class_update_time']._serialized_options = b'\340A\003'
+  _globals['_BUCKET_IPFILTER_PUBLICNETWORKSOURCE'].fields_by_name['allowed_ip_cidr_ranges']._loaded_options = None
+  _globals['_BUCKET_IPFILTER_PUBLICNETWORKSOURCE'].fields_by_name['allowed_ip_cidr_ranges']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IPFILTER_VPCNETWORKSOURCE'].fields_by_name['allowed_ip_cidr_ranges']._loaded_options = None
+  _globals['_BUCKET_IPFILTER_VPCNETWORKSOURCE'].fields_by_name['allowed_ip_cidr_ranges']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IPFILTER'].fields_by_name['vpc_network_sources']._loaded_options = None
+  _globals['_BUCKET_IPFILTER'].fields_by_name['vpc_network_sources']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_IPFILTER'].fields_by_name['allow_cross_org_vpcs']._loaded_options = None
+  _globals['_BUCKET_IPFILTER'].fields_by_name['allow_cross_org_vpcs']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_HIERARCHICALNAMESPACE'].fields_by_name['enabled']._loaded_options = None
+  _globals['_BUCKET_HIERARCHICALNAMESPACE'].fields_by_name['enabled']._serialized_options = b'\340A\001'
+  _globals['_BUCKET_LABELSENTRY']._loaded_options = None
+  _globals['_BUCKET_LABELSENTRY']._serialized_options = b'8\001'
+  _globals['_BUCKET'].fields_by_name['name']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['name']._serialized_options = b'\340A\010'
+  _globals['_BUCKET'].fields_by_name['bucket_id']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['bucket_id']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['project']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['project']._serialized_options = b'\340A\005\372A-\n+cloudresourcemanager.googleapis.com/Project'
+  _globals['_BUCKET'].fields_by_name['metageneration']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['metageneration']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['location']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['location']._serialized_options = b'\340A\005'
+  _globals['_BUCKET'].fields_by_name['location_type']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['location_type']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['storage_class']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['storage_class']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['rpo']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['rpo']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['acl']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['acl']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['default_object_acl']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['default_object_acl']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['lifecycle']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['lifecycle']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['create_time']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['create_time']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['cors']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['cors']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['update_time']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['update_time']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['default_event_based_hold']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['default_event_based_hold']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['labels']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['labels']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['website']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['website']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['versioning']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['versioning']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['logging']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['logging']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['owner']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['owner']._serialized_options = b'\340A\003'
+  _globals['_BUCKET'].fields_by_name['encryption']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['encryption']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['billing']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['billing']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['retention_policy']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['retention_policy']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['iam_config']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['iam_config']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['satisfies_pzs']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['satisfies_pzs']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['custom_placement_config']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['custom_placement_config']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['autoclass']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['autoclass']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['hierarchical_namespace']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['hierarchical_namespace']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['soft_delete_policy']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['soft_delete_policy']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['object_retention']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['object_retention']._serialized_options = b'\340A\001'
+  _globals['_BUCKET'].fields_by_name['ip_filter']._loaded_options = None
+  _globals['_BUCKET'].fields_by_name['ip_filter']._serialized_options = b'\340A\001'
+  _globals['_BUCKET']._loaded_options = None
+  _globals['_BUCKET']._serialized_options = b'\352AU\n\035storage.googleapis.com/Bucket\022#projects/{project}/buckets/{bucket}*\007buckets2\006bucket'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['role']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['role']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['id']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['id']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity_alt']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity_alt']._serialized_options = b'\340A\003'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity_id']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['entity_id']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['etag']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['etag']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['email']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['email']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['domain']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['domain']._serialized_options = b'\340A\001'
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['project_team']._loaded_options = None
+  _globals['_BUCKETACCESSCONTROL'].fields_by_name['project_team']._serialized_options = b'\340A\001'
+  _globals['_CHECKSUMMEDDATA'].fields_by_name['content']._loaded_options = None
+  _globals['_CHECKSUMMEDDATA'].fields_by_name['content']._serialized_options = b'\010\001\340A\001'
+  _globals['_OBJECTCHECKSUMS'].fields_by_name['md5_hash']._loaded_options = None
+  _globals['_OBJECTCHECKSUMS'].fields_by_name['md5_hash']._serialized_options = b'\340A\001'
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['value']._loaded_options = None
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['value']._serialized_options = b'\340A\002'
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['create_time']._loaded_options = None
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['create_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['update_time']._loaded_options = None
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD'].fields_by_name['update_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECTCONTEXTS_CUSTOMENTRY']._loaded_options = None
+  _globals['_OBJECTCONTEXTS_CUSTOMENTRY']._serialized_options = b'8\001'
+  _globals['_OBJECTCONTEXTS'].fields_by_name['custom']._loaded_options = None
+  _globals['_OBJECTCONTEXTS'].fields_by_name['custom']._serialized_options = b'\340A\001'
+  _globals['_CUSTOMERENCRYPTION'].fields_by_name['encryption_algorithm']._loaded_options = None
+  _globals['_CUSTOMERENCRYPTION'].fields_by_name['encryption_algorithm']._serialized_options = b'\340A\001'
+  _globals['_CUSTOMERENCRYPTION'].fields_by_name['key_sha256_bytes']._loaded_options = None
+  _globals['_CUSTOMERENCRYPTION'].fields_by_name['key_sha256_bytes']._serialized_options = b'\340A\001'
+  _globals['_OBJECT_RETENTION'].fields_by_name['mode']._loaded_options = None
+  _globals['_OBJECT_RETENTION'].fields_by_name['mode']._serialized_options = b'\340A\001'
+  _globals['_OBJECT_RETENTION'].fields_by_name['retain_until_time']._loaded_options = None
+  _globals['_OBJECT_RETENTION'].fields_by_name['retain_until_time']._serialized_options = b'\340A\001'
+  _globals['_OBJECT_METADATAENTRY']._loaded_options = None
+  _globals['_OBJECT_METADATAENTRY']._serialized_options = b'8\001'
+  _globals['_OBJECT'].fields_by_name['name']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['name']._serialized_options = b'\340A\005'
+  _globals['_OBJECT'].fields_by_name['bucket']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['bucket']._serialized_options = b'\340A\005\372A\037\n\035storage.googleapis.com/Bucket'
+  _globals['_OBJECT'].fields_by_name['etag']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['etag']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['generation']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['generation']._serialized_options = b'\340A\005'
+  _globals['_OBJECT'].fields_by_name['restore_token']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['restore_token']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['metageneration']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['metageneration']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['storage_class']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['storage_class']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['size']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['size']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['content_encoding']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['content_encoding']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['content_disposition']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['content_disposition']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['cache_control']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['cache_control']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['acl']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['acl']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['content_language']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['content_language']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['delete_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['delete_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['finalize_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['finalize_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['content_type']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['content_type']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['create_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['create_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['component_count']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['component_count']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['checksums']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['checksums']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['update_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['update_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['kms_key']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['kms_key']._serialized_options = b'\340A\001\372A#\n!cloudkms.googleapis.com/CryptoKey'
+  _globals['_OBJECT'].fields_by_name['update_storage_class_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['update_storage_class_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['temporary_hold']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['temporary_hold']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['retention_expire_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['retention_expire_time']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['metadata']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['metadata']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['contexts']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['contexts']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['owner']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['owner']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['customer_encryption']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['customer_encryption']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['custom_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['custom_time']._serialized_options = b'\340A\001'
+  _globals['_OBJECT'].fields_by_name['soft_delete_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['soft_delete_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['hard_delete_time']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['hard_delete_time']._serialized_options = b'\340A\003'
+  _globals['_OBJECT'].fields_by_name['retention']._loaded_options = None
+  _globals['_OBJECT'].fields_by_name['retention']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['role']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['role']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['id']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['id']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity_alt']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity_alt']._serialized_options = b'\340A\003'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity_id']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['entity_id']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['etag']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['etag']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['email']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['email']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['domain']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['domain']._serialized_options = b'\340A\001'
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['project_team']._loaded_options = None
+  _globals['_OBJECTACCESSCONTROL'].fields_by_name['project_team']._serialized_options = b'\340A\001'
+  _globals['_PROJECTTEAM'].fields_by_name['project_number']._loaded_options = None
+  _globals['_PROJECTTEAM'].fields_by_name['project_number']._serialized_options = b'\340A\001'
+  _globals['_PROJECTTEAM'].fields_by_name['team']._loaded_options = None
+  _globals['_PROJECTTEAM'].fields_by_name['team']._serialized_options = b'\340A\001'
+  _globals['_OWNER'].fields_by_name['entity']._loaded_options = None
+  _globals['_OWNER'].fields_by_name['entity']._serialized_options = b'\340A\001'
+  _globals['_OWNER'].fields_by_name['entity_id']._loaded_options = None
+  _globals['_OWNER'].fields_by_name['entity_id']._serialized_options = b'\340A\001'
+  _globals['_STORAGE']._loaded_options = None
+  _globals['_STORAGE']._serialized_options = b'\312A\026storage.googleapis.com\322A\212\002https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/cloud-platform.read-only,https://www.googleapis.com/auth/devstorage.full_control,https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/devstorage.read_write'
+  _globals['_STORAGE'].methods_by_name['DeleteBucket']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['DeleteBucket']._serialized_options = b'\332A\004name\212\323\344\223\002\025\022\023\n\004name\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['GetBucket']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['GetBucket']._serialized_options = b'\332A\004name\212\323\344\223\002\025\022\023\n\004name\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['CreateBucket']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['CreateBucket']._serialized_options = b'\332A\027parent,bucket,bucket_id\212\323\344\223\0028\022\026\n\006parent\022\014{project=**}\022\036\n\016bucket.project\022\014{project=**}'
+  _globals['_STORAGE'].methods_by_name['ListBuckets']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['ListBuckets']._serialized_options = b'\332A\006parent\212\323\344\223\002\030\022\026\n\006parent\022\014{project=**}'
+  _globals['_STORAGE'].methods_by_name['LockBucketRetentionPolicy']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['LockBucketRetentionPolicy']._serialized_options = b'\332A\006bucket\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['GetIamPolicy']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['GetIamPolicy']._serialized_options = b'\332A\010resource\212\323\344\223\002G\022\027\n\010resource\022\013{bucket=**}\022,\n\010resource\022 {bucket=projects/*/buckets/*}/**'
+  _globals['_STORAGE'].methods_by_name['SetIamPolicy']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['SetIamPolicy']._serialized_options = b'\332A\017resource,policy\212\323\344\223\002G\022\027\n\010resource\022\013{bucket=**}\022,\n\010resource\022 {bucket=projects/*/buckets/*}/**'
+  _globals['_STORAGE'].methods_by_name['TestIamPermissions']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['TestIamPermissions']._serialized_options = b'\332A\024resource,permissions\212\323\344\223\002\214\001\022\027\n\010resource\022\013{bucket=**}\0224\n\010resource\022({bucket=projects/*/buckets/*}/objects/**\022;\n\010resource\022/{bucket=projects/*/buckets/*}/managedFolders/**'
+  _globals['_STORAGE'].methods_by_name['UpdateBucket']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['UpdateBucket']._serialized_options = b'\332A\022bucket,update_mask\212\323\344\223\002\034\022\032\n\013bucket.name\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['ComposeObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['ComposeObject']._serialized_options = b'\212\323\344\223\002#\022!\n\022destination.bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['DeleteObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['DeleteObject']._serialized_options = b'\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['RestoreObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['RestoreObject']._serialized_options = b'\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['CancelResumableWrite']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['CancelResumableWrite']._serialized_options = b'\332A\tupload_id\212\323\344\223\002/\022-\n\tupload_id\022 {bucket=projects/*/buckets/*}/**'
+  _globals['_STORAGE'].methods_by_name['GetObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['GetObject']._serialized_options = b'\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['ReadObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['ReadObject']._serialized_options = b'\332A\rbucket,object\332A\030bucket,object,generation\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['BidiReadObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['BidiReadObject']._serialized_options = b'\212\323\344\223\002(\022&\n\027read_object_spec.bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['UpdateObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['UpdateObject']._serialized_options = b'\332A\022object,update_mask\212\323\344\223\002\036\022\034\n\robject.bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['ListObjects']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['ListObjects']._serialized_options = b'\332A\006parent\212\323\344\223\002\027\022\025\n\006parent\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['RewriteObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['RewriteObject']._serialized_options = b'\212\323\344\223\0024\022\017\n\rsource_bucket\022!\n\022destination_bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['StartResumableWrite']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['StartResumableWrite']._serialized_options = b'\212\323\344\223\0022\0220\n!write_object_spec.resource.bucket\022\013{bucket=**}'
+  _globals['_STORAGE'].methods_by_name['QueryWriteStatus']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['QueryWriteStatus']._serialized_options = b'\332A\tupload_id\212\323\344\223\002/\022-\n\tupload_id\022 {bucket=projects/*/buckets/*}/**'
+  _globals['_STORAGE'].methods_by_name['MoveObject']._loaded_options = None
+  _globals['_STORAGE'].methods_by_name['MoveObject']._serialized_options = b'\332A\'bucket,source_object,destination_object\212\323\344\223\002\027\022\025\n\006bucket\022\013{bucket=**}'
+  _globals['_DELETEBUCKETREQUEST']._serialized_start=403
+  _globals['_DELETEBUCKETREQUEST']._serialized_end=617
+  _globals['_GETBUCKETREQUEST']._serialized_start=620
+  _globals['_GETBUCKETREQUEST']._serialized_end=897
+  _globals['_CREATEBUCKETREQUEST']._serialized_start=900
+  _globals['_CREATEBUCKETREQUEST']._serialized_end=1159
+  _globals['_LISTBUCKETSREQUEST']._serialized_start=1162
+  _globals['_LISTBUCKETSREQUEST']._serialized_end=1410
+  _globals['_LISTBUCKETSRESPONSE']._serialized_start=1412
+  _globals['_LISTBUCKETSRESPONSE']._serialized_end=1523
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST']._serialized_start=1525
+  _globals['_LOCKBUCKETRETENTIONPOLICYREQUEST']._serialized_end=1652
+  _globals['_UPDATEBUCKETREQUEST']._serialized_start=1655
+  _globals['_UPDATEBUCKETREQUEST']._serialized_end=1991
+  _globals['_COMPOSEOBJECTREQUEST']._serialized_start=1994
+  _globals['_COMPOSEOBJECTREQUEST']._serialized_end=2846
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT']._serialized_start=2520
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT']._serialized_end=2768
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT_OBJECTPRECONDITIONS']._serialized_start=2689
+  _globals['_COMPOSEOBJECTREQUEST_SOURCEOBJECT_OBJECTPRECONDITIONS']._serialized_end=2768
+  _globals['_DELETEOBJECTREQUEST']._serialized_start=2849
+  _globals['_DELETEOBJECTREQUEST']._serialized_end=3324
+  _globals['_RESTOREOBJECTREQUEST']._serialized_start=3327
+  _globals['_RESTOREOBJECTREQUEST']._serialized_end=3881
+  _globals['_CANCELRESUMABLEWRITEREQUEST']._serialized_start=3883
+  _globals['_CANCELRESUMABLEWRITEREQUEST']._serialized_end=3936
+  _globals['_CANCELRESUMABLEWRITERESPONSE']._serialized_start=3938
+  _globals['_CANCELRESUMABLEWRITERESPONSE']._serialized_end=3968
+  _globals['_READOBJECTREQUEST']._serialized_start=3971
+  _globals['_READOBJECTREQUEST']._serialized_end=4561
+  _globals['_GETOBJECTREQUEST']._serialized_start=4564
+  _globals['_GETOBJECTREQUEST']._serialized_end=5174
+  _globals['_READOBJECTRESPONSE']._serialized_start=5177
+  _globals['_READOBJECTRESPONSE']._serialized_end=5422
+  _globals['_BIDIREADOBJECTSPEC']._serialized_start=5425
+  _globals['_BIDIREADOBJECTSPEC']._serialized_end=6092
+  _globals['_BIDIREADOBJECTREQUEST']._serialized_start=6095
+  _globals['_BIDIREADOBJECTREQUEST']._serialized_end=6244
+  _globals['_BIDIREADOBJECTRESPONSE']._serialized_start=6247
+  _globals['_BIDIREADOBJECTRESPONSE']._serialized_end=6436
+  _globals['_BIDIREADOBJECTREDIRECTEDERROR']._serialized_start=6439
+  _globals['_BIDIREADOBJECTREDIRECTEDERROR']._serialized_end=6572
+  _globals['_BIDIWRITEOBJECTREDIRECTEDERROR']._serialized_start=6575
+  _globals['_BIDIWRITEOBJECTREDIRECTEDERROR']._serialized_end=6773
+  _globals['_BIDIREADOBJECTERROR']._serialized_start=6775
+  _globals['_BIDIREADOBJECTERROR']._serialized_end=6858
+  _globals['_READRANGEERROR']._serialized_start=6860
+  _globals['_READRANGEERROR']._serialized_end=6929
+  _globals['_READRANGE']._serialized_start=6931
+  _globals['_READRANGE']._serialized_end=7016
+  _globals['_OBJECTRANGEDATA']._serialized_start=7019
+  _globals['_OBJECTRANGEDATA']._serialized_end=7167
+  _globals['_BIDIREADHANDLE']._serialized_start=7169
+  _globals['_BIDIREADHANDLE']._serialized_end=7206
+  _globals['_BIDIWRITEHANDLE']._serialized_start=7208
+  _globals['_BIDIWRITEHANDLE']._serialized_end=7246
+  _globals['_WRITEOBJECTSPEC']._serialized_start=7249
+  _globals['_WRITEOBJECTSPEC']._serialized_end=7691
+  _globals['_WRITEOBJECTREQUEST']._serialized_start=7694
+  _globals['_WRITEOBJECTREQUEST']._serialized_end=8099
+  _globals['_WRITEOBJECTRESPONSE']._serialized_start=8101
+  _globals['_WRITEOBJECTRESPONSE']._serialized_end=8211
+  _globals['_APPENDOBJECTSPEC']._serialized_start=8214
+  _globals['_APPENDOBJECTSPEC']._serialized_end=8599
+  _globals['_BIDIWRITEOBJECTREQUEST']._serialized_start=8602
+  _globals['_BIDIWRITEOBJECTREQUEST']._serialized_end=9125
+  _globals['_BIDIWRITEOBJECTRESPONSE']._serialized_start=9128
+  _globals['_BIDIWRITEOBJECTRESPONSE']._serialized_end=9322
+  _globals['_LISTOBJECTSREQUEST']._serialized_start=9325
+  _globals['_LISTOBJECTSREQUEST']._serialized_end=9805
+  _globals['_QUERYWRITESTATUSREQUEST']._serialized_start=9808
+  _globals['_QUERYWRITESTATUSREQUEST']._serialized_end=9946
+  _globals['_QUERYWRITESTATUSRESPONSE']._serialized_start=9948
+  _globals['_QUERYWRITESTATUSRESPONSE']._serialized_end=10063
+  _globals['_REWRITEOBJECTREQUEST']._serialized_start=10066
+  _globals['_REWRITEOBJECTREQUEST']._serialized_end=11439
+  _globals['_REWRITERESPONSE']._serialized_start=11442
+  _globals['_REWRITERESPONSE']._serialized_end=11593
+  _globals['_MOVEOBJECTREQUEST']._serialized_start=11596
+  _globals['_MOVEOBJECTREQUEST']._serialized_end=12355
+  _globals['_STARTRESUMABLEWRITEREQUEST']._serialized_start=12358
+  _globals['_STARTRESUMABLEWRITEREQUEST']._serialized_end=12610
+  _globals['_STARTRESUMABLEWRITERESPONSE']._serialized_start=12612
+  _globals['_STARTRESUMABLEWRITERESPONSE']._serialized_end=12660
+  _globals['_UPDATEOBJECTREQUEST']._serialized_start=12663
+  _globals['_UPDATEOBJECTREQUEST']._serialized_end=13210
+  _globals['_COMMONOBJECTREQUESTPARAMS']._serialized_start=13213
+  _globals['_COMMONOBJECTREQUESTPARAMS']._serialized_end=13352
+  _globals['_SERVICECONSTANTS']._serialized_start=13355
+  _globals['_SERVICECONSTANTS']._serialized_end=14069
+  _globals['_SERVICECONSTANTS_VALUES']._serialized_start=13376
+  _globals['_SERVICECONSTANTS_VALUES']._serialized_end=14069
+  _globals['_BUCKET']._serialized_start=14072
+  _globals['_BUCKET']._serialized_end=19762
+  _globals['_BUCKET_BILLING']._serialized_start=15742
+  _globals['_BUCKET_BILLING']._serialized_end=15780
+  _globals['_BUCKET_CORS']._serialized_start=15782
+  _globals['_BUCKET_CORS']._serialized_end=15890
+  _globals['_BUCKET_ENCRYPTION']._serialized_start=15893
+  _globals['_BUCKET_ENCRYPTION']._serialized_end=17091
+  _globals['_BUCKET_ENCRYPTION_GOOGLEMANAGEDENCRYPTIONENFORCEMENTCONFIG']._serialized_start=16418
+  _globals['_BUCKET_ENCRYPTION_GOOGLEMANAGEDENCRYPTIONENFORCEMENTCONFIG']._serialized_end=16588
+  _globals['_BUCKET_ENCRYPTION_CUSTOMERMANAGEDENCRYPTIONENFORCEMENTCONFIG']._serialized_start=16591
+  _globals['_BUCKET_ENCRYPTION_CUSTOMERMANAGEDENCRYPTIONENFORCEMENTCONFIG']._serialized_end=16763
+  _globals['_BUCKET_ENCRYPTION_CUSTOMERSUPPLIEDENCRYPTIONENFORCEMENTCONFIG']._serialized_start=16766
+  _globals['_BUCKET_ENCRYPTION_CUSTOMERSUPPLIEDENCRYPTIONENFORCEMENTCONFIG']._serialized_end=16939
+  _globals['_BUCKET_IAMCONFIG']._serialized_start=17094
+  _globals['_BUCKET_IAMCONFIG']._serialized_end=17350
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS']._serialized_start=17250
+  _globals['_BUCKET_IAMCONFIG_UNIFORMBUCKETLEVELACCESS']._serialized_end=17350
+  _globals['_BUCKET_LIFECYCLE']._serialized_start=17353
+  _globals['_BUCKET_LIFECYCLE']._serialized_end=18163
+  _globals['_BUCKET_LIFECYCLE_RULE']._serialized_start=17428
+  _globals['_BUCKET_LIFECYCLE_RULE']._serialized_end=18163
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION']._serialized_start=17582
+  _globals['_BUCKET_LIFECYCLE_RULE_ACTION']._serialized_end=17637
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION']._serialized_start=17640
+  _globals['_BUCKET_LIFECYCLE_RULE_CONDITION']._serialized_end=18163
+  _globals['_BUCKET_LOGGING']._serialized_start=18165
+  _globals['_BUCKET_LOGGING']._serialized_end=18231
+  _globals['_BUCKET_OBJECTRETENTION']._serialized_start=18233
+  _globals['_BUCKET_OBJECTRETENTION']._serialized_end=18275
+  _globals['_BUCKET_RETENTIONPOLICY']._serialized_start=18278
+  _globals['_BUCKET_RETENTIONPOLICY']._serialized_end=18436
+  _globals['_BUCKET_SOFTDELETEPOLICY']._serialized_start=18439
+  _globals['_BUCKET_SOFTDELETEPOLICY']._serialized_end=18616
+  _globals['_BUCKET_VERSIONING']._serialized_start=18618
+  _globals['_BUCKET_VERSIONING']._serialized_end=18652
+  _globals['_BUCKET_WEBSITE']._serialized_start=18654
+  _globals['_BUCKET_WEBSITE']._serialized_end=18723
+  _globals['_BUCKET_CUSTOMPLACEMENTCONFIG']._serialized_start=18725
+  _globals['_BUCKET_CUSTOMPLACEMENTCONFIG']._serialized_end=18777
+  _globals['_BUCKET_AUTOCLASS']._serialized_start=18780
+  _globals['_BUCKET_AUTOCLASS']._serialized_end=19052
+  _globals['_BUCKET_IPFILTER']._serialized_start=19055
+  _globals['_BUCKET_IPFILTER']._serialized_end=19564
+  _globals['_BUCKET_IPFILTER_PUBLICNETWORKSOURCE']._serialized_start=19345
+  _globals['_BUCKET_IPFILTER_PUBLICNETWORKSOURCE']._serialized_end=19403
+  _globals['_BUCKET_IPFILTER_VPCNETWORKSOURCE']._serialized_start=19405
+  _globals['_BUCKET_IPFILTER_VPCNETWORKSOURCE']._serialized_end=19494
+  _globals['_BUCKET_HIERARCHICALNAMESPACE']._serialized_start=19566
+  _globals['_BUCKET_HIERARCHICALNAMESPACE']._serialized_end=19611
+  _globals['_BUCKET_LABELSENTRY']._serialized_start=19613
+  _globals['_BUCKET_LABELSENTRY']._serialized_end=19658
+  _globals['_BUCKETACCESSCONTROL']._serialized_start=19765
+  _globals['_BUCKETACCESSCONTROL']._serialized_end=20011
+  _globals['_CHECKSUMMEDDATA']._serialized_start=20013
+  _globals['_CHECKSUMMEDDATA']._serialized_end=20086
+  _globals['_OBJECTCHECKSUMS']._serialized_start=20088
+  _globals['_OBJECTCHECKSUMS']._serialized_end=20160
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD']._serialized_start=20163
+  _globals['_OBJECTCUSTOMCONTEXTPAYLOAD']._serialized_end=20319
+  _globals['_OBJECTCONTEXTS']._serialized_start=20322
+  _globals['_OBJECTCONTEXTS']._serialized_end=20500
+  _globals['_OBJECTCONTEXTS_CUSTOMENTRY']._serialized_start=20408
+  _globals['_OBJECTCONTEXTS_CUSTOMENTRY']._serialized_end=20500
+  _globals['_CUSTOMERENCRYPTION']._serialized_start=20502
+  _globals['_CUSTOMERENCRYPTION']._serialized_end=20588
+  _globals['_OBJECT']._serialized_start=20591
+  _globals['_OBJECT']._serialized_end=22400
+  _globals['_OBJECT_RETENTION']._serialized_start=22082
+  _globals['_OBJECT_RETENTION']._serialized_end=22270
+  _globals['_OBJECT_RETENTION_MODE']._serialized_start=22216
+  _globals['_OBJECT_RETENTION_MODE']._serialized_end=22270
+  _globals['_OBJECT_METADATAENTRY']._serialized_start=22272
+  _globals['_OBJECT_METADATAENTRY']._serialized_end=22319
+  _globals['_OBJECTACCESSCONTROL']._serialized_start=22403
+  _globals['_OBJECTACCESSCONTROL']._serialized_end=22649
+  _globals['_LISTOBJECTSRESPONSE']._serialized_start=22651
+  _globals['_LISTOBJECTSRESPONSE']._serialized_end=22759
+  _globals['_PROJECTTEAM']._serialized_start=22761
+  _globals['_PROJECTTEAM']._serialized_end=22822
+  _globals['_OWNER']._serialized_start=22824
+  _globals['_OWNER']._serialized_end=22876
+  _globals['_CONTENTRANGE']._serialized_start=22878
+  _globals['_CONTENTRANGE']._serialized_end=22945
+  _globals['_STORAGE']._serialized_start=22948
+  _globals['_STORAGE']._serialized_end=26947
 # @@protoc_insertion_point(module_scope)
