@@ -116,6 +116,51 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_object_compose_delete_source_objects(self):
+        response = self.client.post(
+            "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
+        )
+        self.assertEqual(response.status_code, 200)
+
+        payloads = {
+            "fox": "The quick brown fox jumps over the lazy dog\n",
+            "zebra": "How vexingly quick daft zebras jump!\n",
+        }
+        sources = []
+        for object_name, payload in payloads.items():
+            # Use the XML API to insert an object, as the JSON API is not yet ready.
+            response = self.client.put(
+                "/bucket-name/" + object_name,
+                content_type="text/plain",
+                data=payload,
+            )
+            self.assertEqual(response.status_code, 200)
+
+            # Get the metadata to form the compose request
+            response = self.client.get("/storage/v1/b/bucket-name/o/" + object_name)
+            self.assertEqual(response.status_code, 200)
+            o = json.loads(response.data)
+            sources.append(
+                {
+                    "name": object_name,
+                    "generation": o.get("generation"),
+                }
+            )
+
+        response = self.client.post(
+            "/storage/v1/b/bucket-name/o/composed-object/compose?delete_source_objects=true",
+            data=json.dumps({"sourceObjects": sources}),
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+
+        for object_name in payloads.keys():
+            response = self.client.get("/storage/v1/b/bucket-name/o/" + object_name)
+            self.assertEqual(
+                response.status_code,
+                404,
+                msg=f"Source object {object_name} should have been deleted.",
+            )
+
     def test_object_copy(self):
         response = self.client.post(
             "/storage/v1/b", data=json.dumps({"name": "bucket-name"})
