@@ -654,8 +654,8 @@ def objects_compose(bucket_name, object_name):
         )
         composed_media += source_object.media
 
-        delete_source_objects = flask.request.args.get("delete_source_objects", None)
-        if delete_source_objects:
+        delete_source_objects = flask.request.args.get("deleteSourceObjects", None)
+        if delete_source_objects == "true":
             object_delete(bucket_name, source_object_name)
     metadata = {"name": object_name, "bucket": bucket_name}
     metadata.update(payload.get("destination", {}))

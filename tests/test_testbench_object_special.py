@@ -148,7 +148,7 @@ class TestTestbenchObjectSpecial(unittest.TestCase):
             )
 
         response = self.client.post(
-            "/storage/v1/b/bucket-name/o/composed-object/compose?delete_source_objects=true",
+            "/storage/v1/b/bucket-name/o/composed-object/compose?deleteSourceObjects=true",
             data=json.dumps({"sourceObjects": sources}),
         )
         self.assertEqual(response.status_code, 200, msg=response.data)
