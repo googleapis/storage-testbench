@@ -123,6 +123,10 @@ class Object:
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
         metadata.update_time.FromDatetime(timestamp)
+        if metadata.HasField("contexts"):
+            for key, payload in metadata.contexts.custom.items():
+                payload.update_time = timestamp
+                payload.create_time = timestamp
         upload_gen = 1
         if upload is None:
             upload_gen = 0
@@ -250,7 +254,25 @@ class Object:
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
         self.metadata.etag = Object._metadata_etag(self.metadata)
-        self.metadata.update_time.FromDatetime(datetime.datetime.now())
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
+        self.metadata.update_time.FromDatetime(timestamp)
+
+        if source.HasField("contexts"):
+            if not source.contexts.custom:
+                self.metadata.contexts.ClearField("custom")
+            else:
+                for key, payload in source.contexts.custom.items():
+                    if payload is None or not payload.ListFields():
+                        if key in self.metadata.contexts.custom:
+                            del self.metadata.contexts.custom[key]
+                        continue
+
+                    target_entry = self.metadata.contexts.custom[key]
+                    is_new = target_entry.create_time.ToSeconds() == 0
+                    target_entry.value = payload.value
+                    target_entry.update_time.FromDatetime(timestamp)
+                    if is_new:
+                        target_entry.create_time.FromDatetime(timestamp)
 
     def update(self, request, context):
         # Support for `Object: update` over gRPC is not needed (and not implemented).

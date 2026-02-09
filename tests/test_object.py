@@ -23,6 +23,7 @@ import json
 import unittest
 import unittest.mock
 
+from google.protobuf.timestamp_pb2 import Timestamp
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
@@ -104,6 +105,70 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["key"], "value")
         self.assertEqual(blob.metadata.content_type, "image/jpeg")
+
+    def test_init_multipart_with_contexts(self):
+        # Insert new object with custom contexts
+        boundary, payload = format_multipart_upload(
+            {
+                "name": "quoteObject",
+                "contexts": {
+                    "custom": {
+                        "author": {"value": "Lao Tzu"},
+                        "genre": {"value": "philosophy"},
+                    }
+                },
+            },
+            media="A journey of a thousand miles begins with a single step.",
+            content_type="text/plain",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"content-type": "multipart/related; boundary=" + boundary},
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
+        self.assertEqual(blob.metadata.name, "quoteObject")
+        self.assertEqual(
+            blob.media, b"A journey of a thousand miles begins with a single step."
+        )
+        self.assertEqual(blob.metadata.contexts.custom["author"].value, "Lao Tzu")
+        self.assertTrue(blob.metadata.contexts.custom["author"].create_time.seconds > 0)
+        self.assertIsNotNone(
+            blob.metadata.contexts.custom["author"].update_time.seconds > 0
+        )
+        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philosophy")
+        self.assertTrue(blob.metadata.contexts.custom["genre"].create_time.seconds > 0)
+        self.assertTrue(blob.metadata.contexts.custom["genre"].update_time.seconds > 0)
+        self.assertEqual(blob.metadata.content_type, "text/plain")
+        # Update the custom context of an existing object
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {"contexts": {"custom": {"genre": {"value": "philo quotes"}}}}
+            ),
+        )
+        blob.update(request, None)
+        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philo quotes")
+        self.assertEqual(blob.metadata.contexts.custom["author"].value, "Lao Tzu")
+
+        # Update the custom context by deleting a particular key "author"
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"contexts": {"custom": {"author": None}}}),
+        )
+        blob.update(request, None)
+        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philo quotes")
+        self.assertFalse("author" in blob.metadata.contexts.custom)
+
+        # Update the custom context by deleting the entire custom map
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"contexts": {"custom": None}}),
+        )
+        blob.update(request, None)
+        self.assertFalse(blob.metadata.contexts.custom)
 
     def test_init_multipart_with_acl(self):
         boundary, payload = format_multipart_upload(
@@ -312,6 +377,13 @@ class TestObject(unittest.TestCase):
                 update_storage_class_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-07-01T00:00:00Z"
                 ),
+                contexts=storage_pb2.ObjectContexts(
+                    custom={
+                        "environment": storage_pb2.ObjectCustomContextPayload(
+                            value="preprod",
+                        ),
+                    }
+                ),
             )
         )
         request = storage_pb2.WriteObjectRequest(
@@ -378,6 +450,12 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
+        custom_contexts = rest_metadata.pop("contexts", None)
+        self.assertIsNotNone(custom_contexts)
+        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "preprod")
+        self.assertTrue(custom_contexts["custom"]["environment"]["createTime"])
+        self.assertTrue(custom_contexts["custom"]["environment"]["updateTime"])
+
         self.maxDiff = None
         self.assertDictEqual(
             rest_metadata,
@@ -437,6 +515,7 @@ class TestObject(unittest.TestCase):
             "contentEncoding": "test-value",
             "contentLanguage": "test-value",
             "contentType": "application/octet-stream",
+            "contexts": {"custom": {"environment": {"value": "preprod"}}},
             "eventBasedHold": True,
             "customerEncryption": {
                 "encryptionAlgorithm": "AES",
@@ -527,6 +606,12 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
+        custom_contexts = rest_metadata.pop("contexts", None)
+        self.assertIsNotNone(custom_contexts)
+        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "preprod")
+        self.assertTrue(custom_contexts["custom"]["environment"]["createTime"])
+        self.assertTrue(custom_contexts["custom"]["environment"]["updateTime"])
+
         self.maxDiff = None
         self.assertDictEqual(
             rest_metadata,
