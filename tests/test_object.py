@@ -106,69 +106,68 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.metadata["key"], "value")
         self.assertEqual(blob.metadata.content_type, "image/jpeg")
 
-    def test_init_multipart_with_contexts(self):
-        # Insert new object with custom contexts
-        boundary, payload = format_multipart_upload(
-            {
-                "name": "quoteObject",
-                "contexts": {
-                    "custom": {
-                        "author": {"value": "Lao Tzu"},
-                        "genre": {"value": "philosophy"},
-                    }
-                },
+    def test_object_context_lifecycle(self):
+        # 1. Initialization (Multipart)
+        media_content = "A journey of a thousand miles begins with a single step."
+        initial_metadata = {
+            "name": "quoteObject",
+            "contexts": {
+                "custom": {
+                    "author": {"value": "Lao Tzu"},
+                    "genre": {"value": "philosophy"},
+                }
             },
-            media="A journey of a thousand miles begins with a single step.",
-            content_type="text/plain",
+        }
+        boundary, payload = format_multipart_upload(
+            initial_metadata, media=media_content, content_type="text/plain"
         )
-        request = testbench.common.FakeRequest(
-            args={},
-            headers={"content-type": "multipart/related; boundary=" + boundary},
-            data=payload.encode("utf-8"),
-            environ={},
-        )
-        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
-        self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        blob, _ = gcs.object.Object.init_multipart(req, self.bucket.metadata)
+
         self.assertEqual(blob.metadata.name, "quoteObject")
-        self.assertEqual(
-            blob.media, b"A journey of a thousand miles begins with a single step."
-        )
-        self.assertEqual(blob.metadata.contexts.custom["author"].value, "Lao Tzu")
-        self.assertTrue(blob.metadata.contexts.custom["author"].create_time.seconds > 0)
-        self.assertIsNotNone(
-            blob.metadata.contexts.custom["author"].update_time.seconds > 0
-        )
-        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philosophy")
-        self.assertTrue(blob.metadata.contexts.custom["genre"].create_time.seconds > 0)
-        self.assertTrue(blob.metadata.contexts.custom["genre"].update_time.seconds > 0)
-        self.assertEqual(blob.metadata.content_type, "text/plain")
-        # Update the custom context of an existing object
-        request = testbench.common.FakeRequest(
-            args={},
-            data=json.dumps(
-                {"contexts": {"custom": {"genre": {"value": "philo quotes"}}}}
-            ),
-        )
-        blob.update(request, None)
-        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philo quotes")
-        self.assertEqual(blob.metadata.contexts.custom["author"].value, "Lao Tzu")
+        self.assertEqual(blob.media, media_content.encode("utf-8"))
+        self._assert_valid_custom_context_value(blob, "author", "Lao Tzu")
 
-        # Update the custom context by deleting a particular key "author"
-        request = testbench.common.FakeRequest(
-            args={},
-            data=json.dumps({"contexts": {"custom": {"author": None}}}),
+        # 2. Partial Update (Patch)
+        # We only change the genre; the author should persist.
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"genre": {"value": "philo quotes"}}}}
         )
-        blob.update(request, None)
-        self.assertEqual(blob.metadata.contexts.custom["genre"].value, "philo quotes")
-        self.assertFalse("author" in blob.metadata.contexts.custom)
+        blob.patch(patch_req, None)
 
-        # Update the custom context by deleting the entire custom map
-        request = testbench.common.FakeRequest(
-            args={},
-            data=json.dumps({"contexts": {"custom": None}}),
+        self._assert_valid_custom_context_value(blob, "genre", "philo quotes")
+        self._assert_valid_custom_context_value(blob, "author", "Lao Tzu")
+
+        # 3. Deleting a specific key via Patch
+        delete_key_req = self._create_request(
+            {"contexts": {"custom": {"author": None}}}
         )
-        blob.update(request, None)
-        self.assertFalse(blob.metadata.contexts.custom)
+        blob.patch(delete_key_req, None)
+
+        self.assertNotIn("author", blob.metadata.contexts.custom)
+        self._assert_valid_custom_context_value(blob, "genre", "philo quotes")
+
+        # 4. Full Metadata Update
+        # This should replace the existing context map entirely
+        new_data = {"contexts": {"custom": {"newKey": {"value": "new value"}}}}
+        update_req = self._create_request(new_data)
+        blob.update(update_req, None)
+
+        self.assertNotIn("genre", blob.metadata.contexts.custom)
+        self._assert_valid_custom_context_value(blob, "newKey", "new value")
+
+        # 5. Patching some other field should not affect existing contexts
+        new_data = {"contentType": "application/json"}
+        update_req = self._create_request(new_data)
+        blob.patch(update_req, None)
+
+        self.assertEqual(blob.metadata.content_type, "application/json")
+        self._assert_valid_custom_context_value(blob, "newKey", "new value")
+
+        # 6. Clear entire context map
+        clear_req = self._create_request({"contexts": {"custom": None}})
+        blob.patch(clear_req, None)
+        self.assertFalse(blob.metadata.HasField("contexts"))
 
     def test_init_multipart_with_acl(self):
         boundary, payload = format_multipart_upload(
@@ -409,6 +408,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "preprod")
 
         # `REST` GET
 
@@ -450,6 +450,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
+        # Verify custom contexts.
         custom_contexts = rest_metadata.pop("contexts", None)
         self.assertIsNotNone(custom_contexts)
         self.assertEqual(custom_contexts["custom"]["environment"]["value"], "preprod")
@@ -499,10 +500,17 @@ class TestObject(unittest.TestCase):
         # `REST` PATCH
 
         request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"metadata": {"method": "rest"}})
+            args={},
+            data=json.dumps(
+                {
+                    "metadata": {"method": "rest"},
+                    "contexts": {"custom": {"environment": {"value": "prod"}}},
+                }
+            ),
         )
         blob.patch(request, None)
         self.assertEqual(blob.metadata.metadata["method"], "rest")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "prod")
 
     def test_rest_to_grpc(self):
         # Make sure that object created by `REST` works with `gRPC`'s request.
@@ -515,11 +523,12 @@ class TestObject(unittest.TestCase):
             "contentEncoding": "test-value",
             "contentLanguage": "test-value",
             "contentType": "application/octet-stream",
-            "contexts": {"custom": {"environment": {"value": "preprod"}}},
+            "contexts": {"custom": {"environment": {"value": "autopush"}}},
             "eventBasedHold": True,
             "customerEncryption": {
                 "encryptionAlgorithm": "AES",
-                "keySha256": "MTIzNDU2",  # base64.b64encode("123456").decode("utf-8"),
+                # base64.b64encode("123456").decode("utf-8"),
+                "keySha256": "MTIzNDU2",
             },
             "kmsKeyName": "test-value",
             "retentionExpirationTime": "2022-01-01T00:00:00Z",
@@ -571,6 +580,8 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["method"], "rest")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "autopush")
+
         rest_metadata = blob.rest_metadata()
         # Verify the ObjectAccessControl entries have the desired fields
         acl = rest_metadata.pop("acl", None)
@@ -608,7 +619,7 @@ class TestObject(unittest.TestCase):
         )
         custom_contexts = rest_metadata.pop("contexts", None)
         self.assertIsNotNone(custom_contexts)
-        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "preprod")
+        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "autopush")
         self.assertTrue(custom_contexts["custom"]["environment"]["createTime"])
         self.assertTrue(custom_contexts["custom"]["environment"]["updateTime"])
 
@@ -902,6 +913,29 @@ class TestObject(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"How vexingly quick daft zebras jump!")
         mock_sleep.assert_called_once_with(10)
+
+    def _assert_valid_custom_context_value(self, blob, key, expected_value):
+        self.assertIn(key, blob.metadata.contexts.custom)
+        self.assertEqual(blob.metadata.contexts.custom[key].value, expected_value)
+        self.assertGreater(
+            blob.metadata.contexts.custom[key].create_time.ToSeconds(), 0
+        )
+        self.assertGreater(
+            blob.metadata.contexts.custom[key].update_time.ToSeconds(), 0
+        )
+
+    def _create_request(self, data, is_multipart=False, boundary=None):
+        """Helper to generate consistent fake requests."""
+        headers = {}
+        if is_multipart:
+            headers["content-type"] = f"multipart/related; boundary={boundary}"
+            payload = data.encode("utf-8")
+        else:
+            payload = json.dumps(data)
+
+        return testbench.common.FakeRequest(
+            args={}, headers=headers, data=payload, environ={}
+        )
 
 
 if __name__ == "__main__":

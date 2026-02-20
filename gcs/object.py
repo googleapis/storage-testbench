@@ -61,6 +61,7 @@ class Object:
         "event_based_hold",
         "customer_encryption",
         "custom_time",
+        "contexts",
     ]
 
     def __init__(self, metadata, media, bucket, *, upload=None, upload_gen=0):
@@ -251,28 +252,26 @@ class Object:
     def __update_metadata(self, source, update_mask):
         if update_mask is None:
             update_mask = field_mask_pb2.FieldMask(paths=Object.modifiable_fields)
+        self.__update_contexts_with_timestamps(source, self.metadata)
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
         self.metadata.etag = Object._metadata_etag(self.metadata)
+        self.metadata.update_time.FromDatetime(datetime.datetime.now())
+
+    def __update_contexts_with_timestamps(self, new_metadata, original_metadata):
+        if not new_metadata.HasField("contexts"):
+            return
+        if not new_metadata.contexts.custom:
+            new_metadata.ClearField("contexts")
+            return
         timestamp = datetime.datetime.now(datetime.timezone.utc)
-        self.metadata.update_time.FromDatetime(timestamp)
-
-        if source.HasField("contexts"):
-            if not source.contexts.custom:
-                self.metadata.contexts.ClearField("custom")
-            else:
-                for key, payload in source.contexts.custom.items():
-                    if payload is None or not payload.ListFields():
-                        if key in self.metadata.contexts.custom:
-                            del self.metadata.contexts.custom[key]
-                        continue
-
-                    target_entry = self.metadata.contexts.custom[key]
-                    is_new = target_entry.create_time.ToSeconds() == 0
-                    target_entry.value = payload.value
-                    target_entry.update_time.FromDatetime(timestamp)
-                    if is_new:
-                        target_entry.create_time.FromDatetime(timestamp)
+        for key, payload in new_metadata.contexts.custom.items():
+            payload.update_time.FromDatetime(timestamp)
+            if (
+                original_metadata.contexts.custom is None
+                or key not in original_metadata.contexts.custom
+            ):
+                payload.create_time.FromDatetime(timestamp)
 
     def update(self, request, context):
         # Support for `Object: update` over gRPC is not needed (and not implemented).

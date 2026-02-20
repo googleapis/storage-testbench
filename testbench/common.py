@@ -1250,26 +1250,12 @@ def preprocess_object_metadata(metadata):
             checksums["md5Hash"] = md5Hash
     if len(checksums) > 0:
         md["checksums"] = checksums
-    # For the ACLs, if present, have fewer fields in gRPC, remove
+    # Finally the ACLs, if present, have fewer fields in gRPC, remove
     # them if present, ignore then otherwise
     if "acl" in md:
         for a in md["acl"]:
             for field in ["kind", "bucket", "object", "generation", "etag"]:
                 a.pop(field, None)
-    # For the contexts, if present, need to sanize the JSON null values to
-    # empty objects because Python's parseDict cannot iterate over a null map,
-    # or parse a null value into a message.
-    if "contexts" in md:
-        contexts = md["contexts"]
-        if "custom" in contexts:
-            custom_map = contexts["custom"]
-            if custom_map is None:
-                contexts["custom"] = {}
-            elif isinstance(custom_map, dict):
-                for key, val in custom_map.items():
-                    if val is None:
-                        custom_map[key] = {}
-
     return md
 
 
