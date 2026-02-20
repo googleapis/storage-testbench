@@ -488,7 +488,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -812,6 +815,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         updated_metadata = dict()
         removed_metadata_keys = set()
         replace_metadata = False
+        updated_contexts = dict()
+        removed_contexts_keys = set()
+        replace_contexts = False
+        reset_contexts = False
         for path in request.update_mask.paths:
             if path == "metadata":
                 replace_metadata = True
@@ -822,6 +829,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     removed_metadata_keys.add(key)
                 else:
                     updated_metadata[key] = value
+            elif path == "contexts":
+                replace_contexts = True
+            elif path == "contexts.custom":
+                reset_contexts = True
+            elif path.startswith("contexts.custom."):
+                key = path[len("contexts.custom.") :]
+                value = request.object.contexts.custom.get(key, None)
+                if value is None:
+                    removed_contexts_keys.add(key)
+                else:
+                    updated_contexts[key] = value
             elif path == "acl":
                 pass
             else:
@@ -873,8 +891,35 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 object.metadata.update(updated_metadata)
                 for k in removed_metadata_keys:
                     object.metadata.pop(k, None)
+            # Manually handle custom contexts due to its complexity.
+            curr_time = datetime.datetime.now()
+            if reset_contexts:
+                object.ClearField("contexts")
+            elif replace_contexts:
+                object.contexts.custom.clear()
+                for k, v in request.object.contexts.custom.items():
+                    dest_payload = object.contexts.custom[k]
+                    dest_payload.CopyFrom(v)
+                    dest_payload.create_time.FromDatetime(curr_time)
+                    dest_payload.update_time.FromDatetime(curr_time)
+            else:
+                for k, v in updated_contexts.items():
+                    if k not in object.contexts.custom:
+                        # This is a brand new key, add create and update time.
+                        updated_contexts[k].create_time.FromDatetime(curr_time)
+                        updated_contexts[k].update_time.FromDatetime(curr_time)
+                    elif v.value != object.contexts.custom[k].value:
+                        # This is an existing key, copy original key's create
+                        # time and add new update time.
+                        updated_contexts[k].create_time.CopyFrom(
+                            object.contexts.custom[k].create_time
+                        )
+                        updated_contexts[k].update_time.FromDatetime(curr_time)
+                    object.contexts.custom[k].CopyFrom(v)
+                for k in removed_contexts_keys:
+                    object.contexts.custom.pop(k, None)
             object.metageneration += 1
-            object.update_time.FromDatetime(datetime.datetime.now())
+            object.update_time.FromDatetime(curr_time)
             return object
 
         self.db.insert_test_bucket()

@@ -126,8 +126,8 @@ class Object:
         metadata.update_time.FromDatetime(timestamp)
         if metadata.HasField("contexts"):
             for key, payload in metadata.contexts.custom.items():
-                payload.update_time = timestamp
-                payload.create_time = timestamp
+                payload.create_time.FromDatetime(timestamp)
+                payload.update_time.FromDatetime(timestamp)
         upload_gen = 1
         if upload is None:
             upload_gen = 0
@@ -252,26 +252,32 @@ class Object:
     def __update_metadata(self, source, update_mask):
         if update_mask is None:
             update_mask = field_mask_pb2.FieldMask(paths=Object.modifiable_fields)
-        self.__update_contexts_with_timestamps(source, self.metadata)
         update_mask.MergeMessage(source, self.metadata, True, True)
         self.metadata.metageneration += 1
         self.metadata.etag = Object._metadata_etag(self.metadata)
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
-    def __update_contexts_with_timestamps(self, new_metadata, original_metadata):
+    def __update_contexts_with_timestamps(
+        self, new_metadata, original_metadata, isUpdate
+    ):
         if not new_metadata.HasField("contexts"):
             return
         if not new_metadata.contexts.custom:
+            # Equivalent to {"contexts": {"custom": None}}
             new_metadata.ClearField("contexts")
             return
         timestamp = datetime.datetime.now(datetime.timezone.utc)
         for key, payload in new_metadata.contexts.custom.items():
-            payload.update_time.FromDatetime(timestamp)
-            if (
-                original_metadata.contexts.custom is None
-                or key not in original_metadata.contexts.custom
-            ):
+            if isUpdate or key not in original_metadata.contexts.custom:
+                # This is a brand new key, set create and update timestamps
                 payload.create_time.FromDatetime(timestamp)
+                payload.update_time.FromDatetime(timestamp)
+            elif (
+                key in original_metadata.contexts.custom
+                and original_metadata.contexts.custom[key].value != payload.value
+            ):
+                # This is an existing key with new value, set update timestamp
+                payload.update_time.FromDatetime(timestamp)
 
     def update(self, request, context):
         # Support for `Object: update` over gRPC is not needed (and not implemented).
@@ -286,6 +292,7 @@ class Object:
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_contexts_with_timestamps(metadata, self.metadata, True)
         self.__update_metadata(metadata, None)
 
     def patch(self, request, context):
@@ -306,6 +313,7 @@ class Object:
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_contexts_with_timestamps(metadata, self.metadata, False)
         self.__update_metadata(metadata, None)
 
     # === ACL === #
