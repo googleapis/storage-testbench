@@ -219,7 +219,9 @@ class TestObject(unittest.TestCase):
         )
         with self.assertRaises(ValueError) as context:
             blob.patch(patch_req, None)
-        self.assertIn("must begin with an alphanumeric character", str(context.exception))
+        self.assertIn(
+            "must begin with an alphanumeric character", str(context.exception)
+        )
 
         # --- Must be 1 - 256 UTF-8 code units (Testing 257 characters) ---
         long_string = "a" * 257
@@ -228,13 +230,13 @@ class TestObject(unittest.TestCase):
         )
         with self.assertRaises(ValueError) as context:
             blob.patch(patch_req, None)
-        self.assertIn("must be between 1 and 256 UTF-8 code units", str(context.exception))
+        self.assertIn(
+            "must be between 1 and 256 UTF-8 code units", str(context.exception)
+        )
 
         # --- Limit to 50 entries per object (Testing 51 entries) ---
         too_many_contexts = {f"key{i}": {"value": "val"} for i in range(51)}
-        patch_req = self._create_request(
-            {"contexts": {"custom": too_many_contexts}}
-        )
+        patch_req = self._create_request({"contexts": {"custom": too_many_contexts}})
         with self.assertRaises(ValueError) as context:
             blob.patch(patch_req, None)
         self.assertIn("cannot exceed 50", str(context.exception))

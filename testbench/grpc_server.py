@@ -965,7 +965,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     object.contexts.custom[k].CopyFrom(v)
                 for k in removed_contexts_keys:
                     object.contexts.custom.pop(k, None)
-            
+
             if object.HasField("contexts"):
                 _validate_object_contexts(object.contexts, context)
 
