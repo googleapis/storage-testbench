@@ -169,6 +169,76 @@ class TestObject(unittest.TestCase):
         blob.patch(clear_req, None)
         self.assertFalse(blob.metadata.HasField("contexts"))
 
+    def test_object_context_invalid_input(self):
+        # Verify if the object init triggers the validation assert.
+        media_content = "Abcefgh."
+        initial_metadata = {
+            "name": "letters",
+            "contexts": {
+                "custom": {
+                    "google": {"value": "A google value"},
+                }
+            },
+        }
+        boundary, payload = format_multipart_upload(
+            initial_metadata, media=media_content, content_type="text/plain"
+        )
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        with self.assertRaises(ValueError) as context:
+            gcs.object.Object.init_multipart(req, self.bucket.metadata)
+        expected_error_message = "Keys cannot begin with 'goog'"
+        self.assertIn(expected_error_message, str(context.exception))
+
+        # Setup a clean object to verify the rest of validation rules with patch.
+        simple_metadata = {"name": "letters"}
+        boundary, payload = format_multipart_upload(
+            simple_metadata, media=media_content, content_type="text/plain"
+        )
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        blob, _ = gcs.object.Object.init_multipart(req, self.bucket.metadata)
+
+        # --- Restricted Characters in Key ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"my sister's name": {"value": "some values"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("contains restricted characters", str(context.exception))
+
+        # --- Restricted Characters in Value ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"validKey": {"value": "bad/value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("contains restricted characters", str(context.exception))
+
+        # --- Must begin with an alphanumeric character ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"-badkey": {"value": "valid_value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("must begin with an alphanumeric character", str(context.exception))
+
+        # --- Must be 1 - 256 UTF-8 code units (Testing 257 characters) ---
+        long_string = "a" * 257
+        patch_req = self._create_request(
+            {"contexts": {"custom": {long_string: {"value": "valid_value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("must be between 1 and 256 UTF-8 code units", str(context.exception))
+
+        # --- Limit to 50 entries per object (Testing 51 entries) ---
+        too_many_contexts = {f"key{i}": {"value": "val"} for i in range(51)}
+        patch_req = self._create_request(
+            {"contexts": {"custom": too_many_contexts}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("cannot exceed 50", str(context.exception))
+
     def test_init_multipart_with_acl(self):
         boundary, payload = format_multipart_upload(
             {
