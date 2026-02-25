@@ -157,6 +157,56 @@ def _metadata_echo_decorator(function):
     return decorated
 
 
+def _validate_object_contexts(contexts, grpc_context):
+    """
+    Validates a storage_pb2.Object.contexts message against API layer rules.
+    If validation fails, it aborts the gRPC request using testbench.error.invalid.
+    """
+    if not contexts or not contexts.custom:
+        return
+
+    custom_contexts = contexts.custom
+    if len(custom_contexts) > 50:
+        return testbench.error.invalid(
+            "The count of object context entries cannot exceed 50.", grpc_context
+        )
+
+    invalid_chars = {"'", '"', "\\", "/"}
+    total_size_bytes = 0
+
+    for key, payload in custom_contexts.items():
+        val = payload.value
+        if key.startswith("goog"):
+            return testbench.error.invalid(
+                f"Key '{key}' is invalid. Keys cannot begin with 'goog'.", grpc_context
+            )
+        for item, item_type in ((key, "Key"), (val, "Value")):
+            if not item or not item[0].isalnum():
+                return testbench.error.invalid(
+                    f"{item_type} '{item}' must begin with an alphanumeric character.",
+                    grpc_context,
+                )
+            if any(char in invalid_chars for char in item):
+                return testbench.error.invalid(
+                    f"{item_type} '{item}' contains restricted characters (', \", \\, /).",
+                    grpc_context,
+                )
+            encoded_item = item.encode("utf-8")
+            item_length = len(encoded_item)
+            if not (1 <= item_length <= 256):
+                return testbench.error.invalid(
+                    f"{item_type} '{item}' must be between 1 and 256 UTF-8 code units.",
+                    grpc_context,
+                )
+            total_size_bytes += item_length
+    max_size_bytes = 25 * 1024
+    if total_size_bytes > max_size_bytes:
+        return testbench.error.invalid(
+            f"Aggregate size of keys and values ({total_size_bytes} bytes) exceeds the 25 KiB limit.",
+            grpc_context,
+        )
+
+
 def retry_test(method):
     """
     Decorate a routing function to handle the Retry Test API instructions,
@@ -812,6 +862,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         updated_metadata = dict()
         removed_metadata_keys = set()
         replace_metadata = False
+        updated_contexts = dict()
+        removed_contexts_keys = set()
+        replace_contexts = False
+        reset_contexts = False
         for path in request.update_mask.paths:
             if path == "metadata":
                 replace_metadata = True
@@ -822,6 +876,17 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     removed_metadata_keys.add(key)
                 else:
                     updated_metadata[key] = value
+            elif path == "contexts":
+                replace_contexts = True
+            elif path == "contexts.custom":
+                reset_contexts = True
+            elif path.startswith("contexts.custom."):
+                key = path[len("contexts.custom.") :]
+                value = request.object.contexts.custom.get(key, None)
+                if value is None:
+                    removed_contexts_keys.add(key)
+                else:
+                    updated_contexts[key] = value
             elif path == "acl":
                 pass
             else:
@@ -873,8 +938,39 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 object.metadata.update(updated_metadata)
                 for k in removed_metadata_keys:
                     object.metadata.pop(k, None)
+            # Manually handle custom contexts due to its complexity.
+            curr_time = datetime.datetime.now()
+            if reset_contexts:
+                object.ClearField("contexts")
+            elif replace_contexts:
+                object.contexts.custom.clear()
+                for k, v in request.object.contexts.custom.items():
+                    dest_payload = object.contexts.custom[k]
+                    dest_payload.CopyFrom(v)
+                    dest_payload.create_time.FromDatetime(curr_time)
+                    dest_payload.update_time.FromDatetime(curr_time)
+            else:
+                for k, v in updated_contexts.items():
+                    if k not in object.contexts.custom:
+                        # This is a brand new key, add create and update time.
+                        updated_contexts[k].create_time.FromDatetime(curr_time)
+                        updated_contexts[k].update_time.FromDatetime(curr_time)
+                    elif v.value != object.contexts.custom[k].value:
+                        # This is an existing key, copy original key's create
+                        # time and add new update time.
+                        updated_contexts[k].create_time.CopyFrom(
+                            object.contexts.custom[k].create_time
+                        )
+                        updated_contexts[k].update_time.FromDatetime(curr_time)
+                    object.contexts.custom[k].CopyFrom(v)
+                for k in removed_contexts_keys:
+                    object.contexts.custom.pop(k, None)
+
+            if object.HasField("contexts"):
+                _validate_object_contexts(object.contexts, context)
+
             object.metageneration += 1
-            object.update_time.FromDatetime(datetime.datetime.now())
+            object.update_time.FromDatetime(curr_time)
             return object
 
         self.db.insert_test_bucket()

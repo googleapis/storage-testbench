@@ -61,6 +61,7 @@ class Object:
         "event_based_hold",
         "customer_encryption",
         "custom_time",
+        "contexts",
     ]
 
     def __init__(self, metadata, media, bucket, *, upload=None, upload_gen=0):
@@ -123,6 +124,11 @@ class Object:
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
         metadata.update_time.FromDatetime(timestamp)
+        if metadata.HasField("contexts"):
+            for _, payload in metadata.contexts.custom.items():
+                payload.create_time.FromDatetime(timestamp)
+                payload.update_time.FromDatetime(timestamp)
+            cls.__validate_object_contexts(metadata.contexts)
         upload_gen = 1
         if upload is None:
             upload_gen = 0
@@ -252,6 +258,29 @@ class Object:
         self.metadata.etag = Object._metadata_etag(self.metadata)
         self.metadata.update_time.FromDatetime(datetime.datetime.now())
 
+    def __update_contexts_with_timestamps(
+        self, new_metadata, original_metadata, isUpdate
+    ):
+        if not new_metadata.HasField("contexts"):
+            return
+        if not new_metadata.contexts.custom:
+            # Equivalent to {"contexts": {"custom": None}}
+            new_metadata.ClearField("contexts")
+            return
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
+        for key, payload in new_metadata.contexts.custom.items():
+            if isUpdate or key not in original_metadata.contexts.custom:
+                # This is a brand new key, set create and update timestamps
+                payload.create_time.FromDatetime(timestamp)
+                payload.update_time.FromDatetime(timestamp)
+            elif (
+                key in original_metadata.contexts.custom
+                and original_metadata.contexts.custom[key].value != payload.value
+            ):
+                # This is an existing key with new value, set update timestamp
+                payload.update_time.FromDatetime(timestamp)
+        self.__validate_object_contexts(new_metadata.contexts)
+
     def update(self, request, context):
         # Support for `Object: update` over gRPC is not needed (and not implemented).
         assert context is None
@@ -265,6 +294,7 @@ class Object:
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_contexts_with_timestamps(metadata, self.metadata, True)
         self.__update_metadata(metadata, None)
 
     def patch(self, request, context):
@@ -285,7 +315,47 @@ class Object:
             testbench.acl.extract_predefined_acl(request, False, context),
             context,
         )
+        self.__update_contexts_with_timestamps(metadata, self.metadata, False)
         self.__update_metadata(metadata, None)
+
+    @staticmethod
+    def __validate_object_contexts(contexts) -> bool:
+        """Validates an object context map against API layer rules."""
+        assert contexts is not None
+        custom_contexts = contexts.custom
+        if len(custom_contexts) > 50:
+            raise ValueError("The count of object context entries cannot exceed 50.")
+        invalid_chars = {"'", '"', "\\", "/"}
+        total_size_bytes = 0
+        for key, payload in custom_contexts.items():
+            val = payload.value
+            if key.startswith("goog"):
+                raise ValueError(
+                    f"Key '{key}' is invalid. Keys cannot begin with 'goog'."
+                )
+            for item, item_type in ((key, "Key"), (val, "Value")):
+                if not item or not item[0].isalnum():
+                    raise ValueError(
+                        f"{item_type} '{item}' must begin with an alphanumeric character."
+                    )
+                if any(char in invalid_chars for char in item):
+                    raise ValueError(
+                        f"{item_type} '{item}' contains restricted characters (', \", \\, /)."
+                    )
+                encoded_item = item.encode("utf-8")
+                item_length = len(encoded_item)
+                if not (1 <= item_length <= 256):
+                    raise ValueError(
+                        f"{item_type} '{item}' must be between 1 and 256 UTF-8 code units."
+                    )
+                total_size_bytes += item_length
+        max_size_bytes = 25 * 1024
+        if total_size_bytes > max_size_bytes:
+            raise ValueError(
+                f"Aggregate size of keys and values ({total_size_bytes} bytes) exceeds the 25 KiB limit."
+            )
+
+        return True
 
     # === ACL === #
 

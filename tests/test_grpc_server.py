@@ -1142,6 +1142,118 @@ class TestGrpc(unittest.TestCase):
         )
         self.assertEqual(response.metadata, {**response.metadata, **expected})
 
+    def test_update_object_contexts(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"},
+            data=media,
+            headers={},
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        def assert_context_valid(contexts, key, expected_value):
+            payload = contexts.custom.get(key)
+            self.assertIsNotNone(payload, f"Key '{key}' missing from custom contexts")
+            self.assertEqual(payload.value, expected_value)
+            # Verify timestamps are set (non-default)
+            self.assertGreater(
+                payload.create_time.seconds, 0, f"create_time not set for {key}"
+            )
+            self.assertGreater(
+                payload.update_time.seconds, 0, f"update_time not set for {key}"
+            )
+
+        request = storage_pb2.UpdateObjectRequest(
+            object=storage_pb2.Object(
+                bucket="projects/_/buckets/bucket-name",
+                name="object-name",
+                contexts=storage_pb2.ObjectContexts(
+                    custom={
+                        "location": storage_pb2.ObjectCustomContextPayload(
+                            value="Canada"
+                        ),
+                        "year": storage_pb2.ObjectCustomContextPayload(value="2026"),
+                    }
+                ),
+            ),
+            update_mask=field_mask_pb2.FieldMask(
+                paths=["contexts.custom.location", "contexts.custom.year"]
+            ),
+        )
+        context = unittest.mock.Mock()
+        response = self.grpc.UpdateObject(request, context)
+        assert_context_valid(response.contexts, "location", "Canada")
+        assert_context_valid(response.contexts, "year", "2026")
+
+        # Finally verify the changes are persisted
+        context = unittest.mock.Mock()
+        response = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        assert_context_valid(response.contexts, "location", "Canada")
+        assert_context_valid(response.contexts, "year", "2026")
+
+    def test_update_object_contexts_invalid(self):
+        media = b"How vexingly quick daft zebras jump!"
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"},
+            data=media,
+            headers={},
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        def assert_invalid_context(custom_dict):
+            context = unittest.mock.Mock()
+            request = storage_pb2.UpdateObjectRequest(
+                object=storage_pb2.Object(
+                    bucket="projects/_/buckets/bucket-name",
+                    name="object-name",
+                    contexts=storage_pb2.ObjectContexts(
+                        custom={
+                            k: storage_pb2.ObjectCustomContextPayload(value=v)
+                            for k, v in custom_dict.items()
+                        }
+                    ),
+                ),
+                # Using the broader 'contexts' mask to trigger the replacement logic
+                # and evaluate the entire custom dictionary we just built
+                update_mask=field_mask_pb2.FieldMask(paths=["contexts"]),
+            )
+            _ = self.grpc.UpdateObject(request, context)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT, unittest.mock.ANY
+            )
+
+        # --- Keys cannot begin with reserved 'goog' ---
+        assert_invalid_context({"googlekey": "value"})
+
+        # --- Must begin with an alphanumeric character ---
+        assert_invalid_context({"-badkey": "value"})  # Bad Key
+        assert_invalid_context({"validKey": ".badvalue"})  # Bad Value
+
+        # --- Cannot contain ', \", \\, or / ---
+        assert_invalid_context({"bad'key": "value"})
+        assert_invalid_context({"validKey": 'bad"value'})
+        assert_invalid_context({"validKey": "bad/value"})
+        assert_invalid_context({"validKey": "bad\\value"})
+
+        # --- Must be between 1 and 256 UTF-8 code units ---
+        assert_invalid_context({"": "value"})  # 0 length key
+        assert_invalid_context({"key": ""})  # 0 length value
+        assert_invalid_context({"a" * 257: "value"})  # Key too long
+        assert_invalid_context({"key": "v" * 257})  # Value too long
+
+        # --- Limit to 50 entries per object ---
+        too_many_contexts = {f"key{i}": "val" for i in range(51)}
+        assert_invalid_context(too_many_contexts)
+
     def test_update_object_acl(self):
         media = b"How vexingly quick daft zebras jump!"
         request = testbench.common.FakeRequest(

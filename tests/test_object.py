@@ -23,6 +23,7 @@ import json
 import unittest
 import unittest.mock
 
+from google.protobuf.timestamp_pb2 import Timestamp
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
 
@@ -104,6 +105,141 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["key"], "value")
         self.assertEqual(blob.metadata.content_type, "image/jpeg")
+
+    def test_object_context_lifecycle(self):
+        # 1. Initialization (Multipart)
+        media_content = "A journey of a thousand miles begins with a single step."
+        initial_metadata = {
+            "name": "quoteObject",
+            "contexts": {
+                "custom": {
+                    "author": {"value": "Lao Tzu"},
+                    "genre": {"value": "philosophy"},
+                }
+            },
+        }
+        boundary, payload = format_multipart_upload(
+            initial_metadata, media=media_content, content_type="text/plain"
+        )
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        blob, _ = gcs.object.Object.init_multipart(req, self.bucket.metadata)
+
+        self.assertEqual(blob.metadata.name, "quoteObject")
+        self.assertEqual(blob.media, media_content.encode("utf-8"))
+        self._assert_valid_custom_context_value(blob, "author", "Lao Tzu")
+
+        # 2. Partial Update (Patch)
+        # We only change the genre; the author should persist.
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"genre": {"value": "philo quotes"}}}}
+        )
+        blob.patch(patch_req, None)
+
+        self._assert_valid_custom_context_value(blob, "genre", "philo quotes")
+        self._assert_valid_custom_context_value(blob, "author", "Lao Tzu")
+
+        # 3. Deleting a specific key via Patch
+        delete_key_req = self._create_request(
+            {"contexts": {"custom": {"author": None}}}
+        )
+        blob.patch(delete_key_req, None)
+
+        self.assertNotIn("author", blob.metadata.contexts.custom)
+        self._assert_valid_custom_context_value(blob, "genre", "philo quotes")
+
+        # 4. Full Metadata Update
+        # This should replace the existing context map entirely
+        new_data = {"contexts": {"custom": {"newKey": {"value": "new value"}}}}
+        update_req = self._create_request(new_data)
+        blob.update(update_req, None)
+
+        self.assertNotIn("genre", blob.metadata.contexts.custom)
+        self._assert_valid_custom_context_value(blob, "newKey", "new value")
+
+        # 5. Patching some other field should not affect existing contexts
+        new_data = {"contentType": "application/json"}
+        update_req = self._create_request(new_data)
+        blob.patch(update_req, None)
+
+        self.assertEqual(blob.metadata.content_type, "application/json")
+        self._assert_valid_custom_context_value(blob, "newKey", "new value")
+
+        # 6. Clear entire context map
+        clear_req = self._create_request({"contexts": {"custom": None}})
+        blob.patch(clear_req, None)
+        self.assertFalse(blob.metadata.HasField("contexts"))
+
+    def test_object_context_invalid_input(self):
+        # Verify if the object init triggers the validation assert.
+        media_content = "Abcefgh."
+        initial_metadata = {
+            "name": "letters",
+            "contexts": {
+                "custom": {
+                    "google": {"value": "A google value"},
+                }
+            },
+        }
+        boundary, payload = format_multipart_upload(
+            initial_metadata, media=media_content, content_type="text/plain"
+        )
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        with self.assertRaises(ValueError) as context:
+            gcs.object.Object.init_multipart(req, self.bucket.metadata)
+        expected_error_message = "Keys cannot begin with 'goog'"
+        self.assertIn(expected_error_message, str(context.exception))
+
+        # Setup a clean object to verify the rest of validation rules with patch.
+        simple_metadata = {"name": "letters"}
+        boundary, payload = format_multipart_upload(
+            simple_metadata, media=media_content, content_type="text/plain"
+        )
+        req = self._create_request(payload, is_multipart=True, boundary=boundary)
+        blob, _ = gcs.object.Object.init_multipart(req, self.bucket.metadata)
+
+        # --- Restricted Characters in Key ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"my sister's name": {"value": "some values"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("contains restricted characters", str(context.exception))
+
+        # --- Restricted Characters in Value ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"validKey": {"value": "bad/value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("contains restricted characters", str(context.exception))
+
+        # --- Must begin with an alphanumeric character ---
+        patch_req = self._create_request(
+            {"contexts": {"custom": {"-badkey": {"value": "valid_value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn(
+            "must begin with an alphanumeric character", str(context.exception)
+        )
+
+        # --- Must be 1 - 256 UTF-8 code units (Testing 257 characters) ---
+        long_string = "a" * 257
+        patch_req = self._create_request(
+            {"contexts": {"custom": {long_string: {"value": "valid_value"}}}}
+        )
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn(
+            "must be between 1 and 256 UTF-8 code units", str(context.exception)
+        )
+
+        # --- Limit to 50 entries per object (Testing 51 entries) ---
+        too_many_contexts = {f"key{i}": {"value": "val"} for i in range(51)}
+        patch_req = self._create_request({"contexts": {"custom": too_many_contexts}})
+        with self.assertRaises(ValueError) as context:
+            blob.patch(patch_req, None)
+        self.assertIn("cannot exceed 50", str(context.exception))
 
     def test_init_multipart_with_acl(self):
         boundary, payload = format_multipart_upload(
@@ -312,6 +448,13 @@ class TestObject(unittest.TestCase):
                 update_storage_class_time=testbench.common.rest_rfc3339_to_proto(
                     "2021-07-01T00:00:00Z"
                 ),
+                contexts=storage_pb2.ObjectContexts(
+                    custom={
+                        "environment": storage_pb2.ObjectCustomContextPayload(
+                            value="preprod",
+                        ),
+                    }
+                ),
             )
         )
         request = storage_pb2.WriteObjectRequest(
@@ -337,6 +480,7 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.bucket, "projects/_/buckets/bucket")
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "preprod")
 
         # `REST` GET
 
@@ -378,6 +522,13 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
+        # Verify custom contexts.
+        custom_contexts = rest_metadata.pop("contexts", None)
+        self.assertIsNotNone(custom_contexts)
+        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "preprod")
+        self.assertTrue(custom_contexts["custom"]["environment"]["createTime"])
+        self.assertTrue(custom_contexts["custom"]["environment"]["updateTime"])
+
         self.maxDiff = None
         self.assertDictEqual(
             rest_metadata,
@@ -421,10 +572,17 @@ class TestObject(unittest.TestCase):
         # `REST` PATCH
 
         request = testbench.common.FakeRequest(
-            args={}, data=json.dumps({"metadata": {"method": "rest"}})
+            args={},
+            data=json.dumps(
+                {
+                    "metadata": {"method": "rest"},
+                    "contexts": {"custom": {"environment": {"value": "prod"}}},
+                }
+            ),
         )
         blob.patch(request, None)
         self.assertEqual(blob.metadata.metadata["method"], "rest")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "prod")
 
     def test_rest_to_grpc(self):
         # Make sure that object created by `REST` works with `gRPC`'s request.
@@ -437,10 +595,12 @@ class TestObject(unittest.TestCase):
             "contentEncoding": "test-value",
             "contentLanguage": "test-value",
             "contentType": "application/octet-stream",
+            "contexts": {"custom": {"environment": {"value": "autopush"}}},
             "eventBasedHold": True,
             "customerEncryption": {
                 "encryptionAlgorithm": "AES",
-                "keySha256": "MTIzNDU2",  # base64.b64encode("123456").decode("utf-8"),
+                # base64.b64encode("123456").decode("utf-8"),
+                "keySha256": "MTIzNDU2",
             },
             "kmsKeyName": "test-value",
             "retentionExpirationTime": "2022-01-01T00:00:00Z",
@@ -492,6 +652,8 @@ class TestObject(unittest.TestCase):
         self.assertEqual(blob.metadata.name, "test-object-name")
         self.assertEqual(blob.media, b"123456789")
         self.assertEqual(blob.metadata.metadata["method"], "rest")
+        self.assertEqual(blob.metadata.contexts.custom["environment"].value, "autopush")
+
         rest_metadata = blob.rest_metadata()
         # Verify the ObjectAccessControl entries have the desired fields
         acl = rest_metadata.pop("acl", None)
@@ -527,6 +689,12 @@ class TestObject(unittest.TestCase):
         self.assertEqual(
             "bucket/o/test-object-name/" + generation, rest_metadata.pop("id")
         )
+        custom_contexts = rest_metadata.pop("contexts", None)
+        self.assertIsNotNone(custom_contexts)
+        self.assertEqual(custom_contexts["custom"]["environment"]["value"], "autopush")
+        self.assertTrue(custom_contexts["custom"]["environment"]["createTime"])
+        self.assertTrue(custom_contexts["custom"]["environment"]["updateTime"])
+
         self.maxDiff = None
         self.assertDictEqual(
             rest_metadata,
@@ -817,6 +985,29 @@ class TestObject(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"How vexingly quick daft zebras jump!")
         mock_sleep.assert_called_once_with(10)
+
+    def _assert_valid_custom_context_value(self, blob, key, expected_value):
+        self.assertIn(key, blob.metadata.contexts.custom)
+        self.assertEqual(blob.metadata.contexts.custom[key].value, expected_value)
+        self.assertGreater(
+            blob.metadata.contexts.custom[key].create_time.ToSeconds(), 0
+        )
+        self.assertGreater(
+            blob.metadata.contexts.custom[key].update_time.ToSeconds(), 0
+        )
+
+    def _create_request(self, data, is_multipart=False, boundary=None):
+        """Helper to generate consistent fake requests."""
+        headers = {}
+        if is_multipart:
+            headers["content-type"] = f"multipart/related; boundary={boundary}"
+            payload = data.encode("utf-8")
+        else:
+            payload = json.dumps(data)
+
+        return testbench.common.FakeRequest(
+            args={}, headers=headers, data=payload, environ={}
+        )
 
 
 if __name__ == "__main__":
