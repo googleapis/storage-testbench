@@ -1174,9 +1174,7 @@ class TestGrpc(unittest.TestCase):
                         "location": storage_pb2.ObjectCustomContextPayload(
                             value="Canada"
                         ),
-                        "year": storage_pb2.ObjectCustomContextPayload(
-                            value="2026"
-                        ),
+                        "year": storage_pb2.ObjectCustomContextPayload(value="2026"),
                     }
                 ),
             ),
