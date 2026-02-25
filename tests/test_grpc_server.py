@@ -1174,20 +1174,20 @@ class TestGrpc(unittest.TestCase):
                         "location": storage_pb2.ObjectCustomContextPayload(
                             value="Canada"
                         ),
-                        "googyear": storage_pb2.ObjectCustomContextPayload(
+                        "year": storage_pb2.ObjectCustomContextPayload(
                             value="2026"
                         ),
                     }
                 ),
             ),
             update_mask=field_mask_pb2.FieldMask(
-                paths=["contexts.custom.location", "contexts.custom.googyear"]
+                paths=["contexts.custom.location", "contexts.custom.year"]
             ),
         )
         context = unittest.mock.Mock()
         response = self.grpc.UpdateObject(request, context)
         assert_context_valid(response.contexts, "location", "Canada")
-        assert_context_valid(response.contexts, "googyear", "2026")
+        assert_context_valid(response.contexts, "year", "2026")
 
         # Finally verify the changes are persisted
         context = unittest.mock.Mock()
@@ -1198,7 +1198,7 @@ class TestGrpc(unittest.TestCase):
             context,
         )
         assert_context_valid(response.contexts, "location", "Canada")
-        assert_context_valid(response.contexts, "googyear", "2026")
+        assert_context_valid(response.contexts, "year", "2026")
 
     def test_update_object_contexts_invalid(self):
         media = b"How vexingly quick daft zebras jump!"
