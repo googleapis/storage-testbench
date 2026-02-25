@@ -1126,6 +1126,22 @@ def get_expect_redirect_token(db, context):
     )
 
 
+def get_return_read_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db, context, "storage.objects.get", retry_return_redirection_token
+    )
+
+
+def get_expect_read_redirect_token(db, context):
+    return _get_grpc_instruction_match(
+        db,
+        context,
+        "storage.objects.get",
+        retry_expect_redirection_token,
+        dequeue=False,
+    )
+
+
 def handle_gzip_request(request):
     """
     Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests.
