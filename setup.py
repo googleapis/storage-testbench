@@ -43,7 +43,7 @@ setuptools.setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "grpcio==1.70.0",
+        "grpcio==1.78.0",
         "grpcio-status==1.66.1",
         "grpcio-tools==1.70.0",
         "googleapis-common-protos==1.69.0",
