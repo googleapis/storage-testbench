@@ -41,6 +41,8 @@ import testbench
 from google.iam.v1 import iam_policy_pb2
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
+_GRPC_SERVER_THREAD_COUNT = 2
+
 
 def _trimmed_content(content):
     if len(content) > 10:
@@ -1162,7 +1164,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
 
 def run(port, database, echo_metadata=False):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
     storage_pb2_grpc.add_StorageServicer_to_server(
         StorageServicer(database, echo_metadata), server
     )
