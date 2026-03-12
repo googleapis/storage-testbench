@@ -766,9 +766,12 @@ class Database:
     def dequeue_next_instruction(self, retry_test_id, method):
         with self._retry_tests_lock:
             self.get_retry_test(retry_test_id)
-            next_instruction = self._retry_tests[retry_test_id]["instructions"][
-                method
-            ].popleft()
+            instructions = self._retry_tests[retry_test_id]["instructions"].get(
+                method, collections.deque()
+            )
+            if len(instructions) == 0:
+                return None
+            next_instruction = instructions.popleft()
             instructions_left = 0
             for key, value in self._retry_tests[retry_test_id]["instructions"].items():
                 instructions_left += len(value)

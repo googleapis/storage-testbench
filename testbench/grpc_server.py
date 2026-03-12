@@ -799,7 +799,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     ],
                 )
             )
-            if returnable <= 0:
+            if broken_stream_after_bytes > 0 and returnable <= 0:
                 self.db.dequeue_next_instruction(test_id, method)
                 context.abort(
                     grpc.StatusCode.UNAVAILABLE,
