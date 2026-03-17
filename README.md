@@ -279,7 +279,11 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 
 ## Storage Control API Stall Support
 
-The testbench supports stall functionality for the Storage Control API (gRPC only) to test client retry behavior. All folder operations (`CreateFolder`, `DeleteFolder`, `GetFolder`, `ListFolders`, `RenameFolder`) can be delayed using the `x-goog-emulator-instructions` metadata header.
+The testbench supports stall functionality for the Storage Control API (gRPC only) to test client retry behavior. All folder operations and storage layout operations can be delayed using the `x-goog-emulator-instructions` metadata header.
+
+**Supported operations:**
+- **Folder operations:** `CreateFolder`, `DeleteFolder`, `GetFolder`, `ListFolders`, `RenameFolder`
+- **Storage layout operations:** `GetStorageLayout`
 
 > **Note:** The Storage Control API uses the **same gRPC server** as the Storage API. Both services are available on the same port (e.g., port 8888 if started with `curl "http://localhost:9000/start_grpc?port=8888"`).
 

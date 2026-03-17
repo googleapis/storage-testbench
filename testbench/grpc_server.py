@@ -1236,6 +1236,19 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         folder = self.db.rename_folder(src_folder, dst_folder, context)
         return folder
 
+    @retry_test(method="storage.storageLayout.get")
+    def GetStorageLayout(self, request, context):
+        self._apply_stall(context)
+        # Create a simple storage layout response
+        layout = storage_control_pb2.StorageLayout()
+        layout.name = request.name
+        # Set default location and location_type
+        layout.location = "US"
+        layout.location_type = "multi-region"
+        # Optionally set hierarchical namespace enabled flag
+        layout.hierarchical_namespace.enabled = False
+        return layout
+
 
 def run(port, database, echo_metadata=False):
     server = grpc.server(

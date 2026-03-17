@@ -235,6 +235,40 @@ class TestStorageControlStall(unittest.TestCase):
         self.assertIsNotNone(folder3)
         self.assertLess(elapsed3, 1.0, "Third call should complete quickly without stall")
 
+    def test_get_storage_layout_no_stall(self):
+        """Test get storage layout without stall instruction."""
+        request = storage_control_pb2.GetStorageLayoutRequest()
+        request.name = "projects/_/buckets/test-bucket/storageLayout"
+        
+        context = self.mock_context()
+        
+        start_time = time.time()
+        layout = self.servicer.GetStorageLayout(request, context)
+        elapsed = time.time() - start_time
+        
+        self.assertIsNotNone(layout)
+        self.assertEqual(layout.name, "projects/_/buckets/test-bucket/storageLayout")
+        self.assertLess(elapsed, 1.0, "Should complete quickly without stall")
+
+    def test_get_storage_layout_stall(self):
+        """Test get storage layout with stall instruction."""
+        request = storage_control_pb2.GetStorageLayoutRequest()
+        request.name = "projects/_/buckets/test-bucket/storageLayout"
+        
+        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
+        context_stall = self.mock_context(metadata)
+        
+        start_time = time.time()
+        layout = self.servicer.GetStorageLayout(request, context_stall)
+        elapsed = time.time() - start_time
+        
+        self.assertIsNotNone(layout)
+        self.assertEqual(layout.name, "projects/_/buckets/test-bucket/storageLayout")
+        self.assertEqual(layout.location, "US")
+        self.assertEqual(layout.location_type, "multi-region")
+        self.assertFalse(layout.hierarchical_namespace.enabled)
+        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
+
 
 if __name__ == "__main__":
     unittest.main()
