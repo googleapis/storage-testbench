@@ -541,7 +541,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (blob, _,) = gcs.object.Object.init(
+        (
+            blob,
+            _,
+        ) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(
@@ -1179,13 +1182,13 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
     def _apply_stall(self, context):
         """Check for stall instructions and apply delay if needed."""
         import time
-        
+
         instruction = testbench.common.extract_instruction(None, context)
         if instruction and "stall" in instruction:
             # Parse stall instruction (e.g., "stall-for-1s")
             if instruction.startswith("stall-for-"):
                 # Parse "stall-for-1s" format
-                match = re.match(r'stall-for-(\d+)s', instruction)
+                match = re.match(r"stall-for-(\d+)s", instruction)
                 if match:
                     time.sleep(int(match.group(1)))
 
@@ -1199,7 +1202,7 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         folder.metageneration = 1
         folder.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
         folder.update_time.CopyFrom(folder.create_time)
-        
+
         # Store in database using full name as key
         self.db.insert_folder(folder.name, folder, context)
         return folder
@@ -1222,8 +1225,8 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         self._apply_stall(context)
         # Extract bucket from parent (format: "projects/_/buckets/{bucket}")
         bucket_name = request.parent
-        prefix = request.prefix if hasattr(request, 'prefix') else ""
-        
+        prefix = request.prefix if hasattr(request, "prefix") else ""
+
         folders = self.db.list_folders(bucket_name, prefix, context)
         return storage_control_pb2.ListFoldersResponse(folders=folders)
 
@@ -1232,7 +1235,7 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         self._apply_stall(context)
         src_folder = request.name
         dst_folder = request.destination_folder_id
-        
+
         folder = self.db.rename_folder(src_folder, dst_folder, context)
         return folder
 
