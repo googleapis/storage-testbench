@@ -39,6 +39,7 @@ class Database:
         retry_tests,
         supported_methods,
         soft_deleted_objects,
+        folders=None,
     ):
         self._resources_lock = threading.RLock()
         self._buckets = buckets
@@ -59,9 +60,12 @@ class Database:
         self._projects_lock = threading.RLock()
         self._projects = {}
 
+        self._folders_lock = threading.RLock()
+        self._folders = folders if folders is not None else {}
+
     @classmethod
     def init(cls):
-        return cls({}, {}, {}, {}, {}, {}, [], {})
+        return cls({}, {}, {}, {}, {}, {}, [], {}, {})
 
     def clear(self):
         """Clear all data except for the supported method list."""
@@ -76,6 +80,8 @@ class Database:
             self._rewrites = {}
         with self._retry_tests_lock:
             self._retry_tests = {}
+        with self._folders_lock:
+            self._folders = {}
         # The list of supported methods for `retry_test` is defined via flask
         # decorators, it should remain unchanged after the test or application
         # is initialized. Arguably this means it should be in a global variable.
@@ -790,3 +796,58 @@ class Database:
         with self._retry_tests_lock:
             self.get_retry_test(retry_test_id)
             del self._retry_tests[retry_test_id]
+
+    # === FOLDER OPERATIONS === #
+
+    def insert_folder(self, folder_name, folder, context):
+        """Insert a folder into the database."""
+        with self._folders_lock:
+            if folder_name in self._folders:
+                testbench.error.already_exists(
+                    "Folder %s already exists" % folder_name, context
+                )
+            self._folders[folder_name] = folder
+        return folder
+
+    def get_folder(self, folder_name, context):
+        """Get a folder from the database."""
+        with self._folders_lock:
+            folder = self._folders.get(folder_name)
+            if folder is None:
+                testbench.error.notfound("Folder %s" % folder_name, context)
+            return folder
+
+    def delete_folder(self, folder_name, context):
+        """Delete a folder from the database."""
+        with self._folders_lock:
+            if folder_name not in self._folders:
+                testbench.error.notfound("Folder %s" % folder_name, context)
+            del self._folders[folder_name]
+
+    def list_folders(self, bucket_name, prefix, context):
+        """List folders in a bucket with optional prefix filter."""
+        with self._folders_lock:
+            folders = []
+            for folder_name, folder in self._folders.items():
+                # Filter by bucket
+                if not folder_name.startswith(bucket_name):
+                    continue
+                # Filter by prefix if provided
+                if prefix and not folder_name.startswith(f"{bucket_name}/{prefix}"):
+                    continue
+                folders.append(folder)
+            return folders
+
+    def rename_folder(self, src_folder_name, dst_folder_name, context):
+        """Rename a folder."""
+        with self._folders_lock:
+            if src_folder_name not in self._folders:
+                testbench.error.notfound("Source folder %s" % src_folder_name, context)
+            if dst_folder_name in self._folders:
+                testbench.error.already_exists(
+                    "Destination folder %s already exists" % dst_folder_name, context
+                )
+            folder = self._folders[src_folder_name]
+            del self._folders[src_folder_name]
+            self._folders[dst_folder_name] = folder
+            return folder
