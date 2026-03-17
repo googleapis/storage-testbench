@@ -1182,11 +1182,9 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         
         instruction = testbench.common.extract_instruction(None, context)
         if instruction and "stall" in instruction:
-            # Parse stall instruction (e.g., "stall-always", "stall-for-10s")
-            if instruction.startswith("stall-always"):
-                time.sleep(10)
-            elif instruction.startswith("stall-for-"):
-                # Parse "stall-for-10s" format
+            # Parse stall instruction (e.g., "stall-for-1s")
+            if instruction.startswith("stall-for-"):
+                # Parse "stall-for-1s" format
                 match = re.match(r'stall-for-(\d+)s', instruction)
                 if match:
                     time.sleep(int(match.group(1)))
