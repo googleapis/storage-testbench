@@ -53,7 +53,7 @@ retry_return_handle_and_redirection_token = re.compile(
     r"redirect-send-handle-and-token-([a-z\-]+)$"
 )
 retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z\-]+)$")
-retry_return_error_if_dp_enforced = re.compile(r"return-([0-9]+)-if-enforced$")
+retry_return_error_if_dp_enforced = re.compile(r"return-([0-9]+)-if-dp-enforced$")
 
 # A retry instruction to return a specific set of unreachable buckets.
 # For example, if the instruction is:
@@ -792,7 +792,13 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
         if params and "force_direct_connectivity=ENFORCED" in params:
             rest_code = enforced_match.group(1)
             grpc_code = _grpc_forced_failure_from_http_instruction(rest_code)
-            msg = {"error": {"message": "DirectPath is enforced but failed to establish connection: {}".format(grpc_code)}}
+            msg = {
+               "error": {
+                   "message": "DirectPath is enforced but failed to establish connection: {}".format(
+                        grpc_code
+                    )
+                }
+            }
             testbench.error.inject_error(context, rest_code, grpc_code, msg=msg)
         return __get_default_response_fn
 
