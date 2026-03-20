@@ -1441,14 +1441,16 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
 
         # Verify the early break occurred during first message only.
         self.assertEqual(len(responses), 0)
-    
+
     def test_grpc_retry_return_error_if_dp_enforced(self):
         # Setup a retry test with 'return-503-if-dp-enforced'
         response = self.rest_client.post(
             "/retry_test",
             data=json.dumps(
                 {
-                    "instructions": {"storage.buckets.get": ["return-503-if-dp-enforced"]},
+                    "instructions": {
+                        "storage.buckets.get": ["return-503-if-dp-enforced"]
+                    },
                     "transport": "GRPC",
                 },
             ),
@@ -1470,7 +1472,14 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         # Re-setup to test non-enforced behavior
         response = self.rest_client.post(
             "/retry_test",
-            data=json.dumps({"instructions": {"storage.buckets.get": ["return-503-if-dp-enforced"]}, "transport": "GRPC"})
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.buckets.get": ["return-503-if-dp-enforced"]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
         )
         test_id = json.loads(response.data).get("id")
 

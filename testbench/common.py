@@ -793,8 +793,8 @@ def grpc_handle_retry_test_instruction(database, request, context, method):
             rest_code = enforced_match.group(1)
             grpc_code = _grpc_forced_failure_from_http_instruction(rest_code)
             msg = {
-               "error": {
-                   "message": "DirectPath is enforced but failed to establish connection: {}".format(
+                "error": {
+                    "message": "DirectPath is enforced but failed to establish connection: {}".format(
                         grpc_code
                     )
                 }
