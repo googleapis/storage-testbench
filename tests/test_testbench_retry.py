@@ -1442,6 +1442,56 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         # Verify the early break occurred during first message only.
         self.assertEqual(len(responses), 0)
 
+    def test_grpc_retry_return_error_if_dp_enforced(self):
+        # Setup a retry test with 'return-503-if-dp-enforced'
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.buckets.get": ["return-503-if-dp-enforced"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        test_id = json.loads(response.data).get("id")
+
+        # Call WITH force_direct_connectivity=ENFORCED, expect 503 (UNAVAILABLE)
+        context = unittest.mock.Mock()
+        context.invocation_metadata.return_value = (
+            ("x-retry-test-id", test_id),
+            ("x-goog-request-params", "force_direct_connectivity=ENFORCED"),
+        )
+        self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        context.abort.assert_called_once_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+
+        # Re-setup to test non-enforced behavior
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.buckets.get": ["return-503-if-dp-enforced"]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        test_id = json.loads(response.data).get("id")
+
+        # Call WITHOUT enforcement, expect SUCCESS (instruction should still be consumed)
+        context = unittest.mock.Mock()
+        context.invocation_metadata.return_value = (("x-retry-test-id", test_id),)
+        self.grpc.GetBucket(
+            storage_pb2.GetBucketRequest(name="projects/_/buckets/bucket-name"), context
+        )
+        self.assertEqual(context.abort.call_count, 0)
+        self.assertIsNone(self.db.peek_next_instruction(test_id, "storage.buckets.get"))
+
     class _StatusAsCall:
         """_StatusAsCall wraps a status and pretends it is a client-side call"""
 
