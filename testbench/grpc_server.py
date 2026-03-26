@@ -39,8 +39,8 @@ from grpc_status import rpc_status
 import gcs
 import testbench
 from google.iam.v1 import iam_policy_pb2
-from google.storage.v2 import storage_pb2, storage_pb2_grpc
 from google.storage.control.v2 import storage_control_pb2, storage_control_pb2_grpc
+from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 _GRPC_SERVER_THREAD_COUNT = 2
 
@@ -541,10 +541,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         bucket = self.db.get_bucket(request.destination.bucket, context).metadata
         metadata = storage_pb2.Object()
         metadata.MergeFrom(request.destination)
-        (
-            blob,
-            _,
-        ) = gcs.object.Object.init(
+        (blob, _,) = gcs.object.Object.init(
             request, metadata, composed_media, bucket, True, context
         )
         self.db.insert_object(

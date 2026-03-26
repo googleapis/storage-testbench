@@ -20,9 +20,9 @@ import unittest
 import unittest.mock
 
 import grpc
+from google.protobuf import empty_pb2
 
 import testbench
-from google.protobuf import empty_pb2
 from google.storage.control.v2 import storage_control_pb2
 
 
