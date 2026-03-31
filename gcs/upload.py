@@ -18,6 +18,7 @@ import datetime
 import hashlib
 import itertools
 import json
+import threading
 import types
 import uuid
 
@@ -31,7 +32,6 @@ from grpc_status import rpc_status
 
 import gcs
 import testbench
-import threading
 from google.storage.v2 import storage_pb2
 
 
