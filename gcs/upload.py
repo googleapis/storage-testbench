@@ -595,9 +595,10 @@ class Upload(types.SimpleNamespace):
                     update_upload_checksums(upload.metadata, object_checksums)
 
                     def update_appendable_blob(blob, unused_generation):
-                        blob.media = upload.media
-                        blob.metadata.size = len(upload.media)
-                        blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
+                        snapshot = bytes(upload.media)
+                        blob.media = snapshot
+                        blob.metadata.size = snapshot
+                        blob.metadata.checksums.crc32c = crc32c.crc32c(snapshot)
                         return blob
 
                     blob = db.do_update_object(
@@ -632,11 +633,12 @@ class Upload(types.SimpleNamespace):
             if is_appendable:
 
                 def finalize_blob(blob, unused_generation):
-                    blob.media = upload.media
+                    snapshot = bytes(upload.media)
+                    blob.media = snapshot
                     blob.metadata.finalize_time.FromDatetime(
                         datetime.datetime.now(datetime.timezone.utc)
                     )
-                    blob.metadata.size = len(upload.media)
+                    blob.metadata.size = len(snapshot)
                     blob.upload = None
                     blob.upload_gen = 0
                     return blob
