@@ -31,6 +31,7 @@ from grpc_status import rpc_status
 
 import gcs
 import testbench
+import threading
 from google.storage.v2 import storage_pb2
 
 
@@ -58,6 +59,7 @@ class Upload(types.SimpleNamespace):
             media=b"",
             complete=False,
             transfer=set(),
+            lock=threading.Lock(),
         )
 
     @classmethod
@@ -585,7 +587,8 @@ class Upload(types.SimpleNamespace):
                 # Currently, the testbench will always checkpoint and flush data for testing purposes,
                 # instead of the 15 seconds interval used in the GCS server.
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
-                upload.media += content
+                with upload.lock:
+                    upload.media += content
 
                 # Update appendable blob size and media here, as part of #720.
                 # TODO(#720): (a) Update crc and update_time in object metadata.
@@ -595,9 +598,10 @@ class Upload(types.SimpleNamespace):
                     update_upload_checksums(upload.metadata, object_checksums)
 
                     def update_appendable_blob(blob, unused_generation):
-                        snapshot = bytes(upload.media)
+                        with upload.lock:
+                            snapshot = bytes(upload.media)
                         blob.media = snapshot
-                        blob.metadata.size = snapshot
+                        blob.metadata.size = len(snapshot)
                         blob.metadata.checksums.crc32c = crc32c.crc32c(snapshot)
                         return blob
 
@@ -633,7 +637,8 @@ class Upload(types.SimpleNamespace):
             if is_appendable:
 
                 def finalize_blob(blob, unused_generation):
-                    snapshot = bytes(upload.media)
+                    with upload.lock:
+                        snapshot = bytes(upload.media)
                     blob.media = snapshot
                     blob.metadata.finalize_time.FromDatetime(
                         datetime.datetime.now(datetime.timezone.utc)
