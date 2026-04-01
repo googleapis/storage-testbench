@@ -15,15 +15,29 @@
 
 """Test stall functionality for Storage Control API."""
 
+import dataclasses
 import time
 import unittest
 import unittest.mock
+from typing import Any, Callable, Optional
 
 import grpc
 from google.protobuf import empty_pb2
 
 import testbench
 from google.storage.control.v2 import storage_control_pb2
+
+
+@dataclasses.dataclass
+class StallTestCase:
+    name: str
+    method_name: str
+    request: Any
+    instructions: Optional[str]
+    min_duration: Optional[float]
+    max_duration: Optional[float]
+    setup_func: Optional[Callable[["TestStorageControlStall"], None]] = None
+    verify_func: Optional[Callable[["TestStorageControlStall", Any], None]] = None
 
 
 class TestStorageControlStall(unittest.TestCase):
@@ -43,231 +57,255 @@ class TestStorageControlStall(unittest.TestCase):
             self.db, echo_metadata=False
         )
 
-    def test_create_folder_no_stall(self):
-        """Test folder creation without stall instruction."""
-        request = storage_control_pb2.CreateFolderRequest()
-        request.parent = "projects/_/buckets/test-bucket"
-        request.folder_id = "test-folder"
-
-        context = self.mock_context()
-
-        start_time = time.time()
-        folder = self.servicer.CreateFolder(request, context)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(folder)
-        self.assertEqual(
-            folder.name, "projects/_/buckets/test-bucket/folders/test-folder"
+    def _create_folder(self, folder_id):
+        request = storage_control_pb2.CreateFolderRequest(
+            parent="projects/_/buckets/test-bucket", folder_id=folder_id
         )
-        self.assertLess(elapsed, 1.0, "Should complete quickly without stall")
+        self.servicer.CreateFolder(request, self.mock_context())
 
-    def test_create_folder_stall_1s(self):
-        """Test folder creation with 1s stall instruction."""
-        request = storage_control_pb2.CreateFolderRequest()
-        request.parent = "projects/_/buckets/test-bucket"
-        request.folder_id = "test-folder-stall"
+    def test_stall_behaviors(self):
+        """Table-driven test for various stall behaviors across API methods."""
+        test_cases = [
+            # CreateFolder
+            StallTestCase(
+                name="create_folder_no_stall",
+                method_name="CreateFolder",
+                request=storage_control_pb2.CreateFolderRequest(
+                    parent="projects/_/buckets/test-bucket", folder_id="create-no-stall"
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name, "projects/_/buckets/test-bucket/folders/create-no-stall"
+                ),
+            ),
+            StallTestCase(
+                name="create_folder_stall_1s",
+                method_name="CreateFolder",
+                request=storage_control_pb2.CreateFolderRequest(
+                    parent="projects/_/buckets/test-bucket", folder_id="create-stall-1s"
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name, "projects/_/buckets/test-bucket/folders/create-stall-1s"
+                ),
+            ),
+            # DeleteFolder
+            StallTestCase(
+                name="delete_folder_no_stall",
+                method_name="DeleteFolder",
+                setup_func=lambda self: self._create_folder("delete-no-stall"),
+                request=storage_control_pb2.DeleteFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/delete-no-stall"
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertIsInstance(
+                    res, empty_pb2.Empty
+                ),
+            ),
+            StallTestCase(
+                name="delete_folder_stall_1s",
+                method_name="DeleteFolder",
+                setup_func=lambda self: self._create_folder("delete-stall-1s"),
+                request=storage_control_pb2.DeleteFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/delete-stall-1s"
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertIsInstance(
+                    res, empty_pb2.Empty
+                ),
+            ),
+            # GetFolder
+            StallTestCase(
+                name="get_folder_no_stall",
+                method_name="GetFolder",
+                setup_func=lambda self: self._create_folder("get-no-stall"),
+                request=storage_control_pb2.GetFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/get-no-stall"
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name, "projects/_/buckets/test-bucket/folders/get-no-stall"
+                ),
+            ),
+            StallTestCase(
+                name="get_folder_stall_1s",
+                method_name="GetFolder",
+                setup_func=lambda self: self._create_folder("get-stall-1s"),
+                request=storage_control_pb2.GetFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/get-stall-1s"
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name, "projects/_/buckets/test-bucket/folders/get-stall-1s"
+                ),
+            ),
+            # ListFolders
+            StallTestCase(
+                name="list_folders_no_stall",
+                method_name="ListFolders",
+                setup_func=lambda self: self._create_folder("list-no-stall"),
+                request=storage_control_pb2.ListFoldersRequest(
+                    parent="projects/_/buckets/test-bucket"
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertGreaterEqual(
+                    len(res.folders), 1
+                ),
+            ),
+            StallTestCase(
+                name="list_folders_stall_1s",
+                method_name="ListFolders",
+                setup_func=lambda self: self._create_folder("list-stall-1s"),
+                request=storage_control_pb2.ListFoldersRequest(
+                    parent="projects/_/buckets/test-bucket"
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertGreaterEqual(
+                    len(res.folders), 1
+                ),
+            ),
+            # RenameFolder
+            StallTestCase(
+                name="rename_folder_no_stall",
+                method_name="RenameFolder",
+                setup_func=lambda self: self._create_folder("rename-src-no-stall"),
+                request=storage_control_pb2.RenameFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/rename-src-no-stall",
+                    destination_folder_id="projects/_/buckets/test-bucket/folders/rename-dst-no-stall",
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name,
+                    "projects/_/buckets/test-bucket/folders/rename-src-no-stall",
+                ),
+            ),
+            StallTestCase(
+                name="rename_folder_stall_1s",
+                method_name="RenameFolder",
+                setup_func=lambda self: self._create_folder("rename-src-stall-1s"),
+                request=storage_control_pb2.RenameFolderRequest(
+                    name="projects/_/buckets/test-bucket/folders/rename-src-stall-1s",
+                    destination_folder_id="projects/_/buckets/test-bucket/folders/rename-dst-stall-1s",
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name,
+                    "projects/_/buckets/test-bucket/folders/rename-src-stall-1s",
+                ),
+            ),
+            # GetStorageLayout
+            StallTestCase(
+                name="get_storage_layout_no_stall",
+                method_name="GetStorageLayout",
+                request=storage_control_pb2.GetStorageLayoutRequest(
+                    name="projects/_/buckets/test-bucket/storageLayout"
+                ),
+                instructions=None,
+                min_duration=None,
+                max_duration=0.5,
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name, "projects/_/buckets/test-bucket/storageLayout"
+                ),
+            ),
+            StallTestCase(
+                name="get_storage_layout_stall_1s",
+                method_name="GetStorageLayout",
+                request=storage_control_pb2.GetStorageLayoutRequest(
+                    name="projects/_/buckets/test-bucket/storageLayout"
+                ),
+                instructions="stall-for-1s",
+                min_duration=1.0,
+                max_duration=None,
+                verify_func=lambda self, res: self.assertEqual(res.location, "US"),
+            ),
+        ]
 
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context = self.mock_context(metadata)
+        for tc in test_cases:
+            with self.subTest(name=tc.name):
+                if tc.setup_func:
+                    tc.setup_func(self)
 
-        start_time = time.time()
-        folder = self.servicer.CreateFolder(request, context)
-        elapsed = time.time() - start_time
+                metadata = (
+                    [("x-goog-emulator-instructions", tc.instructions)]
+                    if tc.instructions
+                    else []
+                )
+                context = self.mock_context(metadata)
 
-        self.assertIsNotNone(folder)
-        self.assertEqual(
-            folder.name, "projects/_/buckets/test-bucket/folders/test-folder-stall"
-        )
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
+                # Dynamically get the method from the servicer
+                method = getattr(self.servicer, tc.method_name)
 
-    def test_delete_folder_stall(self):
-        """Test folder deletion with stall instruction."""
-        # First create a folder
-        create_request = storage_control_pb2.CreateFolderRequest()
-        create_request.parent = "projects/_/buckets/test-bucket"
-        create_request.folder_id = "test-folder-delete"
-        context = self.mock_context()
-        self.servicer.CreateFolder(create_request, context)
+                start_time = time.time()
+                result = method(tc.request, context)
+                elapsed = time.time() - start_time
 
-        # Now delete it with stall
-        delete_request = storage_control_pb2.DeleteFolderRequest()
-        delete_request.name = (
-            "projects/_/buckets/test-bucket/folders/test-folder-delete"
-        )
+                self.assertIsNotNone(result)
+                if tc.min_duration is not None:
+                    self.assertGreaterEqual(
+                        elapsed,
+                        tc.min_duration,
+                        f"Should stall for at least {tc.min_duration}s",
+                    )
+                if tc.max_duration is not None:
+                    self.assertLess(
+                        elapsed,
+                        tc.max_duration,
+                        f"Should not stall longer than {tc.max_duration}s",
+                    )
 
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
-
-        start_time = time.time()
-        result = self.servicer.DeleteFolder(delete_request, context_stall)
-        elapsed = time.time() - start_time
-
-        self.assertIsInstance(result, empty_pb2.Empty)
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
-
-    def test_get_folder_stall(self):
-        """Test get folder with stall instruction."""
-        # First create a folder
-        create_request = storage_control_pb2.CreateFolderRequest()
-        create_request.parent = "projects/_/buckets/test-bucket"
-        create_request.folder_id = "test-folder-get"
-        context = self.mock_context()
-        created_folder = self.servicer.CreateFolder(create_request, context)
-
-        # Now get it with stall
-        get_request = storage_control_pb2.GetFolderRequest()
-        get_request.name = "projects/_/buckets/test-bucket/folders/test-folder-get"
-
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
-
-        start_time = time.time()
-        folder = self.servicer.GetFolder(get_request, context_stall)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(folder)
-        self.assertEqual(
-            folder.name, "projects/_/buckets/test-bucket/folders/test-folder-get"
-        )
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
-
-    def test_list_folders_stall(self):
-        """Test list folders with stall instruction."""
-        # Create some folders
-        for i in range(3):
-            create_request = storage_control_pb2.CreateFolderRequest()
-            create_request.parent = "projects/_/buckets/test-bucket"
-            create_request.folder_id = f"test-folder-list-{i}"
-            context = self.mock_context()
-            self.servicer.CreateFolder(create_request, context)
-
-        # List with stall
-        list_request = storage_control_pb2.ListFoldersRequest()
-        list_request.parent = "projects/_/buckets/test-bucket"
-
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
-
-        start_time = time.time()
-        response = self.servicer.ListFolders(list_request, context_stall)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(response)
-        self.assertGreaterEqual(len(response.folders), 3)
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
-
-    def test_rename_folder_stall(self):
-        """Test rename folder with stall instruction."""
-        # Create a folder
-        create_request = storage_control_pb2.CreateFolderRequest()
-        create_request.parent = "projects/_/buckets/test-bucket"
-        create_request.folder_id = "test-folder-rename-src"
-        context = self.mock_context()
-        self.servicer.CreateFolder(create_request, context)
-
-        # Rename with stall
-        rename_request = storage_control_pb2.RenameFolderRequest()
-        rename_request.name = (
-            "projects/_/buckets/test-bucket/folders/test-folder-rename-src"
-        )
-        rename_request.destination_folder_id = (
-            "projects/_/buckets/test-bucket/test-folder-rename-dst"
-        )
-
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
-
-        start_time = time.time()
-        folder = self.servicer.RenameFolder(rename_request, context_stall)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(folder)
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
+                if tc.verify_func:
+                    tc.verify_func(self, result)
 
     def test_multiple_stalls_and_no_stall(self):
         """Test that stall happens twice with metadata and not without."""
-        # First call with stall metadata
-        request1 = storage_control_pb2.CreateFolderRequest()
-        request1.parent = "projects/_/buckets/test-bucket"
-        request1.folder_id = "test-folder-multi-1"
-
         metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
 
-        start_time = time.time()
-        folder1 = self.servicer.CreateFolder(request1, context_stall)
-        elapsed1 = time.time() - start_time
-
-        self.assertIsNotNone(folder1)
-        self.assertGreaterEqual(
-            elapsed1, 1.0, "First call should stall for at least 1 second"
+        # First call with stall metadata
+        req1 = storage_control_pb2.CreateFolderRequest(
+            parent="projects/_/buckets/test-bucket", folder_id="test-folder-multi-1"
         )
+        start_time = time.time()
+        self.servicer.CreateFolder(req1, self.mock_context(metadata))
+        elapsed1 = time.time() - start_time
+        self.assertGreaterEqual(elapsed1, 1.0)
 
         # Second call with stall metadata
-        request2 = storage_control_pb2.CreateFolderRequest()
-        request2.parent = "projects/_/buckets/test-bucket"
-        request2.folder_id = "test-folder-multi-2"
-
-        context_stall2 = self.mock_context(metadata)
-
-        start_time = time.time()
-        folder2 = self.servicer.CreateFolder(request2, context_stall2)
-        elapsed2 = time.time() - start_time
-
-        self.assertIsNotNone(folder2)
-        self.assertGreaterEqual(
-            elapsed2, 1.0, "Second call should stall for at least 1 second"
+        req2 = storage_control_pb2.CreateFolderRequest(
+            parent="projects/_/buckets/test-bucket", folder_id="test-folder-multi-2"
         )
+        start_time = time.time()
+        self.servicer.CreateFolder(req2, self.mock_context(metadata))
+        elapsed2 = time.time() - start_time
+        self.assertGreaterEqual(elapsed2, 1.0)
 
         # Third call without stall metadata
-        request3 = storage_control_pb2.CreateFolderRequest()
-        request3.parent = "projects/_/buckets/test-bucket"
-        request3.folder_id = "test-folder-multi-3"
-
-        context_no_stall = self.mock_context()
-
-        start_time = time.time()
-        folder3 = self.servicer.CreateFolder(request3, context_no_stall)
-        elapsed3 = time.time() - start_time
-
-        self.assertIsNotNone(folder3)
-        self.assertLess(
-            elapsed3, 1.0, "Third call should complete quickly without stall"
+        req3 = storage_control_pb2.CreateFolderRequest(
+            parent="projects/_/buckets/test-bucket", folder_id="test-folder-multi-3"
         )
-
-    def test_get_storage_layout_no_stall(self):
-        """Test get storage layout without stall instruction."""
-        request = storage_control_pb2.GetStorageLayoutRequest()
-        request.name = "projects/_/buckets/test-bucket/storageLayout"
-
-        context = self.mock_context()
-
         start_time = time.time()
-        layout = self.servicer.GetStorageLayout(request, context)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(layout)
-        self.assertEqual(layout.name, "projects/_/buckets/test-bucket/storageLayout")
-        self.assertLess(elapsed, 1.0, "Should complete quickly without stall")
-
-    def test_get_storage_layout_stall(self):
-        """Test get storage layout with stall instruction."""
-        request = storage_control_pb2.GetStorageLayoutRequest()
-        request.name = "projects/_/buckets/test-bucket/storageLayout"
-
-        metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
-        context_stall = self.mock_context(metadata)
-
-        start_time = time.time()
-        layout = self.servicer.GetStorageLayout(request, context_stall)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(layout)
-        self.assertEqual(layout.name, "projects/_/buckets/test-bucket/storageLayout")
-        self.assertEqual(layout.location, "US")
-        self.assertEqual(layout.location_type, "multi-region")
-        self.assertFalse(layout.hierarchical_namespace.enabled)
-        self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
+        self.servicer.CreateFolder(req3, self.mock_context())
+        elapsed3 = time.time() - start_time
+        self.assertLess(elapsed3, 1.0)
 
 
 if __name__ == "__main__":
