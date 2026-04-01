@@ -167,7 +167,7 @@ class GcsProject(object):
 
     def delete_hmac_key(self, access_id, context=None):
         """Remove a key from the project."""
-        service_account, key_id = access_id.split(":", 2)
+        (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account)
         if sa is None:
             return testbench.error.notfound(
@@ -177,7 +177,7 @@ class GcsProject(object):
 
     def get_hmac_key(self, access_id, context=None):
         """Get an existing key in the project."""
-        service_account, key_id = access_id.split(":", 2)
+        (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account)
         if sa is None:
             return testbench.error.notfound(
@@ -187,7 +187,7 @@ class GcsProject(object):
 
     def update_hmac_key(self, access_id, payload, context=None):
         """Update an existing key in the project."""
-        service_account, key_id = access_id.split(":", 2)
+        (service_account, key_id) = access_id.split(":", 2)
         sa = self.service_accounts.get(service_account, None)
         if sa is None:
             return testbench.error.notfound(

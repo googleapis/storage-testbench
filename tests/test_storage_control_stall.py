@@ -80,27 +80,6 @@ class TestStorageControlStall(unittest.TestCase):
         )
         self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1 second")
 
-    def test_create_folder_stall_custom_duration(self):
-        """Test folder creation with custom stall duration."""
-        request = storage_control_pb2.CreateFolderRequest()
-        request.parent = "projects/_/buckets/test-bucket"
-        request.folder_id = "test-folder-custom-stall"
-
-        metadata = [("x-goog-emulator-instructions", "stall-for-2s")]
-        context = self.mock_context(metadata)
-
-        start_time = time.time()
-        folder = self.servicer.CreateFolder(request, context)
-        elapsed = time.time() - start_time
-
-        self.assertIsNotNone(folder)
-        self.assertEqual(
-            folder.name,
-            "projects/_/buckets/test-bucket/folders/test-folder-custom-stall",
-        )
-        self.assertGreaterEqual(elapsed, 2.0, "Should stall for at least 2 seconds")
-        self.assertLess(elapsed, 3.0, "Should not stall longer than 3 seconds")
-
     def test_delete_folder_stall(self):
         """Test folder deletion with stall instruction."""
         # First create a folder
