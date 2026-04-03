@@ -1247,10 +1247,10 @@ def delete_resumable_upload(bucket_name):
 # === SERVER === #
 
 # Define the WSGI application to handle HMAC key and service account requests
-PROJECTS_HANDLER_PATH, projects_app = projects_rest_server.get_projects_app(db)
+(PROJECTS_HANDLER_PATH, projects_app) = projects_rest_server.get_projects_app(db)
 
 # Define the WSGI application to handle IAM requests
-IAM_HANDLER_PATH, iam_app = iam_rest_server.get_iam_app()
+(IAM_HANDLER_PATH, iam_app) = iam_rest_server.get_iam_app()
 
 server = flask.Flask(__name__)
 server.debug = False

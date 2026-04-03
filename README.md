@@ -15,7 +15,8 @@ is expected to be used by Storage library maintainers.
   - [When to use this testbench](#when-to-use-this-testbench)
   - [How to use this testbench](#how-to-use-this-testbench)
     - [Initial set up](#initial-set-up)
-    - [Start the gRPC server](#start-the-grpc-server)
+    - [Run the testbench](#run-the-testbench)
+    - [Start the gRPC server](#start-the-gRPC-server)
     - [Check that the testbench is running](#check-that-the-testbench-is-running)
   - [Updating Proto Files](#updating-proto-files)
   - [Force Failures](#force-failures)
@@ -312,7 +313,7 @@ response = stub.CreateFolder(request, metadata=metadata)
 
 ### Writing and running tests
 
-Tests are located in the `tests/` directory. To run the tests locally, use 
+Tests are located in the `tests/` directory. To run the tests locally, use
 
 ```bash
 python -m unittest [test_module.py] # runs all the tests in test_module.py
