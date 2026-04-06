@@ -1182,12 +1182,17 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
 
         instruction = testbench.common.extract_instruction(None, context)
         if instruction and "stall" in instruction:
-            # Parse stall instruction (e.g., "stall-for-1s")
+            # Parse stall instruction (e.g., "stall-for-1s" or "stall-for-500ms")
             if instruction.startswith("stall-for-"):
-                # Parse "stall-for-1s" format
-                match = re.match(r"stall-for-(\d+)s", instruction)
-                if match:
-                    time.sleep(int(match.group(1)))
+                # Check for milliseconds.
+                match_ms = re.match(r"stall-for-(\d+)ms", instruction)
+                if match_ms:
+                    time.sleep(int(match_ms.group(1)) / 1000.0)
+                    return
+                # Check for seconds.
+                match_s = re.match(r"stall-for-(\d+)s", instruction)
+                if match_s:
+                    time.sleep(int(match_s.group(1)))
 
     @retry_test(method="storage.folders.create")
     def CreateFolder(self, request, context):
@@ -1239,16 +1244,24 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
     @retry_test(method="storage.storageLayout.get")
     def GetStorageLayout(self, request, context):
         self._apply_stall(context)
+
         # Extract bucket path from request.name which is "projects/_/buckets/bucket_name/storageLayout"
         bucket_path = request.name.replace("/storageLayout", "")
-        bucket = self.db.get_bucket(bucket_path, context)
 
         # Create a simple storage layout response
         layout = storage_control_pb2.StorageLayout()
         layout.name = request.name
 
-        if bucket is None:
-            # If the bucket isn't found (e.g. abort is mocked), use defaults
+        try:
+            bucket = self.db.get_bucket(bucket_path, context)
+            if bucket is None:
+                # If the bucket isn't found (e.g. abort is mocked), use defaults
+                layout.location = "US"
+                layout.location_type = "multi-region"
+                layout.hierarchical_namespace.enabled = False
+                return layout
+        except Exception:
+            # handle testbench errors gracefully (i.e abort contexts raising an error)
             layout.location = "US"
             layout.location_type = "multi-region"
             layout.hierarchical_namespace.enabled = False

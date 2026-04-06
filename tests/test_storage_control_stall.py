@@ -155,6 +155,18 @@ class TestStorageControlStall(unittest.TestCase):
         """Table-driven test for various stall behaviors across API methods."""
         test_cases = [
             ApiTestCase(
+                name="create_folder_stall_500ms",
+                method_name="CreateFolder",
+                request=storage_control_pb2.CreateFolderRequest(
+                    parent="projects/_/buckets/test-bucket",
+                    folder_id="create-stall-500ms",
+                ),
+                verify_func=lambda self, res: self.assertEqual(
+                    res.name,
+                    "projects/_/buckets/test-bucket/folders/create-stall-500ms",
+                ),
+            ),
+            ApiTestCase(
                 name="create_folder_stall_1s",
                 method_name="CreateFolder",
                 request=storage_control_pb2.CreateFolderRequest(
@@ -225,7 +237,14 @@ class TestStorageControlStall(unittest.TestCase):
                 if tc.setup_func:
                     tc.setup_func(self)
 
-                metadata = [("x-goog-emulator-instructions", "stall-for-1s")]
+                # Determine instruction based on test name
+                instruction = "stall-for-1s"
+                expected_stall = 1.0
+                if "500ms" in tc.name:
+                    instruction = "stall-for-500ms"
+                    expected_stall = 0.5
+
+                metadata = [("x-goog-emulator-instructions", instruction)]
                 context = self.mock_context(metadata)
 
                 # Dynamically get the method from the servicer
@@ -236,7 +255,11 @@ class TestStorageControlStall(unittest.TestCase):
                 elapsed = time.time() - start_time
 
                 self.assertIsNotNone(result)
-                self.assertGreaterEqual(elapsed, 1.0, "Should stall for at least 1.0s")
+                self.assertGreaterEqual(
+                    elapsed,
+                    expected_stall,
+                    f"Should stall for at least {expected_stall}s",
+                )
 
                 if tc.verify_func:
                     tc.verify_func(self, result)
