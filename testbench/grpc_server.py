@@ -1247,25 +1247,14 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
 
         # Extract bucket path from request.name which is "projects/_/buckets/bucket_name/storageLayout"
         bucket_path = request.name.replace("/storageLayout", "")
+        bucket = self.db.get_bucket(bucket_path, context)
+
+        if bucket is None:
+            return None
 
         # Create a simple storage layout response
         layout = storage_control_pb2.StorageLayout()
         layout.name = request.name
-
-        try:
-            bucket = self.db.get_bucket(bucket_path, context)
-            if bucket is None:
-                # If the bucket isn't found (e.g. abort is mocked), use defaults
-                layout.location = "US"
-                layout.location_type = "multi-region"
-                layout.hierarchical_namespace.enabled = False
-                return layout
-        except Exception:
-            # handle testbench errors gracefully (i.e abort contexts raising an error)
-            layout.location = "US"
-            layout.location_type = "multi-region"
-            layout.hierarchical_namespace.enabled = False
-            return layout
 
         # Set default location and location_type
         layout.location = bucket.metadata.location if bucket.metadata.location else "US"

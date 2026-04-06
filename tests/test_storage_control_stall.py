@@ -16,6 +16,7 @@
 """Test stall functionality for Storage Control API."""
 
 import dataclasses
+import os
 import time
 import unittest
 import unittest.mock
@@ -49,10 +50,22 @@ class TestStorageControlStall(unittest.TestCase):
         return context
 
     def setUp(self):
+        self.original_env_bucket = os.environ.get(
+            "GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"
+        )
+        os.environ["GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"] = "test-bucket"
         self.db = testbench.database.Database.init()
         self.servicer = testbench.grpc_server.StorageControlServicer(
             self.db, echo_metadata=False
         )
+
+    def tearDown(self):
+        if self.original_env_bucket is None:
+            os.environ.pop("GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME", None)
+        else:
+            os.environ[
+                "GOOGLE_CLOUD_CPP_STORAGE_TEST_BUCKET_NAME"
+            ] = self.original_env_bucket
 
     def _create_folder(self, folder_id):
         request = storage_control_pb2.CreateFolderRequest(
