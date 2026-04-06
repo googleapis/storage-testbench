@@ -1239,14 +1239,32 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
     @retry_test(method="storage.storageLayout.get")
     def GetStorageLayout(self, request, context):
         self._apply_stall(context)
+        # Extract bucket path from request.name which is "projects/_/buckets/bucket_name/storageLayout"
+        bucket_path = request.name.replace("/storageLayout", "")
+        bucket = self.db.get_bucket(bucket_path, context)
+
         # Create a simple storage layout response
         layout = storage_control_pb2.StorageLayout()
         layout.name = request.name
+
+        if bucket is None:
+            # If the bucket isn't found (e.g. abort is mocked), use defaults
+            layout.location = "US"
+            layout.location_type = "multi-region"
+            layout.hierarchical_namespace.enabled = False
+            return layout
+
         # Set default location and location_type
-        layout.location = "US"
+        layout.location = bucket.metadata.location if bucket.metadata.location else "US"
         layout.location_type = "multi-region"
-        # Optionally set hierarchical namespace enabled flag
-        layout.hierarchical_namespace.enabled = False
+        # Set hierarchical namespace enabled flag based on bucket metadata
+        if (
+            bucket.metadata.hierarchical_namespace
+            and bucket.metadata.hierarchical_namespace.enabled
+        ):
+            layout.hierarchical_namespace.enabled = True
+        else:
+            layout.hierarchical_namespace.enabled = False
         return layout
 
 
