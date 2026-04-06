@@ -129,7 +129,7 @@ class TestStorageControlStall(unittest.TestCase):
                 ),
                 verify_func=lambda self, res: self.assertEqual(
                     res.name,
-                    "projects/_/buckets/test-bucket/folders/rename-src-no-stall",
+                    "projects/_/buckets/test-bucket/folders/rename-dst-no-stall",
                 ),
             ),
             ApiTestCase(
@@ -232,7 +232,7 @@ class TestStorageControlStall(unittest.TestCase):
                 ),
                 verify_func=lambda self, res: self.assertEqual(
                     res.name,
-                    "projects/_/buckets/test-bucket/folders/rename-src-stall-1s",
+                    "projects/_/buckets/test-bucket/folders/rename-dst-stall-1s",
                 ),
             ),
             ApiTestCase(
