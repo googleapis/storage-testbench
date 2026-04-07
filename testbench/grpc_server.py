@@ -20,6 +20,7 @@ import itertools
 import json
 import re
 import sys
+import time
 import types
 import uuid
 from collections.abc import Iterable
@@ -1179,7 +1180,6 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
 
     def _apply_stall(self, context):
         """Check for stall instructions and apply delay if needed."""
-        import time
 
         instruction = testbench.common.extract_instruction(None, context)
         if instruction and "stall" in instruction:
@@ -1228,7 +1228,7 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         self._apply_stall(context)
         # Extract bucket from parent (format: "projects/_/buckets/{bucket}")
         bucket_name = request.parent
-        prefix = request.prefix if hasattr(request, "prefix") else ""
+        prefix = getattr(request, "prefix", "")
 
         folders = self.db.list_folders(bucket_name, prefix, context)
         return storage_control_pb2.ListFoldersResponse(folders=folders)
