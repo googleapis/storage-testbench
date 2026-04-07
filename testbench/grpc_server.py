@@ -39,6 +39,7 @@ from grpc_status import rpc_status
 import gcs
 import testbench
 from google.iam.v1 import iam_policy_pb2
+from google.storage.control.v2 import storage_control_pb2, storage_control_pb2_grpc
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 _GRPC_SERVER_THREAD_COUNT = 2
@@ -1163,12 +1164,121 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         return storage_pb2.QueryWriteStatusResponse(persisted_size=len(upload.media))
 
 
+# === STORAGE CONTROL SERVICER === #
+
+
+@decorate_all_rpc_methods
+class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
+    """Implements the google.storage.control.v2.StorageControl gRPC service."""
+
+    def __init__(self, db, echo_metadata=False):
+        self.db = db
+        self.db.insert_test_bucket()
+        self.echo_metadata = echo_metadata
+
+    def _apply_stall(self, context):
+        """Check for stall instructions and apply delay if needed."""
+        import time
+
+        instruction = testbench.common.extract_instruction(None, context)
+        if instruction and "stall" in instruction:
+            # Parse stall instruction (e.g., "stall-for-1s" or "stall-for-500ms")
+            if instruction.startswith("stall-for-"):
+                # Check for milliseconds.
+                match_ms = re.match(r"stall-for-(\d+)ms", instruction)
+                if match_ms:
+                    time.sleep(int(match_ms.group(1)) / 1000.0)
+                    return
+                # Check for seconds.
+                match_s = re.match(r"stall-for-(\d+)s", instruction)
+                if match_s:
+                    time.sleep(int(match_s.group(1)))
+
+    @retry_test(method="storage.folders.create")
+    def CreateFolder(self, request, context):
+        self._apply_stall(context)
+        # Create a simple folder metadata
+        folder = storage_control_pb2.Folder()
+        # The name should include the full path
+        folder.name = f"{request.parent}/folders/{request.folder_id}"
+        folder.metageneration = 1
+        folder.create_time.FromDatetime(datetime.datetime.now(datetime.timezone.utc))
+        folder.update_time.CopyFrom(folder.create_time)
+
+        # Store in database using full name as key
+        self.db.insert_folder(folder.name, folder, context)
+        return folder
+
+    @retry_test(method="storage.folders.delete")
+    def DeleteFolder(self, request, context):
+        self._apply_stall(context)
+        folder_key = request.name
+        self.db.delete_folder(folder_key, context)
+        return empty_pb2.Empty()
+
+    @retry_test(method="storage.folders.get")
+    def GetFolder(self, request, context):
+        self._apply_stall(context)
+        folder_key = request.name
+        return self.db.get_folder(folder_key, context)
+
+    @retry_test(method="storage.folders.list")
+    def ListFolders(self, request, context):
+        self._apply_stall(context)
+        # Extract bucket from parent (format: "projects/_/buckets/{bucket}")
+        bucket_name = request.parent
+        prefix = request.prefix if hasattr(request, "prefix") else ""
+
+        folders = self.db.list_folders(bucket_name, prefix, context)
+        return storage_control_pb2.ListFoldersResponse(folders=folders)
+
+    @retry_test(method="storage.folders.rename")
+    def RenameFolder(self, request, context):
+        self._apply_stall(context)
+        src_folder = request.name
+        dst_folder = request.destination_folder_id
+
+        folder = self.db.rename_folder(src_folder, dst_folder, context)
+        return folder
+
+    @retry_test(method="storage.storageLayout.get")
+    def GetStorageLayout(self, request, context):
+        self._apply_stall(context)
+
+        # Extract bucket path from request.name which is "projects/_/buckets/bucket_name/storageLayout"
+        bucket_path = request.name.replace("/storageLayout", "")
+        bucket = self.db.get_bucket(bucket_path, context)
+
+        if bucket is None:
+            return None
+
+        # Create a simple storage layout response
+        layout = storage_control_pb2.StorageLayout()
+        layout.name = request.name
+
+        # Set default location and location_type
+        layout.location = bucket.metadata.location if bucket.metadata.location else "US"
+        layout.location_type = "multi-region"
+        # Set hierarchical namespace enabled flag based on bucket metadata
+        if (
+            bucket.metadata.hierarchical_namespace
+            and bucket.metadata.hierarchical_namespace.enabled
+        ):
+            layout.hierarchical_namespace.enabled = True
+        else:
+            layout.hierarchical_namespace.enabled = False
+        return layout
+
+
 def run(port, database, echo_metadata=False):
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=_GRPC_SERVER_THREAD_COUNT)
     )
     storage_pb2_grpc.add_StorageServicer_to_server(
         StorageServicer(database, echo_metadata), server
+    )
+    storage_control_pb2_grpc.add_StorageControlServicer_to_server(
+        StorageControlServicer(database, echo_metadata), server
     )
     port = server.add_insecure_port("0.0.0.0:%d" % port)
     server.start()

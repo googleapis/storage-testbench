@@ -35,6 +35,10 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=[
+        "google",
+        "google/storage",
+        "google/storage/control",
+        "google/storage/control/v2",
         "google/storage/v2",
         "google/iam/v1",
         "testbench",

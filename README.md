@@ -35,6 +35,7 @@ is expected to be used by Storage library maintainers.
     - [Delete a Retry Test resource](#delete-a-retry-test-resource)
     - [Causing a failure using x-retry-test-id header](#causing-a-failure-using-x-retry-test-id-header)
     - [Forced Failures Supported](#forced-failures-supported)
+  - [Storage Control API Stall Support](#storage-control-api-stall-support)
   - [Developing for the testbench](#developing-for-the-testbench)
     - [Writing and running tests](#writing-and-running-tests)
   - [Releasing the testbench](#releasing-the-testbench)
@@ -278,11 +279,42 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | redirect-send-handle-and-token-T          | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
 | return-X-if-dp-enforced                   | [HTTP] Unsupported [GRPC] Testbench will fail with the equivalent gRPC error to the HTTP code provided for X, but only if DirectPath is enforced.
 
+## Storage Control API Stall Support
+
+The testbench supports stall functionality for the Storage Control API (gRPC only) to test client retry behavior. All folder operations and storage layout operations can be delayed using the `x-goog-emulator-instructions` metadata header.
+
+**Supported operations:**
+- **Folder operations:** `CreateFolder`, `DeleteFolder`, `GetFolder`, `ListFolders`, `RenameFolder`
+- **Storage layout operations:** `GetStorageLayout`
+
+> **Note:** The Storage Control API uses the **same gRPC server** as the Storage API. Both services are available on the same port (e.g., port 8888 if started with `curl "http://localhost:9000/start_grpc?port=8888"`).
+
+**Supported stall instruction:**
+- `stall-for-Ns`: Stalls for N seconds (e.g., `stall-for-3s` stalls for 3 seconds)
+
+**Example usage in Python:**
+```python
+import grpc
+from google.storage.control.v2 import storage_control_pb2, storage_control_pb2_grpc
+
+# Connect to the same gRPC server port (8888) started earlier
+channel = grpc.insecure_channel('localhost:8888')
+stub = storage_control_pb2_grpc.StorageControlStub(channel)
+
+# Create folder with 2-second stall
+metadata = [('x-goog-emulator-instructions', 'stall-for-2s')]
+request = storage_control_pb2.CreateFolderRequest(
+    parent="projects/_/buckets/test-bucket",
+    folder_id="test-folder"
+)
+response = stub.CreateFolder(request, metadata=metadata)
+```
+
 ## Developing for the testbench
 
 ### Writing and running tests
 
-Tests are located in the `tests/` directory. To run the tests locally, use 
+Tests are located in the `tests/` directory. To run the tests locally, use
 
 ```bash
 python -m unittest [test_module.py] # runs all the tests in test_module.py

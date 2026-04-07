@@ -31,6 +31,7 @@ readonly INPUTS=(
     google/iam/v1/options.proto
     google/iam/v1/policy.proto
     google/storage/v2/storage.proto
+    google/storage/control/v2/storage_control.proto
 )
 readonly INPUTS
 
