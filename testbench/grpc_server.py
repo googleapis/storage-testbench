@@ -39,6 +39,7 @@ from grpc_status import rpc_status
 import gcs
 import testbench
 from google.iam.v1 import iam_policy_pb2
+from google.longrunning import operations_pb2
 from google.storage.control.v2 import storage_control_pb2, storage_control_pb2_grpc
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
@@ -1236,10 +1237,30 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
     def RenameFolder(self, request, context):
         self._apply_stall(context)
         src_folder = request.name
-        dst_folder = request.destination_folder_id
+
+        # request.destination_folder_id only contains the relative folder ID
+        # e.g., src_folder: "projects/_/buckets/my-bucket/folders/my-folder"
+        # We need to prepend the project/bucket/folders/ prefix.
+        prefix = src_folder.split("/folders/")[0] + "/folders/"
+
+        # Ensure we don't prepend prefix if the client incorrectly passed a full path
+        if request.destination_folder_id.startswith("projects/"):
+            dst_folder = request.destination_folder_id
+        else:
+            dst_folder = prefix + request.destination_folder_id
 
         folder = self.db.rename_folder(src_folder, dst_folder, context)
-        return folder
+
+        any_msg = any_pb2.Any()
+        any_msg.Pack(folder)
+
+        # RenameFolder is an LRO in the production API
+        op = operations_pb2.Operation(
+            name=f"projects/_/locations/global/operations/{uuid.uuid4().hex}",
+            done=True,
+            response=any_msg,
+        )
+        return op
 
     @retry_test(method="storage.storageLayout.get")
     def GetStorageLayout(self, request, context):
