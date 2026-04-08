@@ -1270,9 +1270,6 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         bucket_path = request.name.replace("/storageLayout", "")
         bucket = self.db.get_bucket(bucket_path, context)
 
-        if bucket is None:
-            return None
-
         # Create a simple storage layout response
         layout = storage_control_pb2.StorageLayout()
         layout.name = request.name
