@@ -44,7 +44,7 @@ jobs:
         run: |
           pytest --cov=./ --cov-report=xml
   windows-tests:
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       matrix:
         python-version: ["3.11"]
