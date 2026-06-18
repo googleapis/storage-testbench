@@ -591,6 +591,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         meta = blob.metadata
         size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
         start = request.read_offset
+        if start < 0:
+            start = max(0, len(blob.media) + start)
         read_end = len(blob.media)
         if start > read_end:
             return testbench.error.range_not_satisfiable(context)
@@ -717,6 +719,8 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # A read range corresponds to a unique read_id.
             # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
             start = range.read_offset
+            if start < 0:
+                start = max(0, len(blob.media) + start)
             read_end = len(blob.media)
             read_id = range.read_id
 
