@@ -587,6 +587,9 @@ class Upload(types.SimpleNamespace):
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
                 upload.media += content
 
+            persisted_crc32c = crc32c.crc32c(upload.media)
+
+            if data == "checksummed_data":
                 # Update appendable blob size and media here, as part of #720.
                 # TODO(#720): (a) Update crc and update_time in object metadata.
                 # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
@@ -597,7 +600,7 @@ class Upload(types.SimpleNamespace):
                     def update_appendable_blob(blob, unused_generation):
                         blob.media = upload.media
                         blob.metadata.size = len(upload.media)
-                        blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
+                        blob.metadata.checksums.crc32c = persisted_crc32c
                         return blob
 
                     blob = db.do_update_object(
@@ -620,7 +623,10 @@ class Upload(types.SimpleNamespace):
                 # object metadata.
                 yield response(
                     storage_pb2.BidiWriteObjectResponse(
-                        persisted_size=len(upload.media)
+                        persisted_size=len(upload.media),
+                        persisted_data_checksums=storage_pb2.ObjectChecksums(
+                            crc32c=persisted_crc32c
+                        ),
                     )
                 )
 
