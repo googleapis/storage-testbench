@@ -804,9 +804,7 @@ class Database:
         """Insert a folder into the database."""
         with self._folders_lock:
             if folder_name in self._folders:
-                testbench.error.already_exists(
-                    "Folder %s already exists" % folder_name, context
-                )
+                testbench.error.already_exists(context)
             self._folders[folder_name] = folder
         return folder
 
@@ -845,10 +843,9 @@ class Database:
             if src_folder_name not in self._folders:
                 testbench.error.notfound("Source folder %s" % src_folder_name, context)
             if dst_folder_name in self._folders:
-                testbench.error.already_exists(
-                    "Destination folder %s already exists" % dst_folder_name, context
-                )
+                testbench.error.already_exists(context)
             folder = self._folders[src_folder_name]
             del self._folders[src_folder_name]
+            folder.name = dst_folder_name
             self._folders[dst_folder_name] = folder
             return folder
