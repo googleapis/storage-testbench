@@ -23,20 +23,24 @@ from werkzeug.exceptions import HTTPException
 
 
 class RestException(Exception):
-    def __init__(self, msg, code):
+    def __init__(self, msg, code, headers=None):
         super().__init__()
         self.msg = msg
         self.code = code
+        self.headers = headers or {}
 
     def as_response(self):
         # Include both code and message so we follow the schema outlined in
         # https://cloud.google.com/apis/design/errors#error_model and some
         # clients depend on code being specified, otherwise behavior is
         # undefined.
-        return flask.make_response(
+        response = flask.make_response(
             flask.jsonify(error={"code": self.code, "message": self.msg}),
             self.code,
         )
+        for key, value in self.headers.items():
+            response.headers[key] = value
+        return response
 
     @staticmethod
     def handler(ex):
@@ -53,12 +57,12 @@ def _simple_json_error(msg):
     return json.dumps({"error": {"errors": [{"domain": "global", "message": msg}]}})
 
 
-def generic(msg, rest_code, grpc_code, context):
+def generic(msg, rest_code, grpc_code, context, headers=None):
     """Generate the appropriate error for REST or gRPC handlers."""
     if context is not None:
         context.abort(grpc_code, msg)
     else:
-        raise RestException(msg, rest_code)
+        raise RestException(msg, rest_code, headers=headers)
 
 
 def csek(context, rest_code=400, grpc_code=grpc.StatusCode.INVALID_ARGUMENT):
@@ -150,14 +154,20 @@ def already_exists(context=None):
 
 
 def range_not_satisfiable(
-    context=None, rest_code=416, grpc_code=grpc.StatusCode.OUT_OF_RANGE
+    context=None, rest_code=416, grpc_code=grpc.StatusCode.OUT_OF_RANGE, length=None
 ):
-    """Error returned when request range is not satisfiable."""
+    """Error returned when request range is not satisfiable.
+
+    Includes a `Content-Range: bytes */<length>` header when length is provided,
+    matching the recommendation behavior per RFC 7233.
+    """
+    headers = {"Content-Range": "bytes */%d" % length} if length is not None else None
     generic(
         _simple_json_error("request range not satisfiable"),
         rest_code,
         grpc_code,
         context,
+        headers=headers,
     )
 
 

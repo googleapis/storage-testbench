@@ -72,6 +72,16 @@ class TestTestbenchObjectUpload(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.decode("utf-8"), payload)
 
+        response = self.client.get(
+            "/download/storage/v1/b/bucket-name/o/zebra",
+            query_string={"alt": "media"},
+            headers={"range": "bytes=%d-" % len(payload)},
+        )
+        self.assertEqual(response.status_code, 416)
+        self.assertEqual(
+            response.headers.get("Content-Range"), "bytes */%d" % len(payload)
+        )
+
     def test_upload_multipart(self):
         media = "How vexingly quick daft zebras jump!"
         boundary, payload = format_multipart_upload({}, media)
