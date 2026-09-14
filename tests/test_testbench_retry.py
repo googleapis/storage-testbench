@@ -1151,6 +1151,117 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         elapsed = time.perf_counter() - start_time
         self.assertGreater(elapsed, 1)
 
+    def test_grpc_retry_stall_write_after_bytes(self):
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": ["stall-for-1s-after-250K"]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", id),)
+        )
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name-stall",
+                        bucket="projects/_/buckets/bucket-name",
+                    )
+                )
+            ),
+            context=context,
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        content = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        r1 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+        start_time = time.perf_counter()
+        _ = self.grpc.WriteObject([r1], context)
+        elapsed = time.perf_counter() - start_time
+        self.assertGreater(elapsed, 1)
+
+        # Instruction consumed; finishing write should be fast.
+        r2 = storage_pb2.WriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=len(content),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=b"", crc32c=crc32c.crc32c(b"")
+            ),
+            finish_write=True,
+        )
+        start_time = time.perf_counter()
+        _ = self.grpc.WriteObject([r2], context)
+        elapsed = time.perf_counter() - start_time
+        self.assertLess(elapsed, 1)
+
+    def test_grpc_retry_stall_bidiwrite_after_bytes(self):
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": ["stall-for-1s-after-250K"]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+        id = create_rest.get("id")
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", id),)
+        )
+        start = self.grpc.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name-bidi-stall",
+                        bucket="projects/_/buckets/bucket-name",
+                    )
+                )
+            ),
+            context=context,
+        )
+        self.assertIsNotNone(start.upload_id)
+
+        content = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=start.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=content, crc32c=crc32c.crc32c(content)
+            ),
+            finish_write=False,
+        )
+
+        start_time = time.perf_counter()
+        _ = list(self.grpc.BidiWriteObject([r1], context))
+        elapsed = time.perf_counter() - start_time
+        self.assertGreater(elapsed, 1)
+
     def test_grpc_retry_broken_stream(self):
         # Use the XML API to inject an object with some data.
         media = self._create_block(2 * UPLOAD_QUANTUM)
