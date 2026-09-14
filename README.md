@@ -274,7 +274,7 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | return-broken-stream                      | [HTTP] Testbench will fail after a few downloaded bytes <br> [GRPC] Testbench will fail with `UNAVAILABLE` after a few downloaded bytes
 | return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
 | return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
-| stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T second after reading YKiB of downloaded/uploaded data, e.g. stall-for-10s-after-12K stalls after reading/writing 12KiB of data <br> [GRPC] Not supported
+| stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T second after reading YKiB of downloaded/uploaded data, e.g. stall-for-10s-after-12K stalls after reading/writing 12KiB of data <br> [GRPC] Testbench will stall for T second after reading/writing YKiB of downloaded/uploaded data (Supported for `storage.objects.get` and `storage.objects.insert`)
 | redirect-send-token-T                     | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
 | redirect-send-handle-and-token-T          | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
 | return-X-if-dp-enforced                   | [HTTP] Unsupported [GRPC] Testbench will fail with the equivalent gRPC error to the HTTP code provided for X, but only if DirectPath is enforced.

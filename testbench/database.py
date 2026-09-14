@@ -755,7 +755,9 @@ class Database:
 
     def has_instructions_retry_test(self, retry_test_id, method, transport="HTTP"):
         with self._retry_tests_lock:
-            retry_test = self.get_retry_test(retry_test_id)
+            retry_test = self._retry_tests.get(retry_test_id, None)
+            if retry_test is None:
+                return False
             # Add validation for request transport as well.
             if (len(retry_test["instructions"].get(method, [])) > 0) and retry_test[
                 "transport"

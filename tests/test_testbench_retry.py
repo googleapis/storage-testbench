@@ -1062,6 +1062,95 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             "Injected 'socket closed, connection reset by peer' fault",
         )
 
+    def test_grpc_retry_stall_read_after_bytes(self):
+        media = self._create_block(2 * UPLOAD_QUANTUM)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["stall-for-1s-after-128K"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+
+        start_time = time.perf_counter()
+        response = self.grpc.ReadObject(
+            storage_pb2.ReadObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="512k.txt"
+            ),
+            context,
+        )
+        list(response)
+        elapsed = time.perf_counter() - start_time
+        self.assertGreater(elapsed, 1)
+
+    def test_grpc_bidiread_retry_stall_after_bytes(self):
+        media = self._create_block(5 * 1024 * 1024)
+        response = self.rest_client.put(
+            "/bucket-name/512k.txt",
+            content_type="text/plain",
+            data=media,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": ["stall-for-1s-after-256K"]
+                    },
+                    "transport": "GRPC",
+                },
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        create_rest = json.loads(response.data)
+        self.assertIn("id", create_rest)
+
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", create_rest.get("id")),)
+        )
+
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="512k.txt",
+            ),
+            read_ranges=[
+                storage_pb2.ReadRange(
+                    read_offset=0,
+                    read_length=1 * 1024 * 1024,
+                    read_id=1,
+                ),
+            ],
+        )
+
+        start_time = time.perf_counter()
+        response = self.grpc.BidiReadObject([r1], context)
+        list(response)
+        elapsed = time.perf_counter() - start_time
+        self.assertGreater(elapsed, 1)
+
     def test_grpc_retry_broken_stream(self):
         # Use the XML API to inject an object with some data.
         media = self._create_block(2 * UPLOAD_QUANTUM)
