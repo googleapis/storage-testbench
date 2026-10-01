@@ -288,10 +288,7 @@ class Upload(types.SimpleNamespace):
                     after_bytes,
                     test_id=test_id,
                 )
-                if (
-                    context is not None
-                    and getattr(context, "is_active", lambda: True)() == False
-                ):
+                if context is not None and getattr(context, "is_active", lambda: True)() == False:
                     return None, False
 
             with upload.lock:
@@ -648,10 +645,7 @@ class Upload(types.SimpleNamespace):
                         after_bytes,
                         test_id=test_id,
                     )
-                    if (
-                        context is not None
-                        and getattr(context, "is_active", lambda: True)() == False
-                    ):
+                    if context is not None and getattr(context, "is_active", lambda: True)() == False:
                         break
 
                 # Currently, the testbench will always checkpoint and flush data for testing purposes,
