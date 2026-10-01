@@ -1410,6 +1410,117 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         blob = self.db.get_object("bucket-name", "object-stall-below")
         self.assertEqual(blob.media, chunk * 2)
 
+    def test_grpc_retry_stall_write_last_in_instruction_list(self):
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.insert": [
+                            "return-503",
+                            "stall-for-1s-after-250K",
+                        ]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        test_id = json.loads(response.data).get("id")
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", test_id),)
+        )
+        # Like a real ServicerContext, abort() must terminate the RPC.
+        context.abort = unittest.mock.MagicMock(side_effect=RpcError())
+        chunk = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        with unittest.mock.patch("testbench.common.time.sleep") as sleep:
+            # The first insert call (StartResumableWrite) consumes "return-503".
+            with self.assertRaises(RpcError):
+                self._start_resumable_write("object-stall-last", context)
+            context.abort.assert_called_once()
+            sleep.assert_not_called()
+            # The client retries; the stall is now at the head of the queue.
+            upload_id = self._start_resumable_write("object-stall-last", context)
+            sleep.assert_not_called()
+            _ = self.grpc.WriteObject(
+                [
+                    storage_pb2.WriteObjectRequest(
+                        upload_id=upload_id,
+                        write_offset=0,
+                        checksummed_data=self._checksummed(chunk),
+                        finish_write=True,
+                    )
+                ],
+                context,
+            )
+            sleep.assert_called_once_with(1)
+        self.assertFalse(
+            self.db.has_instructions_retry_test(
+                test_id, "storage.objects.insert", transport="GRPC"
+            )
+        )
+        blob = self.db.get_object("bucket-name", "object-stall-last")
+        self.assertEqual(blob.media, chunk)
+
+    def test_grpc_retry_stall_bidiwrite_on_final_message(self):
+        test_id, context = self._create_grpc_insert_retry_test(
+            "stall-for-1s-after-300K"
+        )
+        upload_id = self._start_resumable_write("object-stall-final-msg", context)
+        chunk = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        requests = [
+            storage_pb2.BidiWriteObjectRequest(
+                upload_id=upload_id,
+                write_offset=0,
+                checksummed_data=self._checksummed(chunk),
+            ),
+            # The final message (finish_write=True) is the one crossing 300K.
+            storage_pb2.BidiWriteObjectRequest(
+                write_offset=len(chunk),
+                checksummed_data=self._checksummed(chunk),
+                finish_write=True,
+            ),
+        ]
+        with unittest.mock.patch("testbench.common.time.sleep") as sleep:
+            _ = list(self.grpc.BidiWriteObject(requests, context))
+        sleep.assert_called_once_with(1)
+        self.assertFalse(
+            self.db.has_instructions_retry_test(
+                test_id, "storage.objects.insert", transport="GRPC"
+            )
+        )
+        blob = self.db.get_object("bucket-name", "object-stall-final-msg")
+        self.assertEqual(blob.media, chunk * 2)
+
+    def test_grpc_retry_stall_write_threshold_equals_object_size(self):
+        # The stall fires only when the threshold is crossed (strictly exceeded),
+        # matching the HTTP behavior: a 256K upload never crosses 256K.
+        test_id, context = self._create_grpc_insert_retry_test(
+            "stall-for-1s-after-256K"
+        )
+        upload_id = self._start_resumable_write("object-stall-boundary", context)
+        chunk = self._create_block(UPLOAD_QUANTUM).encode("utf-8")
+        self.assertEqual(len(chunk), 256 * 1024)
+        with unittest.mock.patch("testbench.common.time.sleep") as sleep:
+            _ = self.grpc.WriteObject(
+                [
+                    storage_pb2.WriteObjectRequest(
+                        upload_id=upload_id,
+                        write_offset=0,
+                        checksummed_data=self._checksummed(chunk),
+                        finish_write=True,
+                    )
+                ],
+                context,
+            )
+            sleep.assert_not_called()
+        self.assertTrue(
+            self.db.has_instructions_retry_test(
+                test_id, "storage.objects.insert", transport="GRPC"
+            )
+        )
+
     def test_grpc_retry_broken_stream(self):
         # Use the XML API to inject an object with some data.
         media = self._create_block(2 * UPLOAD_QUANTUM)
