@@ -46,7 +46,6 @@ class Upload(types.SimpleNamespace):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.lock = __import__("threading").RLock()
 
     @classmethod
     def init(cls, request, metadata, bucket, location, upload_id):
@@ -235,21 +234,20 @@ class Upload(types.SimpleNamespace):
             # The testbench should ignore any request bytes that have already been persisted,
             # thus we validate write_offset against persisted_size.
             # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-            with upload.lock:
-                if request.write_offset < len(upload.media):
-                    range_start = len(upload.media) - request.write_offset
-                    content = testbench.common.partial_media(
-                        content, range_end=len(content), range_start=range_start
-                    )
-                if request.write_offset > len(upload.media):
-                    context.abort(
-                        grpc.StatusCode.OUT_OF_RANGE,
-                        "Write offset %d does not match expected %d"
-                        % (
-                            request.write_offset,
-                            len(upload.media),
-                        ),
-                    )
+            if request.write_offset < len(upload.media):
+                range_start = len(upload.media) - request.write_offset
+                content = testbench.common.partial_media(
+                    content, range_end=len(content), range_start=range_start
+                )
+            if request.write_offset > len(upload.media):
+                context.abort(
+                    grpc.StatusCode.OUT_OF_RANGE,
+                    "Write offset %d does not match expected %d"
+                    % (
+                        request.write_offset,
+                        len(upload.media),
+                    ),
+                )
 
             # Handle retry test return-X-after-YK failures if applicable.
             (
@@ -288,13 +286,10 @@ class Upload(types.SimpleNamespace):
                     after_bytes,
                     test_id=test_id,
                 )
-                if context is not None and getattr(context, "is_active", lambda: True)() == False:
-                    return None, False
 
-            with upload.lock:
-                upload.media += content
-                if request.finish_write:
-                    upload.complete = True
+            upload.media += content
+            if request.finish_write:
+                upload.complete = True
 
         if upload is None:
             testbench.error.invalid("Upload missing a first_message field", context)
@@ -645,14 +640,11 @@ class Upload(types.SimpleNamespace):
                         after_bytes,
                         test_id=test_id,
                     )
-                    if context is not None and getattr(context, "is_active", lambda: True)() == False:
-                        break
 
                 # Currently, the testbench will always checkpoint and flush data for testing purposes,
                 # instead of the 15 seconds interval used in the GCS server.
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
-                with upload.lock:
-                    upload.media += content
+                upload.media += content
 
             persisted_crc32c = crc32c.crc32c(upload.media)
 
