@@ -936,7 +936,10 @@ def gen_retry_test_decorator(db):
 def get_stall_uploads_after_bytes(database, request, context=None, transport="HTTP"):
     """Retrieve stall time and #bytes corresponding to uploads from retry test instructions."""
     method = "storage.objects.insert"
-    test_id = request.headers.get("x-retry-test-id", None)
+    if context is not None:
+        test_id = get_retry_test_id_from_context(context)
+    else:
+        test_id = request.headers.get("x-retry-test-id", None)
     if not test_id:
         return 0, 0, ""
     next_instruction = None
@@ -999,9 +1002,14 @@ def handle_stall_uploads_after_bytes(
     e.g. We are uploading 120K of data then, stall-2s-after-100K will stall the request.
     """
     if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
+        should_stall = True
         if test_id:
-            database.dequeue_next_instruction(test_id, "storage.objects.insert")
-        time.sleep(stall_time)
+            should_stall = (
+                database.dequeue_next_instruction(test_id, "storage.objects.insert")
+                is not None
+            )
+        if should_stall:
+            time.sleep(stall_time)
 
 
 def handle_retry_uploads_error_after_bytes(

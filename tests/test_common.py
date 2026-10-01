@@ -1255,6 +1255,43 @@ class TestCommonUtils(unittest.TestCase):
         testbench.common.handle_gzip_request(request)
         self.assertEqual(request.data, payload)
 
+    def test_handle_stall_uploads_after_bytes(self):
+        db = unittest.mock.Mock()
+        db.dequeue_next_instruction.return_value = "stall-for-2s-after-100K"
+        upload = types.SimpleNamespace(media=b"a" * 90 * 1024)
+        with unittest.mock.patch("time.sleep") as sleep:
+            # This chunk crosses the 100K threshold: consume the instruction and stall.
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload, b"b" * 20 * 1024, db, 2, 100 * 1024, test_id="test-id"
+            )
+            db.dequeue_next_instruction.assert_called_once_with(
+                "test-id", "storage.objects.insert"
+            )
+            sleep.assert_called_once_with(2)
+
+    def test_handle_stall_uploads_after_bytes_below_threshold(self):
+        db = unittest.mock.Mock()
+        upload = types.SimpleNamespace(media=b"a" * 10 * 1024)
+        with unittest.mock.patch("time.sleep") as sleep:
+            # The chunk stays below the threshold: neither dequeue nor stall.
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload, b"b" * 20 * 1024, db, 2, 100 * 1024, test_id="test-id"
+            )
+            db.dequeue_next_instruction.assert_not_called()
+            sleep.assert_not_called()
+
+    def test_handle_stall_uploads_after_bytes_already_consumed(self):
+        db = unittest.mock.Mock()
+        # Another stream already dequeued the instruction.
+        db.dequeue_next_instruction.return_value = None
+        upload = types.SimpleNamespace(media=b"a" * 90 * 1024)
+        with unittest.mock.patch("time.sleep") as sleep:
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload, b"b" * 20 * 1024, db, 2, 100 * 1024, test_id="test-id"
+            )
+            db.dequeue_next_instruction.assert_called_once()
+            sleep.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

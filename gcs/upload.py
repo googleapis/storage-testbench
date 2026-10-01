@@ -269,6 +269,24 @@ class Upload(types.SimpleNamespace):
                     test_id=test_id,
                 )
 
+            # Handle retry test stall-for-Xs-after-YK instructions if applicable.
+            (
+                stall_time,
+                after_bytes,
+                test_id,
+            ) = testbench.common.get_stall_uploads_after_bytes(
+                db, request, context=context, transport="GRPC"
+            )
+            if stall_time:
+                testbench.common.handle_stall_uploads_after_bytes(
+                    upload,
+                    content,
+                    db,
+                    stall_time,
+                    after_bytes,
+                    test_id=test_id,
+                )
+
             upload.media += content
             if request.finish_write:
                 upload.complete = True
@@ -601,6 +619,24 @@ class Upload(types.SimpleNamespace):
                         content,
                         db,
                         rest_code,
+                        after_bytes,
+                        test_id=test_id,
+                    )
+
+                # Handle retry test stall-for-Xs-after-YK instructions if applicable.
+                (
+                    stall_time,
+                    after_bytes,
+                    test_id,
+                ) = testbench.common.get_stall_uploads_after_bytes(
+                    db, request, context=context, transport="GRPC"
+                )
+                if stall_time:
+                    testbench.common.handle_stall_uploads_after_bytes(
+                        upload,
+                        content,
+                        db,
+                        stall_time,
                         after_bytes,
                         test_id=test_id,
                     )
