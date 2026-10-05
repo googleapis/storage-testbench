@@ -1292,6 +1292,48 @@ class TestCommonUtils(unittest.TestCase):
             db.dequeue_next_instruction.assert_called_once()
             sleep.assert_not_called()
 
+    def test_handle_stall_uploads_after_bytes_grpc_active(self):
+        db = unittest.mock.Mock()
+        db.dequeue_next_instruction.return_value = "stall-for-2s-after-100K"
+        upload = types.SimpleNamespace(media=b"a" * 90 * 1024)
+        context = self.mock_context()
+        context.is_active.return_value = True
+        with unittest.mock.patch("time.sleep") as sleep:
+            # The RPC is still active after the stall: do not abort.
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload,
+                b"b" * 20 * 1024,
+                db,
+                2,
+                100 * 1024,
+                test_id="test-id",
+                context=context,
+            )
+            sleep.assert_called_once_with(2)
+            context.abort.assert_not_called()
+
+    def test_handle_stall_uploads_after_bytes_grpc_cancelled(self):
+        db = unittest.mock.Mock()
+        db.dequeue_next_instruction.return_value = "stall-for-2s-after-100K"
+        upload = types.SimpleNamespace(media=b"a" * 90 * 1024)
+        context = self.mock_context()
+        context.is_active.return_value = False
+        with unittest.mock.patch("time.sleep") as sleep:
+            # The client cancelled during the stall: abort the RPC.
+            testbench.common.handle_stall_uploads_after_bytes(
+                upload,
+                b"b" * 20 * 1024,
+                db,
+                2,
+                100 * 1024,
+                test_id="test-id",
+                context=context,
+            )
+            sleep.assert_called_once_with(2)
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.CANCELLED, unittest.mock.ANY
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
