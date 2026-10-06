@@ -285,6 +285,7 @@ class Upload(types.SimpleNamespace):
                     stall_time,
                     after_bytes,
                     test_id=test_id,
+                    context=context,
                 )
 
             upload.media += content
@@ -639,6 +640,7 @@ class Upload(types.SimpleNamespace):
                         stall_time,
                         after_bytes,
                         test_id=test_id,
+                        context=context,
                     )
 
                 # Currently, the testbench will always checkpoint and flush data for testing purposes,

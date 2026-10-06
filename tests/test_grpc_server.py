@@ -20,6 +20,7 @@ import collections
 import datetime
 import json
 import os
+import threading
 import time
 import unittest
 import unittest.mock
@@ -1892,6 +1893,64 @@ class TestGrpc(unittest.TestCase):
         self.assertIsNotNone(start.upload_id)
         self.assertNotEqual(start.upload_id, "")
         server.stop(grace=0)
+
+    def test_bidi_write_object_stall_cancelled_does_not_append(self):
+        # A client that cancels a stalled BidiWriteObject stream and moves on
+        # must not have the stalled data applied when the stall ends.
+        self.db.insert_supported_methods(["storage.objects.insert"])
+        retry_test = self.db.insert_retry_test(
+            {"storage.objects.insert": ["stall-for-1s-after-0K"]}, transport="GRPC"
+        )
+        port, server = testbench.grpc_server.run(0, self.db)
+        self.addCleanup(server.stop, grace=0)
+        stub = storage_pb2_grpc.StorageStub(
+            grpc.insecure_channel("localhost:%d" % port)
+        )
+        start = stub.StartResumableWrite(
+            storage_pb2.StartResumableWriteRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name="object-name", bucket="projects/_/buckets/bucket-name"
+                    )
+                )
+            ),
+        )
+
+        content = b"x" * 1024
+        release = threading.Event()
+
+        def requests():
+            yield storage_pb2.BidiWriteObjectRequest(
+                upload_id=start.upload_id,
+                write_offset=0,
+                checksummed_data=storage_pb2.ChecksummedData(
+                    content=content, crc32c=crc32c.crc32c(content)
+                ),
+            )
+            # Keep the stream open, like a client waiting on the stalled server.
+            release.wait()
+
+        call = stub.BidiWriteObject(
+            requests(), metadata=(("x-retry-test-id", retry_test["id"]),)
+        )
+        self.addCleanup(release.set)
+
+        # The server dequeues the instruction right before it stalls.
+        deadline = time.monotonic() + 5
+        while self.db.get_retry_test(retry_test["id"])["instructions"][
+            "storage.objects.insert"
+        ]:
+            self.assertLess(time.monotonic(), deadline, "the server never stalled")
+            time.sleep(0.01)
+        call.cancel()
+        release.set()
+
+        # Wait past the end of the stall.
+        time.sleep(1.5)
+        status = stub.QueryWriteStatus(
+            storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id)
+        )
+        self.assertEqual(status.persisted_size, 0)
 
     def test_echo_metadata(self):
         port, server = testbench.grpc_server.run(0, self.db, echo_metadata=True)

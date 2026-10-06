@@ -771,6 +771,49 @@ class TestHolder(unittest.TestCase):
         self.assertEqual(blob.name, "object")
         self.assertEqual(blob.bucket, "projects/_/buckets/bucket-name")
 
+    def test_process_bidi_write_grpc_stall_cancelled_does_not_append(self):
+        request = testbench.common.FakeRequest(
+            args={}, data=json.dumps({"name": "bucket-name"})
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        request = storage_pb2.StartResumableWriteRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource={"name": "object", "bucket": "projects/_/buckets/bucket-name"}
+            )
+        )
+        upload = gcs.upload.Upload.init_resumable_grpc(
+            request, bucket.metadata, self.mock_context()
+        )
+
+        line = b"The quick brown fox jumps over the lazy dog"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            upload_id=upload.upload_id,
+            write_offset=0,
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=line, crc32c=crc32c.crc32c(line)
+            ),
+        )
+        db = unittest.mock.Mock()
+        db.get_upload = unittest.mock.MagicMock(return_value=upload)
+
+        # The client cancelled the stream during the stall.
+        context = self.mock_context()
+        context.is_active.return_value = False
+        context.abort.side_effect = grpc.RpcError()
+        with unittest.mock.patch(
+            "testbench.common.get_stall_uploads_after_bytes",
+            return_value=(30, 0, ""),
+        ), unittest.mock.patch("time.sleep"):
+            streamer = gcs.upload.Upload.process_bidi_write_object_grpc(
+                db, [r1], context
+            )
+            with self.assertRaises(grpc.RpcError):
+                list(streamer)
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.CANCELLED, unittest.mock.ANY
+        )
+        self.assertEqual(upload.media, b"")
+
     def test_process_bidi_write_grpc_missing_first_message(self):
         line = b"The quick brown fox jumps over the lazy dog"
         r1 = storage_pb2.BidiWriteObjectRequest(

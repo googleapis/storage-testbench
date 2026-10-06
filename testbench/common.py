@@ -995,11 +995,16 @@ def handle_stall_uploads_after_bytes(
     stall_time,
     after_bytes,
     test_id=0,
+    context=None,
 ):
     """
     Handle stall-after-bytes instructions for resumable uploads.
     Stall happens after given value of bytes.
     e.g. We are uploading 120K of data then, stall-2s-after-100K will stall the request.
+
+    For gRPC, pass the servicer context. If the client cancels the RPC during
+    the stall, the RPC is aborted so the caller does not apply the stalled data
+    to the upload after the client has moved on.
     """
     if len(upload.media) <= after_bytes and len(upload.media) + len(data) > after_bytes:
         should_stall = True
@@ -1010,6 +1015,8 @@ def handle_stall_uploads_after_bytes(
             )
         if should_stall:
             time.sleep(stall_time)
+            if context is not None and not context.is_active():
+                context.abort(StatusCode.CANCELLED, "RPC terminated during stall")
 
 
 def handle_retry_uploads_error_after_bytes(
