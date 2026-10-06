@@ -45,9 +45,9 @@ setuptools.setup(
         "testbench/servers",
         "gcs",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     install_requires=[
-        "grpcio==1.70.0",
+        "grpcio==1.80.0",
         "grpcio-status==1.66.1",
         "grpcio-tools==1.70.0",
         "googleapis-common-protos==1.69.0",
