@@ -504,7 +504,7 @@ class Object:
         )
         # Return 416 if the requested range cannot be satisfied.
         if range_header is not None and begin >= length:
-            testbench.error.range_not_satisfiable()
+            testbench.error.range_not_satisfiable(length=length)
 
         headers = {}
         content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
