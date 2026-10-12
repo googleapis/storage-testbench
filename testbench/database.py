@@ -253,12 +253,16 @@ class Database:
             return cls.__extract_list_object_request_grpc(request)
         delimiter = request.args.get("delimiter", "")
         prefix = request.args.get("prefix", "")
-        versions = request.args.get("versions", False, type=bool)
+        # Do not use type=bool: bool("false") is True in Python, so the Go client's
+        # versions=false (and similar query flags) were treated as enabled.
+        versions = str(request.args.get("versions", "false")).lower() == "true"
         start_offset = request.args.get("startOffset", "")
         end_offset = request.args.get("endOffset")
-        include_trailing_delimiter = request.args.get("includeTrailingDelimiter", False)
+        include_trailing_delimiter = (
+            str(request.args.get("includeTrailingDelimiter", "false")).lower() == "true"
+        )
         match_glob = request.args.get("matchGlob", None)
-        soft_deleted = request.args.get("softDeleted", False)
+        soft_deleted = str(request.args.get("softDeleted", "false")).lower() == "true"
         return (
             delimiter,
             prefix,
