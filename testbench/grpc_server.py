@@ -1352,10 +1352,8 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         return layout
 
 
-def run(port, database, echo_metadata=False):
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=_GRPC_SERVER_THREAD_COUNT)
-    )
+def run(port, database, echo_metadata=False, max_workers=_GRPC_SERVER_THREAD_COUNT):
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     storage_pb2_grpc.add_StorageServicer_to_server(
         StorageServicer(database, echo_metadata), server
     )

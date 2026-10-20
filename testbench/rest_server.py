@@ -174,8 +174,15 @@ def start_grpc():
     if grpc_port == 0:
         port = flask.request.args.get("port", "0")
         echo_metadata = flask.request.args.get("echo-metadata", False)
+        # Each open gRPC stream holds a worker until it ends, so a client with several
+        # concurrent streams needs as many workers.
+        max_workers = int(
+            flask.request.args.get(
+                "max-workers", testbench.grpc_server._GRPC_SERVER_THREAD_COUNT
+            )
+        )
         grpc_port, grpc_service = testbench.grpc_server.run(
-            int(port), db, echo_metadata=echo_metadata
+            int(port), db, echo_metadata=echo_metadata, max_workers=max_workers
         )
     return str(grpc_port)
 
