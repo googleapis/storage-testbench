@@ -127,10 +127,12 @@ class TestStorageControlStall(unittest.TestCase):
                     name="projects/_/buckets/test-bucket/folders/rename-src-no-stall",
                     destination_folder_id="projects/_/buckets/test-bucket/folders/rename-dst-no-stall",
                 ),
-                verify_func=lambda self, res: self.assertEqual(
-                    res.name,
-                    "projects/_/buckets/test-bucket/folders/rename-src-no-stall",
-                ),
+                verify_func=lambda self, res: [
+                    self.assertTrue(res.done),
+                    self.assertTrue(
+                        res.response.Is(storage_control_pb2.Folder.DESCRIPTOR)
+                    ),
+                ],
             ),
             ApiTestCase(
                 name="get_storage_layout_no_stall",
@@ -230,10 +232,12 @@ class TestStorageControlStall(unittest.TestCase):
                     name="projects/_/buckets/test-bucket/folders/rename-src-stall-1s",
                     destination_folder_id="projects/_/buckets/test-bucket/folders/rename-dst-stall-1s",
                 ),
-                verify_func=lambda self, res: self.assertEqual(
-                    res.name,
-                    "projects/_/buckets/test-bucket/folders/rename-src-stall-1s",
-                ),
+                verify_func=lambda self, res: [
+                    self.assertTrue(res.done),
+                    self.assertTrue(
+                        res.response.Is(storage_control_pb2.Folder.DESCRIPTOR)
+                    ),
+                ],
             ),
             ApiTestCase(
                 name="get_storage_layout_stall_1s",
