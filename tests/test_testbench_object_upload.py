@@ -16,12 +16,17 @@
 
 """Unit test for Object Upload operations in the testbench."""
 
+import base64
+import hashlib
 import json
 import os
 import platform
 import re
 import unittest
 
+import crc32c
+
+import testbench
 from testbench import rest_server
 from tests.format_multipart_upload import format_multipart_upload
 
@@ -673,6 +678,55 @@ class TestTestbenchObjectUpload(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/download/storage/v1/b/bucket-name/o/zebra", query_string={"alt": "media"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.data.decode("utf-8"), media)
+
+    def test_upload_resumable_inject_data_error_with_final_hash(self):
+        """Mirrors the streaming uploads in the C++ client library.
+
+        The client sends the full object checksums in the `x-goog-hash` header
+        of the final chunk. The testbench should accept the (valid) checksums,
+        and only then corrupt the data, so the client can detect the mismatch.
+        """
+        media = self._create_valid_chunk()
+        response = self.client.post(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"uploadType": "resumable", "name": "zebra"},
+            content_type="application/json",
+            headers={"x-goog-emulator-instructions": "inject-upload-data-error"},
+        )
+        self.assertEqual(response.status_code, 200)
+        location = response.headers.get("location")
+        match = re.search("[&?]upload_id=([^&]+)", location)
+        self.assertIsNotNone(match, msg=location)
+        upload_id = match.group(1)
+
+        md5 = base64.b64encode(hashlib.md5(media.encode("utf-8")).digest()).decode(
+            "utf-8"
+        )
+        crc = testbench.common.rest_crc32c_from_proto(
+            crc32c.crc32c(media.encode("utf-8"))
+        )
+        response = self.client.put(
+            "/upload/storage/v1/b/bucket-name/o",
+            query_string={"upload_id": upload_id},
+            data=media,
+            headers={
+                "content-range": "bytes 0-{last:d}/{object_size:d}".format(
+                    last=len(media) - 1, object_size=len(media)
+                ),
+                "x-goog-hash": "crc32c={crc},md5={md5}".format(crc=crc, md5=md5),
+                "x-goog-emulator-instructions": "inject-upload-data-error",
+            },
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        insert_rest = json.loads(response.data)
+        self.assertNotEqual(insert_rest.get("md5Hash"), md5)
+        self.assertNotEqual(insert_rest.get("crc32c"), crc)
 
         response = self.client.get(
             "/download/storage/v1/b/bucket-name/o/zebra", query_string={"alt": "media"}

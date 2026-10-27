@@ -23,6 +23,7 @@ import json
 import unittest
 import unittest.mock
 
+import crc32c
 from google.protobuf.timestamp_pb2 import Timestamp
 from werkzeug.test import create_environ
 from werkzeug.wrappers import Request
@@ -86,6 +87,58 @@ class TestObject(unittest.TestCase):
         blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
         self.assertEqual(blob.metadata.name, "object")
         self.assertNotEqual(blob.media, b"12345678")
+
+    def test_init_and_corrupt_media_with_valid_checksums(self):
+        """Corruption is injected after validating the client checksums."""
+        media = "How vexingly quick daft zebras jump!"
+        md5 = base64.b64encode(hashlib.md5(media.encode("utf-8")).digest())
+        crc = testbench.common.rest_crc32c_from_proto(
+            crc32c.crc32c(media.encode("utf-8"))
+        )
+        boundary, payload = format_multipart_upload(
+            {"name": "object", "md5Hash": md5.decode("utf-8"), "crc32c": crc},
+            media,
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={
+                "content-type": "multipart/related; boundary=" + boundary,
+                "x-goog-emulator-instructions": "inject-upload-data-error",
+            },
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        self.assertEqual(blob.metadata.name, "object")
+        self.assertNotEqual(blob.media, media.encode("utf-8"))
+        self.assertEqual(blob.metadata.size, len(blob.media))
+        # The reported checksums match the (corrupted) stored data, and not the
+        # checksums sent by the client.
+        self.assertEqual(
+            blob.metadata.checksums.md5_hash, hashlib.md5(blob.media).digest()
+        )
+        self.assertEqual(blob.metadata.checksums.crc32c, crc32c.crc32c(blob.media))
+        self.assertNotEqual(blob.metadata.checksums.md5_hash, base64.b64decode(md5))
+
+    def test_init_and_corrupt_media_with_invalid_checksums(self):
+        """Invalid client checksums are rejected even when injecting errors."""
+        # The magic string is the MD5 hash for an empty object.
+        boundary, payload = format_multipart_upload(
+            {"name": "object", "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg=="},
+            "How vexingly quick daft zebras jump!",
+        )
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={
+                "content-type": "multipart/related; boundary=" + boundary,
+                "x-goog-emulator-instructions": "inject-upload-data-error",
+            },
+            data=payload.encode("utf-8"),
+            environ={},
+        )
+        with self.assertRaises(testbench.error.RestException) as rest:
+            gcs.object.Object.init_multipart(request, self.bucket.metadata)
+        self.assertEqual(rest.exception.code, 412)
 
     def test_init_multipart(self):
         boundary, payload = format_multipart_upload(

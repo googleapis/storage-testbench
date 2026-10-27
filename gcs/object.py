@@ -103,14 +103,13 @@ class Object:
         csek=True,
     ):
         instruction = testbench.common.extract_instruction(request, context)
-        if instruction == "inject-upload-data-error":
-            media = testbench.common.corrupt_media(media)
         timestamp = datetime.datetime.now(datetime.timezone.utc)
         metadata.bucket = bucket.name
         metadata.generation = make_generation()
         metadata.metageneration = 1
         metadata.etag = cls._metadata_etag(metadata)
-        metadata.size = len(media)
+        # Validate any client-provided checksums against the data the
+        # testbench actually received.
         actual_md5Hash = hashlib.md5(media).digest()
         actual_crc32c = crc32c.crc32c(media)
         if metadata.HasField("checksums"):
@@ -143,6 +142,17 @@ class Object:
             got_md5 = testbench.common.rest_md5_to_proto(got_md5_encoded)
             if actual_md5Hash != got_md5:
                 testbench.error.mismatch("md5", actual_md5Hash, got_md5, context)
+
+        # The "inject-upload-data-error" instruction simulates data that is
+        # corrupted *after* the service validated it, e.g., data corrupted at
+        # rest. The service accepts the upload, but stores (and reports
+        # checksums for) the corrupted data, so client libraries can verify
+        # they detect the mismatch between the computed and received checksums.
+        if instruction == "inject-upload-data-error":
+            media = testbench.common.corrupt_media(media)
+            actual_md5Hash = hashlib.md5(media).digest()
+            actual_crc32c = crc32c.crc32c(media)
+        metadata.size = len(media)
         metadata.checksums.md5_hash = actual_md5Hash
         metadata.checksums.crc32c = actual_crc32c
         metadata.create_time.FromDatetime(timestamp)
