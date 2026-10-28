@@ -393,6 +393,51 @@ class Upload(types.SimpleNamespace):
         )
 
     @classmethod
+    def _process_replayed_finalize_grpc(
+        cls, blob, request_iterator, abort_invalid_write_offset, context
+    ):
+        """Process a BidiWriteObject stream resuming a finalized appendable object.
+
+        The data is immutable: the stream may only repeat data that is already
+        part of the object, query its state, or retry `finish_write`.
+        """
+        size = len(blob.media)
+        crc = blob.metadata.checksums.crc32c
+        first_response = True
+        for request in request_iterator:
+            content = request.checksummed_data.content
+            if request.write_offset > size:
+                abort_invalid_write_offset(request.write_offset, size)
+            if request.write_offset + len(content) > size:
+                context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    "The upload is currently immutable due to a previous attempt "
+                    "to complete the write and cannot be appended anymore. "
+                    "Completing the upload may be retried by setting "
+                    "`finish_write` to true.",
+                )
+            if request.finish_write:
+                checksums = request.object_checksums
+                if checksums.HasField("crc32c") and checksums.crc32c != crc:
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "Object crc32c mismatch: server computed: '%08x', "
+                        "client provided: '%08x'." % (crc, checksums.crc32c),
+                    )
+                yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
+                return
+            if request.state_lookup or first_response:
+                first_response = False
+                yield storage_pb2.BidiWriteObjectResponse(
+                    persisted_size=size,
+                    persisted_data_checksums=storage_pb2.ObjectChecksums(crc32c=crc),
+                )
+        yield storage_pb2.BidiWriteObjectResponse(
+            persisted_size=size,
+            persisted_data_checksums=storage_pb2.ObjectChecksums(crc32c=crc),
+        )
+
+    @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
 
@@ -407,10 +452,18 @@ class Upload(types.SimpleNamespace):
             detail.Pack(err)
             status_proto = status_pb2.Status(
                 code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
+                message="The object is not available from this location.",
                 details=[detail],
             )
             context.abort_with_status(rpc_status.to_status(status_proto))
+
+        def abort_invalid_write_offset(request_offset, expected_offset):
+            context.abort(
+                grpc.StatusCode.OUT_OF_RANGE,
+                "Write request to appendable object at offset '%d', which does "
+                "not match the object's current size '%d'."
+                % (request_offset, expected_offset),
+            )
 
         # Many tests use a list as the request_iterator
         request_iterator = iter(request_iterator)
@@ -429,6 +482,7 @@ class Upload(types.SimpleNamespace):
 
         write_type = first_msg.WhichOneof("first_message")
         handle = None
+        resumed_with_handle = False
         if write_type == "upload_id":  # resumable upload
             upload = db.get_upload(first_msg.upload_id, context)
             if upload.complete:
@@ -477,8 +531,16 @@ class Upload(types.SimpleNamespace):
                 generation=first_msg.append_object_spec.generation,
                 preconditions=preconditions,
             )
-            # TODO: consider handling replayed finalizes. The real service can
-            # handle them, but for simplicity we always error in the testbench.
+            if blob.metadata.HasField("finalize_time") and write_handle is not None:
+                # Like the real service, a writer resuming with its handle can
+                # retry the finalize, e.g., if the response was lost.
+                yield from cls._process_replayed_finalize_grpc(
+                    blob,
+                    itertools.chain([first_msg], request_iterator),
+                    abort_invalid_write_offset,
+                    context,
+                )
+                return
             if blob.metadata.HasField("finalize_time"):
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
@@ -511,6 +573,7 @@ class Upload(types.SimpleNamespace):
                     grpc.StatusCode.FAILED_PRECONDITION,
                     "A different writer has become the exclusive writer of this object.",
                 )
+            resumed_with_handle = write_handle is not None
             upload = blob.upload
         else:
             testbench.error.invalid("Upload missing a first_message field", context)
@@ -683,11 +746,20 @@ class Upload(types.SimpleNamespace):
                 # The testbench should ignore any request bytes that have already been persisted,
                 # thus we validate write_offset against persisted_size.
                 # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+                # The real service requires the exact offset for appendable
+                # objects, unless the writer resumes with its write handle.
+                if is_appendable and not resumed_with_handle:
+                    if request.write_offset != len(upload.media):
+                        abort_invalid_write_offset(
+                            request.write_offset, len(upload.media)
+                        )
                 if request.write_offset < len(upload.media):
                     range_start = len(upload.media) - request.write_offset
                     content = testbench.common.partial_media(
                         content, range_end=len(content), range_start=range_start
                     )
+                if request.write_offset > len(upload.media) and is_appendable:
+                    abort_invalid_write_offset(request.write_offset, len(upload.media))
                 if request.write_offset > len(upload.media):
                     context.abort(
                         grpc.StatusCode.OUT_OF_RANGE,

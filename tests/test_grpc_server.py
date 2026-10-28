@@ -2212,12 +2212,12 @@ class TestGrpc(unittest.TestCase):
         self.assertTrue(responses[0].resource.HasField("finalize_time"))
         self.assertNotEqual(0, responses[0].resource.generation)
 
+        # Without a write handle this is a takeover, which fails.
         r2 = storage_pb2.BidiWriteObjectRequest(
             append_object_spec=storage_pb2.AppendObjectSpec(
                 bucket="projects/_/buckets/test-bucket-name",
                 object="object-name",
                 generation=responses[0].resource.generation,
-                write_handle=responses[0].write_handle,
             ),
         )
         with self.assertRaises(grpc.RpcError):
@@ -2227,6 +2227,134 @@ class TestGrpc(unittest.TestCase):
             grpc.StatusCode.FAILED_PRECONDITION,
             "Attempting to append to already-finalized object",
         )
+
+    def test_bidi_write_object_appendable_replayed_finalize(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        media = b"0123456789"
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            checksummed_data=storage_pb2.ChecksummedData(content=media),
+            flush=True,
+        )
+        responses = list(self.grpc.BidiWriteObject([r1], context=context))
+        generation = responses[0].resource.generation
+        write_handle = responses[0].write_handle
+
+        def resume(**kwargs):
+            return storage_pb2.BidiWriteObjectRequest(
+                append_object_spec=storage_pb2.AppendObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                    generation=generation,
+                    write_handle=write_handle,
+                ),
+                **kwargs,
+            )
+
+        responses = list(
+            self.grpc.BidiWriteObject([resume(finish_write=True)], context)
+        )
+        finalized = responses[-1].resource
+        self.assertTrue(finalized.HasField("finalize_time"))
+
+        # Retrying the finalize, including already persisted data, succeeds.
+        checksums = storage_pb2.ObjectChecksums(crc32c=crc32c.crc32c(media))
+        retry = resume(
+            write_offset=5,
+            checksummed_data=storage_pb2.ChecksummedData(content=media[5:]),
+        )
+        finish = storage_pb2.BidiWriteObjectRequest(
+            write_offset=10, finish_write=True, object_checksums=checksums
+        )
+        responses = list(self.grpc.BidiWriteObject([retry, finish], context))
+        self.assertEqual(len(responses), 2)
+        self.assertEqual(responses[0].persisted_size, len(media))
+        self.assertEqual(responses[1].resource, finalized)
+
+        # The object is immutable.
+        cases = [
+            (
+                resume(
+                    write_offset=10,
+                    checksummed_data=storage_pb2.ChecksummedData(content=b"a"),
+                ),
+                grpc.StatusCode.FAILED_PRECONDITION,
+                "The upload is currently immutable",
+            ),
+            (
+                resume(
+                    write_offset=11,
+                    checksummed_data=storage_pb2.ChecksummedData(content=b"a"),
+                ),
+                grpc.StatusCode.OUT_OF_RANGE,
+                "Write request to appendable object at offset '11', which "
+                "does not match the object's current size '10'.",
+            ),
+            (
+                resume(
+                    finish_write=True,
+                    object_checksums=storage_pb2.ObjectChecksums(crc32c=1),
+                ),
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Object crc32c mismatch: server computed: '%08x', "
+                "client provided: '00000001'." % crc32c.crc32c(media),
+            ),
+        ]
+        for request, code, message in cases:
+            context.abort.reset_mock()
+            with self.assertRaises(grpc.RpcError):
+                list(self.grpc.BidiWriteObject([request], context))
+            context.abort.assert_called_once()
+            self.assertEqual(context.abort.call_args.args[0], code)
+            self.assertIn(message, context.abort.call_args.args[1])
+
+    def test_bidi_write_object_appendable_exact_write_offset(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            checksummed_data=storage_pb2.ChecksummedData(content=b"0123"),
+        )
+        responses = list(self.grpc.BidiWriteObject([r1], context=context))
+        generation = responses[0].resource.generation
+        write_handle = responses[0].write_handle
+
+        def append(offset, write_handle=None):
+            return storage_pb2.BidiWriteObjectRequest(
+                append_object_spec=storage_pb2.AppendObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                    generation=generation,
+                    write_handle=write_handle,
+                ),
+                write_offset=offset,
+                checksummed_data=storage_pb2.ChecksummedData(content=b"23"),
+            )
+
+        # A takeover must write at the exact current size.
+        with self.assertRaises(grpc.RpcError):
+            list(self.grpc.BidiWriteObject([append(2)], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.OUT_OF_RANGE,
+            "Write request to appendable object at offset '2', which does not "
+            "match the object's current size '4'.",
+        )
+        # A takeover issues a new handle; resuming with it may repeat data.
+        responses = list(self.grpc.BidiWriteObject([append(4)], context))
+        write_handle = responses[0].write_handle
+        responses = list(self.grpc.BidiWriteObject([append(4, write_handle)], context))
+        self.assertEqual(responses[-1].persisted_size, 6)
 
     def test_bidi_write_object_appendable_live_generation_unfinalized(self):
         # The code depends on `context.abort()` raising an exception.
