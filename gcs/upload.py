@@ -326,6 +326,8 @@ class Upload(types.SimpleNamespace):
             context,
             upload=upload,
         )
+        # Appendable objects do not have an MD5 hash.
+        blob.metadata.checksums.md5_hash = b""
 
         def insert_if_latest_is_unfinalized(latest_blob, live_generation):
             if latest_blob is not None and not latest_blob.metadata.HasField(
@@ -499,11 +501,28 @@ class Upload(types.SimpleNamespace):
                     if handle is not None:
                         msg.write_handle.handle = handle
                         handle = None
-                    if appendable_metadata_in_first_response:
+                    if appendable_metadata_in_first_response and not msg.HasField(
+                        "resource"
+                    ):
                         obj_len = msg.persisted_size
+                        obj_crc32c = msg.persisted_data_checksums.crc32c
+                        msg.ClearField("persisted_data_checksums")
                         msg.resource.CopyFrom(upload.metadata)
                         msg.resource.size = obj_len
+                        msg.resource.ClearField("checksums")
+                        msg.resource.checksums.crc32c = obj_crc32c
             return msg
+
+        def persisted_state_response():
+            # Appendable objects only report the data persisted by a `flush`,
+            # a `finish_write`, or the close of a previous stream.
+            media = persisted_media if is_appendable else upload.media
+            return storage_pb2.BidiWriteObjectResponse(
+                persisted_size=len(media),
+                persisted_data_checksums=storage_pb2.ObjectChecksums(
+                    crc32c=crc32c.crc32c(media)
+                ),
+            )
 
         def update_upload_checksums(upload_metadata, object_checksums):
             if object_checksums is None:
@@ -526,225 +545,244 @@ class Upload(types.SimpleNamespace):
                 else:
                     upload_metadata.metadata["x_emulator_no_md5"] = "true"
 
-        for request in request_iterator:
-            if request.HasField("first_message"):
-                testbench.error.invalid("Multiple first_message", context)
+        def persist_appendable():
+            # Make the bytes written so far durable and visible to readers.
+            nonlocal blob, persisted_media
+            if len(persisted_media) == len(upload.media):
+                return
+            update_upload_checksums(upload.metadata, object_checksums)
+            media = upload.media
 
-            if request.HasField("object_checksums"):
-                # The object checksums may appear only in the first message *or* the last message, but not both
-                if not request.finish_write:
-                    testbench.error.invalid(
-                        "Object checksums can be included only in the first or last message",
-                        context,
-                    )
-                if object_checksums is not None:
-                    testbench.error.invalid(
-                        "Duplicate object checksums in upload",
-                        context,
-                    )
-                object_checksums = request.object_checksums
+            def update_appendable_blob(db_blob, unused_generation):
+                db_blob.media = media
+                db_blob.metadata.size = len(media)
+                db_blob.metadata.checksums.crc32c = crc32c.crc32c(media)
+                return db_blob
 
-            if request.finish_write:
-                return_redirect_token_finish = testbench.common.get_return_write_handle_and_redirect_token_on_finish_write(
-                    db, context
-                )
-                if return_redirect_token_finish:
-                    if handle is None:
-                        handle = str(blob.upload_gen).encode("utf-8")
-                    abort_with_redirect_error(
-                        return_redirect_token_finish,
-                        handle=handle,
-                        generation=upload.metadata.generation,
-                    )
+            blob = db.do_update_object(
+                upload.bucket.name,
+                upload.metadata.name,
+                update_fn=update_appendable_blob,
+                context=context,
+                generation=upload.metadata.generation,
+            )
+            persisted_media = media
 
-                error_code = testbench.common.get_return_error_code_on_finish_write(
+        persisted_media = b""
+        if is_appendable:
+            persisted_media = blob.media
+            # Closing a stream persists any data written but not yet flushed
+            # by that stream. Account for any such data when a new stream
+            # opens the object.
+            persist_appendable()
+
+        try:
+            for request in request_iterator:
+                if request.HasField("first_message"):
+                    testbench.error.invalid("Multiple first_message", context)
+
+                if request.HasField("object_checksums"):
+                    # The object checksums may appear only in the first message *or* the last message, but not both
+                    if not request.finish_write:
+                        testbench.error.invalid(
+                            "Object checksums can be included only in the first or last message",
+                            context,
+                        )
+                    if object_checksums is not None:
+                        testbench.error.invalid(
+                            "Duplicate object checksums in upload",
+                            context,
+                        )
+                    object_checksums = request.object_checksums
+
+                if request.finish_write:
+                    return_redirect_token_finish = testbench.common.get_return_write_handle_and_redirect_token_on_finish_write(
+                        db, context
+                    )
+                    if return_redirect_token_finish:
+                        if handle is None:
+                            handle = str(blob.upload_gen).encode("utf-8")
+                        abort_with_redirect_error(
+                            return_redirect_token_finish,
+                            handle=handle,
+                            generation=upload.metadata.generation,
+                        )
+
+                    error_code = testbench.common.get_return_error_code_on_finish_write(
+                        db, context
+                    )
+                    if error_code:
+                        grpc_status = testbench.common.http_to_grpc_status(error_code)
+                        context.abort(
+                            grpc_status,
+                            "Retry Test: Caused a %s" % str(grpc_status),
+                        )
+
+                data = request.WhichOneof("data")
+                if data == "checksummed_data":
+                    checksummed_data = request.checksummed_data
+                    content = checksummed_data.content
+                    crc32c_hash = (
+                        checksummed_data.crc32c
+                        if checksummed_data.HasField("crc32c")
+                        else None
+                    )
+                    if crc32c_hash is not None:
+                        actual_crc32c = crc32c.crc32c(content)
+                        if actual_crc32c != crc32c_hash:
+                            testbench.error.mismatch(
+                                "crc32c in checksummed data",
+                                crc32c_hash,
+                                actual_crc32c,
+                                context,
+                            )
+
+                    # The testbench should ignore any request bytes that have already been persisted,
+                    # thus we validate write_offset against persisted_size.
+                    # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+                    if request.write_offset < len(upload.media):
+                        range_start = len(upload.media) - request.write_offset
+                        content = testbench.common.partial_media(
+                            content, range_end=len(content), range_start=range_start
+                        )
+                    if request.write_offset > len(upload.media):
+                        context.abort(
+                            grpc.StatusCode.OUT_OF_RANGE,
+                            "Write offset %d does not match expected %d"
+                            % (
+                                request.write_offset,
+                                len(upload.media),
+                            ),
+                        )
+
+                    # Handle retry test return-X-after-YK failures if applicable.
+                    (
+                        rest_code,
+                        after_bytes,
+                        test_id,
+                    ) = testbench.common.get_retry_uploads_error_after_bytes(
+                        db, request, context=context, transport="GRPC"
+                    )
+                    expected_persisted_size = len(upload.media) + len(content)
+                    if rest_code:
+                        testbench.common.handle_grpc_retry_uploads_error_after_bytes(
+                            context,
+                            upload,
+                            content,
+                            db,
+                            rest_code,
+                            after_bytes,
+                            test_id=test_id,
+                        )
+
+                    # Handle retry test stall-for-Xs-after-YK instructions if applicable.
+                    (
+                        stall_time,
+                        after_bytes,
+                        test_id,
+                    ) = testbench.common.get_stall_uploads_after_bytes(
+                        db, request, context=context, transport="GRPC"
+                    )
+                    if stall_time:
+                        testbench.common.handle_stall_uploads_after_bytes(
+                            upload,
+                            content,
+                            db,
+                            stall_time,
+                            after_bytes,
+                            test_id=test_id,
+                            context=context,
+                        )
+
+                    # Currently, the testbench will always checkpoint and flush data for testing purposes,
+                    # instead of the 15 seconds interval used in the GCS server.
+                    # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
+                    upload.media += content
+
+                elif data is not None:
+                    testbench.error.invalid("Invalid data field in upload", context)
+
+                # Like the real service, data written to appendable objects is only
+                # persisted when the client flushes, finalizes, or closes the stream.
+                # TODO(#720): Update update_time in object metadata.
+                if is_appendable and request.flush and not request.finish_write:
+                    persist_appendable()
+
+                if request.finish_write:
+                    upload.complete = True
+                    break
+                elif request.state_lookup or (first_response and is_appendable):
+                    # For uploads not yet completed, yield response with persisted_size.
+                    # For uploads that are complete, finalize the upload outside the request loop by
+                    # storing full object checksums, creating new object, and yielding response with
+                    # object metadata.
+                    yield response(persisted_state_response())
+
+            if not upload.complete:
+                error_code = testbench.common.get_return_error_code_on_half_close(
                     db, context
                 )
                 if error_code:
                     grpc_status = testbench.common.http_to_grpc_status(error_code)
                     context.abort(
                         grpc_status,
-                        "Retry Test: Caused a %s" % str(grpc_status),
+                        "Retry Test: Caused a %s on half-close" % str(grpc_status),
                     )
 
-            data = request.WhichOneof("data")
-            if data == "checksummed_data":
-                checksummed_data = request.checksummed_data
-                content = checksummed_data.content
-                crc32c_hash = (
-                    checksummed_data.crc32c
-                    if checksummed_data.HasField("crc32c")
-                    else None
-                )
-                if crc32c_hash is not None:
-                    actual_crc32c = crc32c.crc32c(content)
-                    if actual_crc32c != crc32c_hash:
-                        testbench.error.mismatch(
-                            "crc32c in checksummed data",
-                            crc32c_hash,
-                            actual_crc32c,
-                            context,
-                        )
+            # Update metadata checksums fields on the upload instance.
+            update_upload_checksums(upload.metadata, object_checksums)
 
-                # The testbench should ignore any request bytes that have already been persisted,
-                # thus we validate write_offset against persisted_size.
-                # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
-                if request.write_offset < len(upload.media):
-                    range_start = len(upload.media) - request.write_offset
-                    content = testbench.common.partial_media(
-                        content, range_end=len(content), range_start=range_start
-                    )
-                if request.write_offset > len(upload.media):
-                    context.abort(
-                        grpc.StatusCode.OUT_OF_RANGE,
-                        "Write offset %d does not match expected %d"
-                        % (
-                            request.write_offset,
-                            len(upload.media),
-                        ),
-                    )
-
-                # Handle retry test return-X-after-YK failures if applicable.
-                (
-                    rest_code,
-                    after_bytes,
-                    test_id,
-                ) = testbench.common.get_retry_uploads_error_after_bytes(
-                    db, request, context=context, transport="GRPC"
-                )
-                expected_persisted_size = len(upload.media) + len(content)
-                if rest_code:
-                    testbench.common.handle_grpc_retry_uploads_error_after_bytes(
-                        context,
-                        upload,
-                        content,
-                        db,
-                        rest_code,
-                        after_bytes,
-                        test_id=test_id,
-                    )
-
-                # Handle retry test stall-for-Xs-after-YK instructions if applicable.
-                (
-                    stall_time,
-                    after_bytes,
-                    test_id,
-                ) = testbench.common.get_stall_uploads_after_bytes(
-                    db, request, context=context, transport="GRPC"
-                )
-                if stall_time:
-                    testbench.common.handle_stall_uploads_after_bytes(
-                        upload,
-                        content,
-                        db,
-                        stall_time,
-                        after_bytes,
-                        test_id=test_id,
-                        context=context,
-                    )
-
-                # Currently, the testbench will always checkpoint and flush data for testing purposes,
-                # instead of the 15 seconds interval used in the GCS server.
-                # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
-                upload.media += content
-
-            persisted_crc32c = crc32c.crc32c(upload.media)
-
-            if data == "checksummed_data":
-                # Update appendable blob size and media here, as part of #720.
-                # TODO(#720): (a) Update crc and update_time in object metadata.
-                # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
+            # Create a new object when the write is completed.
+            if upload.complete:
                 if is_appendable:
 
-                    update_upload_checksums(upload.metadata, object_checksums)
-
-                    def update_appendable_blob(blob, unused_generation):
+                    def finalize_blob(blob, unused_generation):
                         blob.media = upload.media
+                        blob.metadata.finalize_time.FromDatetime(
+                            datetime.datetime.now(datetime.timezone.utc)
+                        )
                         blob.metadata.size = len(upload.media)
-                        blob.metadata.checksums.crc32c = persisted_crc32c
+                        blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
+                        blob.upload = None
+                        blob.upload_gen = 0
                         return blob
 
                     blob = db.do_update_object(
                         upload.bucket.name,
                         upload.metadata.name,
-                        update_fn=update_appendable_blob,
+                        update_fn=finalize_blob,
                         context=context,
                         generation=upload.metadata.generation,
                     )
-            elif data is not None:
-                testbench.error.invalid("Invalid data field in upload", context)
-
-            if request.finish_write:
-                upload.complete = True
-                break
-            elif request.state_lookup or (first_response and is_appendable):
-                # For uploads not yet completed, yield response with persisted_size.
-                # For uploads that are complete, finalize the upload outside the request loop by
-                # storing full object checksums, creating new object, and yielding response with
-                # object metadata.
+                else:
+                    blob, _ = gcs.object.Object.init(
+                        upload.request,
+                        upload.metadata,
+                        upload.media,
+                        upload.bucket,
+                        False,
+                        context,
+                    )
+                    upload.blob = blob
+                    db.insert_object(
+                        upload.bucket.name,
+                        blob,
+                        context=context,
+                        preconditions=upload.preconditions,
+                    )
                 yield response(
-                    storage_pb2.BidiWriteObjectResponse(
-                        persisted_size=len(upload.media),
-                        persisted_data_checksums=storage_pb2.ObjectChecksums(
-                            crc32c=persisted_crc32c
-                        ),
-                    )
+                    storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
                 )
-
-        if not upload.complete:
-            error_code = testbench.common.get_return_error_code_on_half_close(
-                db, context
-            )
-            if error_code:
-                grpc_status = testbench.common.http_to_grpc_status(error_code)
-                context.abort(
-                    grpc_status,
-                    "Retry Test: Caused a %s on half-close" % str(grpc_status),
-                )
-
-        # Update metadata checksums fields on the upload instance.
-        update_upload_checksums(upload.metadata, object_checksums)
-
-        # Create a new object when the write is completed.
-        if upload.complete:
-            if is_appendable:
-
-                def finalize_blob(blob, unused_generation):
-                    blob.media = upload.media
-                    blob.metadata.finalize_time.FromDatetime(
-                        datetime.datetime.now(datetime.timezone.utc)
-                    )
-                    blob.metadata.size = len(upload.media)
-                    blob.upload = None
-                    blob.upload_gen = 0
-                    return blob
-
-                blob = db.do_update_object(
-                    upload.bucket.name,
-                    upload.metadata.name,
-                    update_fn=finalize_blob,
-                    context=context,
-                    generation=upload.metadata.generation,
-                )
-            else:
-                blob, _ = gcs.object.Object.init(
-                    upload.request,
-                    upload.metadata,
-                    upload.media,
-                    upload.bucket,
-                    False,
-                    context,
-                )
-                upload.blob = blob
-                db.insert_object(
-                    upload.bucket.name,
-                    blob,
-                    context=context,
-                    preconditions=upload.preconditions,
-                )
-            yield response(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
-        elif not is_resumable and not is_appendable:
-            testbench.error.missing("finish_write in request", context)
+            elif is_appendable:
+                # The client closed the stream without finalizing. The service
+                # persists the written data and responds with the persisted size.
+                persist_appendable()
+                yield response(persisted_state_response())
+            elif not is_resumable:
+                testbench.error.missing("finish_write in request", context)
+        finally:
+            if is_appendable and not upload.complete:
+                persist_appendable()
 
     def resumable_status_rest(self, override_308=False):
         response = flask.make_response()
