@@ -165,6 +165,10 @@ Testbench will fail after sending 1024*1024 bytes.
 Set request headers with `x-goog-emulator-instructions: return-corrupted-data`.
 Testbench will return corrupted data.
 
+In gRPC, use the Retry Test API with `return-corrupted-data` for
+`storage.objects.get`. `BidiReadObject` corrupts the next chunk with data, but
+keeps the CRC32C of the original data, so clients see a checksum mismatch.
+
 ### stall-always
 
 Set request headers with `x-goog-emulator-instructions: stall-always`.
