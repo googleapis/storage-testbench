@@ -843,6 +843,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         stall_time = 0
         stall_after_bytes = 0
         method = "storage.objects.get"
+        testbench.common.consume_expect_redirect_token(
+            self.db, context, method, routing_token=obj_spec.routing_token
+        )
         if test_id and self.db.has_instructions_retry_test(
             test_id, method, transport="GRPC"
         ):
@@ -878,12 +881,13 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             detail = any_pb2.Any()
             detail.Pack(
                 storage_pb2.BidiReadObjectRedirectedError(
-                    routing_token=return_redirect_token
+                    read_handle=storage_pb2.BidiReadHandle(handle=read_handle),
+                    routing_token=return_redirect_token,
                 )
             )
             status_proto = status_pb2.Status(
                 code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
+                message="The object is not available from this location.",
                 details=[detail],
             )
             context.abort_with_status(rpc_status.to_status(status_proto))
@@ -1287,17 +1291,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
     @retry_test(method="storage.objects.insert")
     def BidiWriteObject(self, request_iterator, context):
-        expected_redirect_token = testbench.common.get_expect_redirect_token(
-            self.db, context
+        testbench.common.consume_expect_redirect_token(
+            self.db, context, "storage.objects.insert", routing_token=""
         )
-        if expected_redirect_token:
-            request_params = testbench.common.get_context_request_params(context)
-            if (
-                request_params
-                and f"routing_token={expected_redirect_token}" in request_params
-            ):
-                test_id = testbench.common.get_retry_test_id_from_context(context)
-                self.db.dequeue_next_instruction(test_id, "storage.objects.insert")
 
         return gcs.upload.Upload.process_bidi_write_object_grpc(
             self.db, request_iterator, context

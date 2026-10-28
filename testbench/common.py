@@ -25,6 +25,7 @@ import socket
 import struct
 import time
 import types
+import urllib.parse
 from functools import wraps
 
 import flask
@@ -52,14 +53,14 @@ retry_return_broken_stream_after_bytes = re.compile(
     r"return-broken-stream-after-([0-9]+)K$"
 )
 retry_stall_after_bytes = re.compile(r"stall-for-([0-9]+)s-after-([0-9]+)K$")
-retry_return_redirection_token = re.compile(r"redirect-send-token-([a-z\-]+)$")
+retry_return_redirection_token = re.compile(r"redirect-send-token-([a-z0-9\-]+)$")
 retry_return_handle_and_redirection_token = re.compile(
-    r"redirect-send-handle-and-token-([a-z\-]+)$"
+    r"redirect-send-handle-and-token-([a-z0-9\-]+)$"
 )
 retry_return_handle_and_redirection_token_on_finish_write = re.compile(
-    r"redirect-send-handle-and-token-([a-z\-]+)-on-finish-write$"
+    r"redirect-send-handle-and-token-([a-z0-9\-]+)-on-finish-write$"
 )
-retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z\-]+)$")
+retry_expect_redirection_token = re.compile(r"redirect-expect-token-([a-z0-9\-]+)$")
 retry_return_error_if_dp_enforced = re.compile(r"return-([0-9]+)-if-dp-enforced$")
 
 # A retry instruction to return a specific set of unreachable buckets.
@@ -1187,14 +1188,30 @@ def get_return_read_handle_and_redirect_token(db, context):
     )
 
 
-def get_expect_redirect_token(db, context):
+def get_expect_redirect_token(db, context, method):
     return _get_grpc_instruction_match(
         db,
         context,
-        "storage.objects.insert",
+        method,
         retry_expect_redirection_token,
         dequeue=False,
     )
+
+
+def consume_expect_redirect_token(db, context, method, routing_token):
+    """Consumes a `redirect-expect-token-T` instruction if the RPC sends `T`.
+
+    The token may be sent in the `x-goog-request-params` metadata, or in
+    `read_object_spec.routing_token` on the first request.
+    """
+    expected = get_expect_redirect_token(db, context, method)
+    if not expected:
+        return
+    request_params = get_context_request_params(context) or ""
+    params = urllib.parse.parse_qs(request_params)
+    if expected in params.get("routing_token", []) or expected == routing_token:
+        test_id = get_retry_test_id_from_context(context)
+        db.dequeue_next_instruction(test_id, method)
 
 
 def handle_gzip_request(request):
