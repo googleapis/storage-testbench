@@ -1015,8 +1015,25 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             read_id = range.read_id
 
             if start > read_end or range.read_length < 0:
+                # Use the same messages as the real service.
+                object_name = "%s/%s#%d" % (
+                    testbench.common.bucket_name_from_proto(obj_spec.bucket),
+                    metadata.name,
+                    metadata.generation,
+                )
+                if range.read_length < 0:
+                    message = (
+                        f"Invalid read limit '{range.read_length}' for object"
+                        f" '{object_name}'. The read limit must be non-negative."
+                    )
+                else:
+                    message = (
+                        f"Invalid read offset '{range.read_offset}' for object"
+                        f" '{object_name}'. The read offset must not be greater"
+                        f" than the object's size ({read_end} bytes)."
+                    )
                 status_msg = self._pack_bidiread_error_details(
-                    range, grpc.StatusCode.OUT_OF_RANGE
+                    range, grpc.StatusCode.OUT_OF_RANGE, message
                 )
                 grpc_status = rpc_status.to_status(status_msg)
                 context.abort_with_status(grpc_status)
@@ -1151,19 +1168,18 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     "Injected 'broken stream' fault",
                 )
 
-    def _to_read_range_error_proto(self, range, status_code):
+    def _to_read_range_error_proto(self, range, status_code, message):
         return storage_pb2.ReadRangeError(
             read_id=range.read_id,
             status={
                 "code": status_code.value[0],
-                "message": status_code.value[1],
+                "message": message,
             },
         )
 
-    def _pack_bidiread_error_details(self, range, status_code):
-        range_read_error = self._to_read_range_error_proto(range, status_code)
+    def _pack_bidiread_error_details(self, range, status_code, message):
+        range_read_error = self._to_read_range_error_proto(range, status_code, message)
         code = status_code.value[0]
-        message = status_code.value[1]
         detail = any_pb2.Any()
         detail.Pack(
             storage_pb2.BidiReadObjectError(

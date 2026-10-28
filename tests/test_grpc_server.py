@@ -30,6 +30,7 @@ import crc32c
 import grpc
 import grpc_status
 from google.protobuf import field_mask_pb2, timestamp_pb2
+from google.rpc import status_pb2
 
 import gcs
 import testbench
@@ -3328,7 +3329,46 @@ class TestGrpc(unittest.TestCase):
         self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
         self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
 
+    def test_bidi_read_out_of_range_messages(self):
+        self._insert_object_for_range_end("object-name", 100)
+        generation = self.db.get_object(
+            "bucket-name", "object-name"
+        ).metadata.generation
+        name = f"bucket-name/object-name#{generation}"
+        cases = [
+            (
+                storage_pb2.ReadRange(read_offset=101, read_id=7),
+                f"Invalid read offset '101' for object '{name}'. The read offset"
+                " must not be greater than the object's size (100 bytes).",
+            ),
+            (
+                storage_pb2.ReadRange(read_offset=0, read_length=-5, read_id=7),
+                f"Invalid read limit '-5' for object '{name}'. The read limit"
+                " must be non-negative.",
+            ),
+        ]
+        for read_range, message in cases:
+            context = self.mock_context()
+            context.abort_with_status.side_effect = grpc.RpcError()
+            r1 = storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name", object="object-name"
+                ),
+                read_ranges=[read_range],
+            )
+            with self.assertRaises(grpc.RpcError):
+                list(self.grpc.BidiReadObject([r1], context=context))
+            status = context.abort_with_status.call_args.args[0]
+            self.assertEqual(status.code, grpc.StatusCode.OUT_OF_RANGE)
+            self.assertEqual(status.details, message)
+            status_proto = status_pb2.Status.FromString(status.trailing_metadata[0][1])
+            error = storage_pb2.BidiReadObjectError()
+            status_proto.details[0].Unpack(error)
+            self.assertEqual(error.read_range_errors[0].read_id, 7)
+            self.assertEqual(error.read_range_errors[0].status.message, message)
+
     def test_list_buckets_partial_success_retry(self):
+
         self.db.clear()
         self.db.insert_supported_methods(["storage.buckets.list"])
 
