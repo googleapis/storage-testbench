@@ -2490,6 +2490,79 @@ class TestGrpc(unittest.TestCase):
         self.assertGreater(len(responses[0].write_handle.handle), 0)
         self.assertNotEqual(responses[0].write_handle.handle, first_handle)
 
+    def test_bidi_write_object_appendable_write_handle(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        handles = {}
+        for name in ["object-name", "other-object"]:
+            r1 = storage_pb2.BidiWriteObjectRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name=name, bucket="projects/_/buckets/bucket-name"
+                    ),
+                    appendable=True,
+                ),
+            )
+            responses = list(self.grpc.BidiWriteObject([r1], context=context))
+            handles[name] = responses[0]
+        generation = handles["object-name"].resource.generation
+        other_handle = handles["other-object"].write_handle
+
+        def append_spec(write_handle, generation=generation):
+            return storage_pb2.BidiWriteObjectRequest(
+                append_object_spec=storage_pb2.AppendObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                    generation=generation,
+                    write_handle=write_handle,
+                ),
+            )
+
+        # A takeover (no write handle) issues a new, opaque handle.
+        responses = list(self.grpc.BidiWriteObject([append_spec(None)], context))
+        handle = responses[0].write_handle
+        self.assertNotEqual(handle.handle, b"2")
+        self.assertIsNotNone(gcs.upload.parse_write_handle(handle.handle))
+
+        # Resuming with the current handle succeeds.
+        responses = list(self.grpc.BidiWriteObject([append_spec(handle)], context))
+        self.assertEqual(responses[0].WhichOneof("write_status"), "persisted_size")
+
+        invalid_handles = [
+            storage_pb2.BidiWriteHandle(handle=b"2"),
+            storage_pb2.BidiWriteHandle(handle=handle.handle[:-4] + b"AAAA"),
+            other_handle,
+        ]
+        for invalid in invalid_handles:
+            context.abort.reset_mock()
+            with self.assertRaises(grpc.RpcError):
+                list(self.grpc.BidiWriteObject([append_spec(invalid)], context))
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Invalid 'write_handle' on the first request.",
+            )
+        context.abort.reset_mock()
+        with self.assertRaises(grpc.RpcError):
+            list(
+                self.grpc.BidiWriteObject(
+                    [append_spec(handle, generation=generation + 1)], context
+                )
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "Invalid 'write_handle' on the first request.",
+        )
+
+        # After another takeover the old handle is fenced.
+        list(self.grpc.BidiWriteObject([append_spec(None)], context))
+        context.abort.reset_mock()
+        with self.assertRaises(grpc.RpcError):
+            list(self.grpc.BidiWriteObject([append_spec(handle)], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "A different writer has become the exclusive writer of this object.",
+        )
+
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()

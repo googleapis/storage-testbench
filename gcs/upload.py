@@ -14,10 +14,14 @@
 
 """Helper class to hold data during an upload."""
 
+import base64
+import binascii
 import datetime
 import hashlib
+import hmac
 import itertools
 import json
+import secrets
 import types
 import uuid
 
@@ -32,6 +36,39 @@ from grpc_status import rpc_status
 import gcs
 import testbench
 from google.storage.v2 import storage_pb2
+
+# Signs the write handles issued by this testbench instance. Like the real
+# service, handles are opaque to clients and cannot be forged.
+_WRITE_HANDLE_KEY = secrets.token_bytes(32)
+_WRITE_HANDLE_MAC_SIZE = hashlib.sha256().digest_size
+
+
+def make_write_handle(blob):
+    """Returns an opaque write handle for the current writer of `blob`."""
+    payload = json.dumps(
+        {
+            "bucket": testbench.common.bucket_name_from_proto(blob.bucket.name),
+            "object": blob.metadata.name,
+            "generation": blob.metadata.generation,
+            "upload_gen": blob.upload_gen,
+            "nonce": secrets.token_hex(8),
+        }
+    ).encode("utf-8")
+    mac = hmac.new(_WRITE_HANDLE_KEY, payload, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac + payload)
+
+
+def parse_write_handle(handle):
+    """Returns the contents of a write handle, or None if it is not valid."""
+    try:
+        raw = base64.urlsafe_b64decode(handle)
+    except (binascii.Error, ValueError):
+        return None
+    mac, payload = raw[:_WRITE_HANDLE_MAC_SIZE], raw[_WRITE_HANDLE_MAC_SIZE:]
+    expected = hmac.new(_WRITE_HANDLE_KEY, payload, hashlib.sha256).digest()
+    if not hmac.compare_digest(mac, expected):
+        return None
+    return json.loads(payload)
 
 
 class Upload(types.SimpleNamespace):
@@ -413,12 +450,26 @@ class Upload(types.SimpleNamespace):
                 )
                 upload.blob = blob
                 db.insert_upload(upload)
-                handle = str(1).encode("utf-8")
+                handle = make_write_handle(blob)
         elif write_type == "append_object_spec":
             is_appendable = True
-            preconditions = testbench.common.make_grpc_preconditions(
-                first_msg.append_object_spec
-            )
+            spec = first_msg.append_object_spec
+            write_handle = None
+            if spec.HasField("write_handle"):
+                # The real service rejects handles it cannot decrypt, or that
+                # were issued for a different object, before opening it.
+                write_handle = parse_write_handle(spec.write_handle.handle)
+                bucket_name = testbench.common.bucket_name_from_proto(spec.bucket)
+                if write_handle is None or (
+                    write_handle["bucket"],
+                    write_handle["object"],
+                    write_handle["generation"],
+                ) != (bucket_name, spec.object, spec.generation):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "Invalid 'write_handle' on the first request.",
+                    )
+            preconditions = testbench.common.make_grpc_preconditions(spec)
             blob = db.get_object(
                 first_msg.append_object_spec.bucket,
                 first_msg.append_object_spec.object,
@@ -443,7 +494,7 @@ class Upload(types.SimpleNamespace):
                     if gen != blob.metadata.generation:
                         return db_blob
                     db_blob.upload_gen += 1
-                    handle = str(db_blob.upload_gen).encode("utf-8")
+                    handle = make_write_handle(db_blob)
                     return db_blob
 
                 blob = db.do_update_object(
@@ -454,10 +505,7 @@ class Upload(types.SimpleNamespace):
                     generation=blob.metadata.generation,
                 )
                 appendable_metadata_in_first_response = True
-            elif (
-                int(first_msg.append_object_spec.write_handle.handle.decode("utf-8"))
-                != blob.upload_gen
-            ):
+            elif write_handle["upload_gen"] != blob.upload_gen:
                 # Someone else took over!
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
@@ -475,7 +523,7 @@ class Upload(types.SimpleNamespace):
         )
         if return_redirect_token:
             if handle is None:
-                handle = str(blob.upload_gen).encode("utf-8")
+                handle = make_write_handle(blob)
             abort_with_redirect_error(
                 return_redirect_token,
                 handle=handle,
@@ -596,7 +644,7 @@ class Upload(types.SimpleNamespace):
                 )
                 if return_redirect_token_finish:
                     if handle is None:
-                        handle = str(blob.upload_gen).encode("utf-8")
+                        handle = make_write_handle(blob)
                     abort_with_redirect_error(
                         return_redirect_token_finish,
                         handle=handle,
