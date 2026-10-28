@@ -811,7 +811,25 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # ok if no messages arrive from the client.
             return
 
+        # Like the real service, reject invalid first messages with plain-text
+        # INVALID_ARGUMENT errors before looking up the object.
+        if not first_message.HasField("read_object_spec"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "The 'read_object_spec' must be specified on the first request.",
+            )
         obj_spec = first_message.read_object_spec
+        for field in ("bucket", "object"):
+            if not getattr(obj_spec, field):
+                context.abort(
+                    grpc.StatusCode.INVALID_ARGUMENT,
+                    f"Field `read_object_spec.{field}` is required.",
+                )
+        if not obj_spec.bucket.startswith("projects/_/buckets/"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid bucket name '{obj_spec.bucket}'.",
+            )
         # Like the real service, a valid read handle reopens the same
         # generation, skips the preconditions, and returns no metadata.
         handle_generation = _read_handle_generation(obj_spec)
@@ -1007,6 +1025,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             yield from responses_for_range_batch(first_message.read_ranges)
             for request in request_iterator:
                 idle_timeout.touch()
+                if request.HasField("read_object_spec"):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "The 'read_object_spec' must only be specified on the"
+                        " first request.",
+                    )
                 yield from responses_for_range_batch(request.read_ranges)
 
         bytes_yielded = 0
