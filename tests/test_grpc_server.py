@@ -16,6 +16,7 @@
 
 """Unit test for testbench.grpc."""
 
+import base64
 import collections
 import datetime
 import json
@@ -2722,6 +2723,118 @@ class TestGrpc(unittest.TestCase):
             [storage_pb2.ReadRange(read_offset=0, read_length=0, read_id=7)],
         )
         self.assertEqual(chunks[7], [(0, 0, True)])
+
+    def _open_for_read_handle(self, name, **spec_args):
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object=name, **spec_args
+        )
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=spec,
+            read_ranges=[storage_pb2.ReadRange(read_offset=0, read_id=1)],
+        )
+        return list(self.grpc.BidiReadObject([r1], context=self.mock_context()))
+
+    def test_bidi_read_object_returns_opaque_read_handle(self):
+        self._insert_object_for_range_end("object-name", 1024)
+        first = self._open_for_read_handle("object-name")[0]
+        second = self._open_for_read_handle("object-name")[0]
+        self.assertTrue(first.HasField("metadata"))
+        self.assertGreater(len(first.read_handle.handle), 0)
+        self.assertNotEqual(first.read_handle.handle, b"an-opaque-handle")
+        # Handles are opaque: each open returns a new handle.
+        self.assertNotEqual(first.read_handle.handle, second.read_handle.handle)
+
+    def test_bidi_read_object_valid_read_handle(self):
+        self._insert_object_for_range_end("object-name", 1024)
+        first = self._open_for_read_handle("object-name")
+        handle = first[0].read_handle
+        generation = first[0].metadata.generation
+        # Write a new generation; the handle still reads the old one.
+        self._insert_object_for_range_end("object-name", 512)
+        responses = self._open_for_read_handle(
+            "object-name",
+            read_handle=handle,
+            # Preconditions are skipped when the handle is valid.
+            if_generation_match=generation + 100,
+        )
+        self.assertFalse(responses[0].HasField("metadata"))
+        self.assertGreater(len(responses[0].read_handle.handle), 0)
+        data = b"".join(
+            r.checksummed_data.content
+            for resp in responses
+            for r in resp.object_data_ranges
+        )
+        self.assertEqual(len(data), 1024)
+        # Setting the matching generation explicitly also uses the handle.
+        responses = self._open_for_read_handle(
+            "object-name", read_handle=handle, generation=generation
+        )
+        self.assertFalse(responses[0].HasField("metadata"))
+
+    def test_bidi_read_object_invalid_read_handle_falls_back(self):
+        self._insert_object_for_range_end("object-name", 1024)
+        self._insert_object_for_range_end("other-name", 256)
+        first = self._open_for_read_handle("object-name")[0]
+        handle = first.read_handle.handle
+        tampered = bytearray(base64.urlsafe_b64decode(handle))
+        tampered[-2] ^= 0x01
+        cases = {
+            "garbage": storage_pb2.BidiReadHandle(handle=b"not-a-handle"),
+            "invalid-base64": storage_pb2.BidiReadHandle(handle=b"a"),
+            "other-bucket": storage_pb2.BidiReadHandle(
+                handle=testbench.grpc_server._make_read_handle(
+                    "other-bucket", "object-name", first.metadata.generation
+                )
+            ),
+            "tampered": storage_pb2.BidiReadHandle(
+                handle=base64.urlsafe_b64encode(bytes(tampered))
+            ),
+            "empty": storage_pb2.BidiReadHandle(),
+        }
+        for name, read_handle in cases.items():
+            responses = self._open_for_read_handle(
+                "object-name", read_handle=read_handle
+            )
+            self.assertTrue(responses[0].HasField("metadata"), msg=name)
+            self.assertEqual(responses[0].metadata.size, 1024, msg=name)
+        # A handle for another object, or another generation, is ignored too.
+        responses = self._open_for_read_handle(
+            "other-name", read_handle=first.read_handle
+        )
+        self.assertEqual(responses[0].metadata.size, 256)
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                generation=first.metadata.generation + 1,
+                read_handle=first.read_handle,
+            ),
+        )
+        with self.assertRaises(grpc.RpcError):
+            list(self.grpc.BidiReadObject([r1], context=context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.NOT_FOUND, unittest.mock.ANY
+        )
+
+    def test_bidi_read_object_invalid_read_handle_checks_preconditions(self):
+        self._insert_object_for_range_end("object-name", 1024)
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name",
+                object="object-name",
+                if_generation_match=0,
+                read_handle=storage_pb2.BidiReadHandle(handle=b"not-a-handle"),
+            ),
+        )
+        with self.assertRaises(grpc.RpcError):
+            list(self.grpc.BidiReadObject([r1], context=context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION, unittest.mock.ANY
+        )
 
     def test_bidi_read_out_of_range_error(self):
         # Create object in database to read.
