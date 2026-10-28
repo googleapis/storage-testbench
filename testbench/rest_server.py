@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+import math
 import time
 
 import flask
@@ -181,8 +182,25 @@ def start_grpc():
                 "max-workers", testbench.grpc_server._GRPC_SERVER_THREAD_COUNT
             )
         )
+        # Seconds without requests or responses before a BidiReadObject stream
+        # is cancelled.
+        try:
+            bidi_read_idle_timeout = float(
+                flask.request.args.get(
+                    "bidi-read-idle-timeout",
+                    testbench.grpc_server._BIDI_READ_IDLE_TIMEOUT_SECONDS,
+                )
+            )
+        except ValueError:
+            return testbench.error.invalid("bidi-read-idle-timeout", None)
+        if not math.isfinite(bidi_read_idle_timeout) or bidi_read_idle_timeout <= 0:
+            return testbench.error.invalid("bidi-read-idle-timeout", None)
         grpc_port, grpc_service = testbench.grpc_server.run(
-            int(port), db, echo_metadata=echo_metadata, max_workers=max_workers
+            int(port),
+            db,
+            echo_metadata=echo_metadata,
+            max_workers=max_workers,
+            bidi_read_idle_timeout=bidi_read_idle_timeout,
         )
     return str(grpc_port)
 
