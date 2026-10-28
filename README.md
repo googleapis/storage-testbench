@@ -117,6 +117,11 @@ curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=888
 - `bidi-read-idle-timeout`: seconds a `BidiReadObject` stream may stay idle (no request received
   and no response sent) before the testbench cancels it. Defaults to 10. Active streams are not
   cancelled.
+- `strict-bucket-modes`: set to `true` to emulate the differences between RAPID buckets
+  (`storageClass: RAPID`) and standard buckets in `BidiReadObject`. Defaults to `false`.
+  - RAPID buckets reject a `read_mask` that does not include `object_data_ranges`.
+  - Standard buckets require `x-goog-request-params` with `bucket=` set to the bucket in the
+    request, never return a `read_handle`, and ignore any `read_handle` sent by clients.
 
 ### Check that the testbench is running
 
