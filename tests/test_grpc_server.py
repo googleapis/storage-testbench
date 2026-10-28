@@ -2608,6 +2608,86 @@ class TestGrpc(unittest.TestCase):
         streamer = self.grpc.BidiReadObject([], context=self.mock_context())
         self.assertEqual(len(list(streamer)), 0)  # No responses, does not raise
 
+    def _insert_object_for_range_end(self, name, size):
+        media = bytes(i % 251 for i in range(size))
+        request = testbench.common.FakeRequest(
+            args={"name": name}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+        return len(media)
+
+    def _range_data_by_read_id(self, name, ranges):
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name", object=name
+            ),
+            read_ranges=ranges,
+        )
+        streamer = self.grpc.BidiReadObject([r1], context=self.mock_context())
+        result = {}
+        for resp in streamer:
+            for data in resp.object_data_ranges:
+                result.setdefault(data.read_range.read_id, []).append(
+                    (
+                        data.read_range.read_offset,
+                        len(data.checksummed_data.content),
+                        data.range_end,
+                    )
+                )
+        return result
+
+    def test_bidi_read_object_single_range_end_per_range(self):
+        OLD_CHUNK = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+        try:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = 100
+            size = self._insert_object_for_range_end("object-name", 250)
+            chunks = self._range_data_by_read_id(
+                "object-name",
+                [
+                    storage_pb2.ReadRange(read_offset=0, read_length=10, read_id=1),
+                    storage_pb2.ReadRange(read_offset=0, read_length=0, read_id=2),
+                    storage_pb2.ReadRange(read_offset=-50, read_length=0, read_id=3),
+                ],
+            )
+            # A range that fits in one chunk returns exactly one chunk.
+            self.assertEqual(chunks[1], [(0, 10, True)])
+            # A full read returns 100 + 100 + 50 bytes, `range_end` only on
+            # the last chunk, and no trailing empty chunk.
+            self.assertEqual(
+                chunks[2], [(0, 100, False), (100, 100, False), (200, 50, True)]
+            )
+            self.assertEqual(chunks[3], [(size - 50, 50, True)])
+        finally:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = OLD_CHUNK
+
+    def test_bidi_read_object_many_ranges_one_range_end_each(self):
+        self._insert_object_for_range_end("object-name", 1024)
+        chunks = self._range_data_by_read_id(
+            "object-name",
+            [
+                storage_pb2.ReadRange(read_offset=i, read_length=1, read_id=i + 1)
+                for i in range(150)
+            ],
+        )
+        self.assertEqual(len(chunks), 150)
+        for read_id, items in chunks.items():
+            self.assertEqual(items, [(read_id - 1, 1, True)], msg=f"{read_id=}")
+
+    def test_bidi_read_object_offset_at_end_returns_one_empty_chunk(self):
+        size = self._insert_object_for_range_end("object-name", 1024)
+        self._insert_object_for_range_end("empty-object", 0)
+        chunks = self._range_data_by_read_id(
+            "object-name",
+            [storage_pb2.ReadRange(read_offset=size, read_length=0, read_id=1)],
+        )
+        self.assertEqual(chunks[1], [(size, 0, True)])
+        chunks = self._range_data_by_read_id(
+            "empty-object",
+            [storage_pb2.ReadRange(read_offset=0, read_length=0, read_id=7)],
+        )
+        self.assertEqual(chunks[7], [(0, 0, True)])
+
     def test_bidi_read_out_of_range_error(self):
         # Create object in database to read.
         media = TestGrpc._create_block(1024 * 1024).encode("utf-8")
