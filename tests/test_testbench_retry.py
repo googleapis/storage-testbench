@@ -1827,6 +1827,106 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
             rest_server.db.peek_next_instruction(id, "storage.objects.insert")
         )
 
+    def test_grpc_bidiread_return_corrupted_data(self):
+        media = self._create_block(256 * 1024).encode("utf-8")
+        response = self.rest_client.put(
+            "/bucket-name/object-name", content_type="text/plain", data=media
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            "return-corrupted-data",
+                            "return-corrupted-data",
+                        ]
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        id = json.loads(response.data).get("id")
+        context = unittest.mock.Mock()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(("x-retry-test-id", id),)
+        )
+
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object="object-name"
+        )
+
+        def read_requests(requests):
+            return [
+                r.checksummed_data
+                for resp in self.grpc.BidiReadObject(requests, context=context)
+                for r in resp.object_data_ranges
+            ]
+
+        # Opening a stream without reading data does not consume the instruction.
+        self.assertEqual(
+            read_requests([storage_pb2.BidiReadObjectRequest(read_object_spec=spec)]),
+            [],
+        )
+        self.assertEqual(
+            rest_server.db.peek_next_instruction(id, "storage.objects.get"),
+            "return-corrupted-data",
+        )
+
+        # An empty range is not corrupted; each `return-corrupted-data`
+        # corrupts the first non-empty chunk of a range (without burning extra
+        # instructions on trailing chunks of the same `read_id`), including
+        # across requests on the same open stream.
+        old_chunk = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+        try:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = 10
+            r1 = storage_pb2.BidiReadObjectRequest(
+                read_object_spec=spec,
+                read_ranges=[
+                    storage_pb2.ReadRange(read_offset=len(media), read_id=1),
+                    storage_pb2.ReadRange(read_offset=0, read_length=20, read_id=2),
+                ],
+            )
+            r2 = storage_pb2.BidiReadObjectRequest(
+                read_ranges=[
+                    storage_pb2.ReadRange(read_offset=20, read_length=10, read_id=3),
+                    storage_pb2.ReadRange(read_offset=30, read_length=10, read_id=4),
+                ]
+            )
+            chunks = read_requests([r1, r2])
+        finally:
+            storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES = old_chunk
+
+        self.assertEqual(len(chunks), 5)
+        self.assertEqual(chunks[0].content, b"")
+        self.assertEqual(chunks[0].crc32c, crc32c.crc32c(b""))
+        # First chunk of read_id=2 is corrupted; its second chunk is not.
+        self.assertNotEqual(chunks[1].content, media[0:10])
+        self.assertEqual(chunks[1].content[1:], media[1:10])
+        self.assertEqual(chunks[1].crc32c, crc32c.crc32c(media[0:10]))
+        self.assertEqual(chunks[2].content, media[10:20])
+        self.assertEqual(chunks[2].crc32c, crc32c.crc32c(media[10:20]))
+        # The second instruction corrupts read_id=3 on the next request.
+        self.assertNotEqual(chunks[3].content, media[20:30])
+        self.assertEqual(chunks[3].content[1:], media[21:30])
+        self.assertEqual(chunks[3].crc32c, crc32c.crc32c(media[20:30]))
+        # Subsequent chunks and streams are uncorrupted once both are consumed.
+        self.assertEqual(chunks[4].content, media[30:40])
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.get")
+        )
+        chunks = read_requests(
+            [
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=spec,
+                    read_ranges=[storage_pb2.ReadRange(read_id=5)],
+                )
+            ]
+        )
+        self.assertEqual(b"".join(c.content for c in chunks), media)
+
     def test_grpc_bidiread_open_redirect(self):
         # Use the XML API to inject an object with some data.
         media = self._create_block(5 * 1024 * 1024)

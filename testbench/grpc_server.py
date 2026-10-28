@@ -884,9 +884,32 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
         # first_response is protected by GIL
         first_response = True
+        corrupted_read_ids = set()
 
         def response(resp):
             nonlocal first_response
+            for data in resp.object_data_ranges:
+                content = data.checksummed_data.content
+                read_id = data.read_range.read_id
+                if (
+                    content
+                    and read_id not in corrupted_read_ids
+                    and test_id
+                    and self.db.has_instructions_retry_test(
+                        test_id, method, transport="GRPC"
+                    )
+                    and self.db.peek_next_instruction(test_id, method)
+                    == "return-corrupted-data"
+                ):
+                    # Corrupt the data but keep the original CRC32C, as if
+                    # it was corrupted after the service computed it. Only
+                    # corrupt once per `read_id` so a multi-chunk range does
+                    # not consume multiple instructions.
+                    self.db.dequeue_next_instruction(test_id, method)
+                    corrupted_read_ids.add(read_id)
+                    data.checksummed_data.content = (
+                        bytes([content[0] ^ 0xFF]) + content[1:]
+                    )
             if first_response:
                 first_response = False
                 if handle_generation is None:

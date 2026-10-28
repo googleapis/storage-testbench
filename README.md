@@ -165,6 +165,11 @@ Testbench will fail after sending 1024*1024 bytes.
 Set request headers with `x-goog-emulator-instructions: return-corrupted-data`.
 Testbench will return corrupted data.
 
+In gRPC, use the Retry Test API with `return-corrupted-data` for
+`BidiReadObject` (`storage.objects.get`; `ReadObject` is not affected).
+`BidiReadObject` corrupts the next non-empty data chunk while keeping the
+CRC32C of the original data, so clients see a checksum mismatch.
+
 ### stall-always
 
 Set request headers with `x-goog-emulator-instructions: stall-always`.
@@ -286,6 +291,7 @@ curl -H "x-retry-test-id: 1d05c20627844214a9ff7cbcf696317d" "http://localhost:91
 | return-broken-stream-final-chunk-after-YB | [HTTP] Testbench will break connection on final chunk of a resumable upload after Y bytes
 | return-broken-stream                      | [HTTP] Testbench will fail after a few downloaded bytes <br> [GRPC] Testbench will fail with `UNAVAILABLE` after a few downloaded bytes
 | return-broken-stream-after-YK             | [HTTP] Testbench will fail after YKiB of downloaded data <br> [GRPC] Testbench will fail with `UNAVAILABLE` after YKiB of downloaded data
+| return-corrupted-data                     | [HTTP] Unsupported <br> [GRPC] For `BidiReadObject` (`storage.objects.get`), testbench will corrupt the next non-empty data chunk while keeping the CRC32C of the original data
 | return-reset-connection                   | [HTTP] Testbench will fail with a reset connection <br> [GRPC] Testbench will fail the RPC with `UNAVAILABLE`
 | stall-for-Ts-after-YK                     | [HTTP] Testbench will stall for T seconds after reading YKiB of downloaded/uploaded data, e.g. stall-for-10s-after-12K stalls after reading/writing 12KiB of data <br> [GRPC] Testbench will stall for T seconds after reading YKiB of downloaded data or after writing YKiB of uploaded data (Supported for `storage.objects.get` and for `storage.objects.insert` via `WriteObject` and `BidiWriteObject`). For uploads, YKiB is measured from the start of the object, so the stall also applies to resumed uploads; it triggers once, before the chunk that crosses the threshold is persisted.
 | redirect-send-token-T                     | [HTTP] Unsupported [GRPC] Testbench will fail the RPC with `ABORTED` and include appropriate redirection error details.
