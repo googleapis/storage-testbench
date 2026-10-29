@@ -811,7 +811,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     "read_id": read_id,
                 }
                 yield (chunk, range_end, read_range)
-                if start >= read_end:
+                if range_end:
+                    # GCS sets `range_end` on exactly one chunk per range,
+                    # the last one. Do not emit an extra empty chunk.
                     break
                 start = end
 
