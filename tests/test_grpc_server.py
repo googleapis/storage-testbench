@@ -2163,17 +2163,22 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r1, r2], context=context)
         responses = list(streamer)
-        # We only expect 2 responses. One to the first request even though it
-        # did not specify state_lookup, and another to r2 with state_lookup set
-        # to True.
-        self.assertEqual(len(responses), 2)
+        # We expect 3 responses. One to the first request even though it
+        # did not specify state_lookup, another to r2 with state_lookup set
+        # to True, and a final one when the stream is closed.
+        self.assertEqual(len(responses), 3)
         self.assertIsNotNone(responses[0])
         # For appendable objects, we expect the object metadata in the first
         # response rather than the persisted_size.
         self.assertEqual(responses[0].resource.size, QUANTUM)
+        self.assertEqual(
+            responses[0].resource.checksums.crc32c, crc32c.crc32c(media[0:QUANTUM])
+        )
+        self.assertFalse(responses[0].HasField("persisted_data_checksums"))
         self.assertEqual(responses[0].resource.bucket, "projects/_/buckets/bucket-name")
         self.assertEqual(responses[0].resource.name, "object-name")
         self.assertEqual(responses[1].persisted_size, 2 * QUANTUM)
+        self.assertEqual(responses[2].persisted_size, 2 * QUANTUM)
 
         bucket = responses[0].resource.bucket
         name = responses[0].resource.name
@@ -2282,7 +2287,8 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r1], context=context)
         responses = list(streamer)
-        self.assertEqual(len(responses), 1)
+        # The first response and the response sent when the stream closes.
+        self.assertEqual(len(responses), 2)
         self.assertFalse(responses[0].resource.HasField("finalize_time"))
         self.assertNotEqual(0, responses[0].resource.generation)
 
@@ -2343,7 +2349,7 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r2], context=context)
         responses2 = list(streamer)
-        self.assertEqual(len(responses2), 1)
+        self.assertEqual(len(responses2), 2)
         self.assertFalse(responses2[0].resource.HasField("finalize_time"))
         self.assertNotEqual(
             responses[0].resource.generation, responses2[0].resource.generation
@@ -2404,6 +2410,86 @@ class TestGrpc(unittest.TestCase):
             [crc32c.crc32c(media)], [c.metadata.checksums.crc32c for c in chunks]
         )
 
+    def test_bidi_write_object_appendable_flush_and_state_lookup(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        media = TestGrpc._create_block(3 * 1024).encode("utf-8")
+
+        def data_request(offset, size, **kwargs):
+            content = media[offset : offset + size]
+            return storage_pb2.BidiWriteObjectRequest(
+                write_offset=offset,
+                checksummed_data=storage_pb2.ChecksummedData(
+                    content=content, crc32c=crc32c.crc32c(content)
+                ),
+                **kwargs,
+            )
+
+        def object_size():
+            return self.grpc.GetObject(
+                storage_pb2.GetObjectRequest(
+                    bucket="projects/_/buckets/bucket-name", object="object-name"
+                ),
+                context,
+            ).size
+
+        def requests():
+            r1 = data_request(0, 1024)
+            r1.write_object_spec.resource.name = "object-name"
+            r1.write_object_spec.resource.bucket = "projects/_/buckets/bucket-name"
+            r1.write_object_spec.appendable = True
+            yield r1
+            # Written data is not persisted until it is flushed.
+            yield data_request(1024, 1024, state_lookup=True)
+            self.assertEqual(object_size(), 0)
+            # A flush without a state lookup produces no response.
+            yield data_request(2048, 1024, flush=True)
+            self.assertEqual(object_size(), 3 * 1024)
+            yield storage_pb2.BidiWriteObjectRequest(state_lookup=True)
+
+        responses = list(self.grpc.BidiWriteObject(requests(), context=context))
+        self.assertEqual(
+            [r.WhichOneof("write_status") for r in responses],
+            ["resource", "persisted_size", "persisted_size", "persisted_size"],
+        )
+        self.assertEqual(responses[0].resource.size, 0)
+        self.assertEqual(responses[1].persisted_size, 0)
+        self.assertEqual(
+            responses[1].persisted_data_checksums.crc32c, crc32c.crc32c(b"")
+        )
+        self.assertEqual(responses[2].persisted_size, 3 * 1024)
+        self.assertEqual(
+            responses[2].persisted_data_checksums.crc32c, crc32c.crc32c(media)
+        )
+        # The final response is sent when the client closes the stream.
+        self.assertEqual(responses[3].persisted_size, 3 * 1024)
+
+    def test_bidi_write_object_appendable_close_persists_data(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        media = TestGrpc._create_block(2 * 1024).encode("utf-8")
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            checksummed_data=storage_pb2.ChecksummedData(content=media),
+        )
+        responses = list(self.grpc.BidiWriteObject([r1], context=context))
+        self.assertEqual(len(responses), 2)
+        self.assertEqual(responses[0].resource.size, 0)
+        self.assertEqual(responses[1].persisted_size, len(media))
+        blob = self.grpc.GetObject(
+            storage_pb2.GetObjectRequest(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            ),
+            context,
+        )
+        self.assertEqual(blob.size, len(media))
+        self.assertEqual(blob.checksums.crc32c, crc32c.crc32c(media))
+
     def test_bidi_write_object_appendable_takeover(self):
         # The code depends on `context.abort()` raising an exception.
         context = self.mock_context()
@@ -2421,7 +2507,7 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r1], context=context)
         responses = list(streamer)
-        self.assertEqual(len(responses), 1)
+        self.assertEqual(len(responses), 2)
         first_handle = responses[0].write_handle.handle
         self.assertGreater(len(first_handle), 0)
 
@@ -2435,9 +2521,82 @@ class TestGrpc(unittest.TestCase):
         )
         streamer = self.grpc.BidiWriteObject([r2], context=context)
         responses = list(streamer)
-        self.assertEqual(len(responses), 1)
+        self.assertEqual(len(responses), 2)
         self.assertGreater(len(responses[0].write_handle.handle), 0)
         self.assertNotEqual(responses[0].write_handle.handle, first_handle)
+
+    def test_bidi_write_object_appendable_write_handle(self):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        handles = {}
+        for name in ["object-name", "other-object"]:
+            r1 = storage_pb2.BidiWriteObjectRequest(
+                write_object_spec=storage_pb2.WriteObjectSpec(
+                    resource=storage_pb2.Object(
+                        name=name, bucket="projects/_/buckets/bucket-name"
+                    ),
+                    appendable=True,
+                ),
+            )
+            responses = list(self.grpc.BidiWriteObject([r1], context=context))
+            handles[name] = responses[0]
+        generation = handles["object-name"].resource.generation
+        other_handle = handles["other-object"].write_handle
+
+        def append_spec(write_handle, generation=generation):
+            return storage_pb2.BidiWriteObjectRequest(
+                append_object_spec=storage_pb2.AppendObjectSpec(
+                    bucket="projects/_/buckets/bucket-name",
+                    object="object-name",
+                    generation=generation,
+                    write_handle=write_handle,
+                ),
+            )
+
+        # A takeover (no write handle) issues a new, opaque handle.
+        responses = list(self.grpc.BidiWriteObject([append_spec(None)], context))
+        handle = responses[0].write_handle
+        self.assertNotEqual(handle.handle, b"2")
+        self.assertIsNotNone(gcs.upload.parse_write_handle(handle.handle))
+
+        # Resuming with the current handle succeeds.
+        responses = list(self.grpc.BidiWriteObject([append_spec(handle)], context))
+        self.assertEqual(responses[0].WhichOneof("write_status"), "persisted_size")
+
+        invalid_handles = [
+            storage_pb2.BidiWriteHandle(handle=b"2"),
+            storage_pb2.BidiWriteHandle(handle=handle.handle[:-4] + b"AAAA"),
+            other_handle,
+        ]
+        for invalid in invalid_handles:
+            context.abort.reset_mock()
+            with self.assertRaises(grpc.RpcError):
+                list(self.grpc.BidiWriteObject([append_spec(invalid)], context))
+            context.abort.assert_called_once_with(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "Invalid 'write_handle' on the first request.",
+            )
+        context.abort.reset_mock()
+        with self.assertRaises(grpc.RpcError):
+            list(
+                self.grpc.BidiWriteObject(
+                    [append_spec(handle, generation=generation + 1)], context
+                )
+            )
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "Invalid 'write_handle' on the first request.",
+        )
+
+        # After another takeover the old handle is fenced.
+        list(self.grpc.BidiWriteObject([append_spec(None)], context))
+        context.abort.reset_mock()
+        with self.assertRaises(grpc.RpcError):
+            list(self.grpc.BidiWriteObject([append_spec(handle)], context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "A different writer has become the exclusive writer of this object.",
+        )
 
     def test_bidi_write_object_no_requests(self):
         # The code depends on `context.abort()` raising an exception.
