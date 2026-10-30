@@ -45,6 +45,16 @@ class TestTestbenchRoot(unittest.TestCase):
         self.assertNotEqual(response.status_code, 200)
         self.assertIn("test-only", response.data.decode("utf-8"))
 
+    def test_start_grpc_rejects_invalid_idle_timeout(self):
+        for bad in ("0", "-1", "inf", "-inf", "nan", "not-a-number"):
+            with self.subTest(bad=bad):
+                response = self.client.get(
+                    "/start_grpc",
+                    query_string={"bidi-read-idle-timeout": bad},
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(rest_server.grpc_port, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -111,6 +111,13 @@ curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=888
 > ⚠️ The HTTP server must be kept running to start the gRPC server and to make calls to the testbench,
 >  even after you start the gRPC server. Run this command in a different terminal window.
 
+`/start_grpc` also accepts these optional parameters:
+
+- `max-workers`: size of the gRPC server thread pool (each open stream holds one worker).
+- `bidi-read-idle-timeout`: seconds a `BidiReadObject` stream may stay idle (no request received
+  and no response sent) before the testbench cancels it. Defaults to 10. Active streams are not
+  cancelled.
+
 ### Check that the testbench is running
 
 Ensure the testbench is running by sending it a request from a different terminal, such as:

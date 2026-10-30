@@ -18,14 +18,15 @@ import datetime
 import functools
 import itertools
 import json
+import math
 import re
 import sys
+import threading
 import time
 import types
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
-from threading import Timer
 
 import crc32c
 import google.protobuf.any_pb2 as any_pb2
@@ -44,6 +45,40 @@ from google.storage.control.v2 import storage_control_pb2, storage_control_pb2_g
 from google.storage.v2 import storage_pb2, storage_pb2_grpc
 
 _GRPC_SERVER_THREAD_COUNT = 8
+
+# A BidiReadObject stream with no request or response activity for this many
+# seconds is cancelled. This bounds thread exhaustion on the gRPC server when
+# clients don't clean up their streams. Active streams are never cancelled.
+_BIDI_READ_IDLE_TIMEOUT_SECONDS = 10.0
+
+
+class _IdleTimeout:
+    """Calls `on_timeout` once if `touch()` isn't called for `timeout` seconds."""
+
+    def __init__(self, timeout, on_timeout):
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout must be positive and finite")
+        self._timeout = timeout
+        self._on_timeout = on_timeout
+        self._last_activity = time.monotonic()
+        self._done = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def touch(self):
+        self._last_activity = time.monotonic()
+
+    def stop(self):
+        self._done.set()
+
+    def _run(self):
+        while True:
+            remaining = self._last_activity + self._timeout - time.monotonic()
+            if remaining <= 0:
+                self._on_timeout()
+                return
+            if self._done.wait(remaining):
+                return
 
 
 def _should_stall_after_bytes(bytes_yielded, chunk_len, stall_after_bytes):
@@ -280,10 +315,16 @@ def decorate_all_rpc_methods(klass):
 class StorageServicer(storage_pb2_grpc.StorageServicer):
     """Implements the google.storage.v2.Storage gRPC service."""
 
-    def __init__(self, db, echo_metadata=False):
+    def __init__(
+        self,
+        db,
+        echo_metadata=False,
+        bidi_read_idle_timeout=_BIDI_READ_IDLE_TIMEOUT_SECONDS,
+    ):
         self.db = db
         self.db.insert_test_bucket()
         self.echo_metadata = echo_metadata
+        self.bidi_read_idle_timeout = bidi_read_idle_timeout
 
     @retry_test(method="storage.buckets.delete")
     def DeleteBucket(self, request, context):
@@ -817,16 +858,43 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                     break
                 start = end
 
-        # We force all BidiReadObject streams to cancel on the server side after
-        # 10 seconds. This is to bound the effect of thread exhaustion on the
-        # gRPC server, which can happen when clients don't clean up their
-        # streams. Such clients will instead see CANCELLED errors.
-        def terminate_w_timer():
-            context.cancel()
+        # Cancel the stream on the server side only after it has been idle (no
+        # request received and no response sent) for `bidi_read_idle_timeout`
+        # seconds. This bounds thread exhaustion on the gRPC server when
+        # clients don't clean up their streams, without killing long-lived
+        # active streams. Idle clients see CANCELLED errors.
+        idle_timeout = _IdleTimeout(self.bidi_read_idle_timeout, context.cancel)
+        try:
+            yield from self._bidi_read_responses(
+                context,
+                first_message,
+                request_iterator,
+                process_read_range,
+                response,
+                idle_timeout,
+                test_id,
+                method,
+                broken_stream_after_bytes,
+                stall_time,
+                stall_after_bytes,
+            )
+        finally:
+            idle_timeout.stop()
 
-        timer_thread = Timer(10, terminate_w_timer)
-        timer_thread.start()
-
+    def _bidi_read_responses(
+        self,
+        context,
+        first_message,
+        request_iterator,
+        process_read_range,
+        response,
+        idle_timeout,
+        test_id,
+        method,
+        broken_stream_after_bytes,
+        stall_time,
+        stall_after_bytes,
+    ):
         returnable = (
             broken_stream_after_bytes if broken_stream_after_bytes else sys.maxsize
         )
@@ -847,6 +915,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         def read_results():
             yield from responses_for_range_batch(first_message.read_ranges)
             for request in request_iterator:
+                idle_timeout.touch()
                 yield from responses_for_range_batch(request.read_ranges)
 
         bytes_yielded = 0
@@ -870,6 +939,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
 
             bytes_yielded += len(chunk)
             returnable -= count
+            idle_timeout.touch()
             yield response(
                 storage_pb2.BidiReadObjectResponse(
                     object_data_ranges=[
@@ -1354,10 +1424,16 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         return layout
 
 
-def run(port, database, echo_metadata=False, max_workers=_GRPC_SERVER_THREAD_COUNT):
+def run(
+    port,
+    database,
+    echo_metadata=False,
+    max_workers=_GRPC_SERVER_THREAD_COUNT,
+    bidi_read_idle_timeout=_BIDI_READ_IDLE_TIMEOUT_SECONDS,
+):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     storage_pb2_grpc.add_StorageServicer_to_server(
-        StorageServicer(database, echo_metadata), server
+        StorageServicer(database, echo_metadata, bidi_read_idle_timeout), server
     )
     storage_control_pb2_grpc.add_StorageControlServicer_to_server(
         StorageControlServicer(database, echo_metadata), server

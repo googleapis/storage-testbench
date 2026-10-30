@@ -2934,6 +2934,75 @@ class TestGrpc(unittest.TestCase):
                 len(responses[0].object_data_ranges[0].checksummed_data.content), 0
             )
 
+    def test_idle_timeout_fires_only_after_inactivity(self):
+        fired = threading.Event()
+        idle = testbench.grpc_server._IdleTimeout(0.3, fired.set)
+        # Keep touching for longer than the timeout: it must not fire.
+        for _ in range(6):
+            time.sleep(0.1)
+            idle.touch()
+        self.assertFalse(fired.is_set())
+        # Stop touching: it fires.
+        self.assertTrue(fired.wait(2))
+
+    def test_idle_timeout_stop_prevents_firing(self):
+        fired = threading.Event()
+        idle = testbench.grpc_server._IdleTimeout(0.2, fired.set)
+        idle.stop()
+        self.assertFalse(fired.wait(0.5))
+        for bad in (0, -1, float("inf"), float("-inf"), float("nan")):
+            with self.assertRaises(ValueError):
+                testbench.grpc_server._IdleTimeout(bad, fired.set)
+
+    def _bidi_read_with_pauses(self, servicer, pauses):
+        """Sends one range per message, sleeping `pauses[i]` before message i+1."""
+        media = b"x" * 1024
+        request = testbench.common.FakeRequest(
+            args={"name": "object-name"}, data=media, headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.db.insert_object("bucket-name", blob, None)
+
+        def requests():
+            yield storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name", object="object-name"
+                ),
+                read_ranges=[
+                    storage_pb2.ReadRange(read_offset=0, read_length=8, read_id=1)
+                ],
+            )
+            for i, pause in enumerate(pauses):
+                time.sleep(pause)
+                yield storage_pb2.BidiReadObjectRequest(
+                    read_ranges=[
+                        storage_pb2.ReadRange(
+                            read_offset=0, read_length=8, read_id=i + 2
+                        )
+                    ]
+                )
+
+        context = self.mock_context()
+        responses = list(servicer.BidiReadObject(requests(), context=context))
+        return context, responses
+
+    def test_bidi_read_active_stream_not_cancelled(self):
+        servicer = testbench.grpc_server.StorageServicer(
+            self.db, bidi_read_idle_timeout=0.3
+        )
+        # Total stream time (~1 s) is longer than the idle timeout, but the
+        # stream is never idle for more than 0.15 s.
+        context, responses = self._bidi_read_with_pauses(servicer, [0.15] * 7)
+        context.cancel.assert_not_called()
+        self.assertEqual(len(responses), 8)
+
+    def test_bidi_read_idle_stream_cancelled(self):
+        servicer = testbench.grpc_server.StorageServicer(
+            self.db, bidi_read_idle_timeout=0.2
+        )
+        context, _ = self._bidi_read_with_pauses(servicer, [0.6])
+        context.cancel.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
