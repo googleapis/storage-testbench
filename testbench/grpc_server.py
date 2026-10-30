@@ -899,13 +899,26 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         # In real life requests may be async. For convenience of implementation,
         # we handle each request synchronously before reading the next request.
         def process_read_range(range):
+            nonlocal blob
             size = storage_pb2.ServiceConstants.Values.MAX_READ_CHUNK_BYTES
+            if not blob.metadata.HasField("finalize_time"):
+                # Appendable objects may grow while the stream is open. Like
+                # the real service, each new range sees the bytes appended
+                # since the stream was opened. Once finalized, the object can
+                # no longer change.
+                blob = self.db.get_object(
+                    obj_spec.bucket,
+                    obj_spec.object,
+                    context=context,
+                    generation=metadata.generation,
+                )
+            media = blob.media
             # A read range corresponds to a unique read_id.
             # For the same read_id, it is guaranteed that responses are delivered in increasing offset order.
             start = range.read_offset
             if start < 0:
-                start = max(0, len(blob.media) + start)
-            read_end = len(blob.media)
+                start = max(0, len(media) + start)
+            read_end = len(media)
             read_id = range.read_id
 
             if start > read_end or range.read_length < 0:
@@ -923,7 +936,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 end = min(start + size, read_end)
                 # Verify if there are no more bytes to read for the given ReadRange.
                 range_end = end == read_end
-                chunk = blob.media[start:end]
+                chunk = media[start:end]
                 read_range = {
                     "read_offset": start,
                     "read_length": end - start,

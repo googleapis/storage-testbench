@@ -2710,6 +2710,137 @@ class TestGrpc(unittest.TestCase):
         for read_id, items in chunks.items():
             self.assertEqual(items, [(read_id - 1, 1, True)], msg=f"{read_id=}")
 
+    def _bidi_write_appendable(self, requests):
+        return list(self.grpc.BidiWriteObject(requests, context=self.mock_context()))
+
+    def test_bidi_read_object_tails_appendable_object(self):
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=b"abc", crc32c=crc32c.crc32c(b"abc")
+            ),
+            flush=True,
+        )
+        first = self._bidi_write_appendable([r1])[0]
+
+        def append(offset, content, finish_write=False):
+            self._bidi_write_appendable(
+                [
+                    storage_pb2.BidiWriteObjectRequest(
+                        append_object_spec=storage_pb2.AppendObjectSpec(
+                            bucket=first.resource.bucket,
+                            object=first.resource.name,
+                            generation=first.resource.generation,
+                            write_handle=first.write_handle,
+                        ),
+                        write_offset=offset,
+                        checksummed_data=storage_pb2.ChecksummedData(
+                            content=content, crc32c=crc32c.crc32c(content)
+                        ),
+                        flush=True,
+                        state_lookup=True,
+                        finish_write=finish_write,
+                    )
+                ]
+            )
+
+        def full_range(read_id):
+            return storage_pb2.BidiReadObjectRequest(
+                read_ranges=[storage_pb2.ReadRange(read_id=read_id)]
+            )
+
+        def requests():
+            yield storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name", object="object-name"
+                ),
+                read_ranges=[storage_pb2.ReadRange(read_id=1)],
+            )
+            # Append while the read stream is open; new ranges see the data.
+            append(3, b"defg")
+            yield full_range(2)
+            yield storage_pb2.BidiReadObjectRequest(
+                read_ranges=[storage_pb2.ReadRange(read_offset=5, read_id=3)]
+            )
+            append(7, b"hi", finish_write=True)
+            yield full_range(4)
+            # Once finalization has been observed, later ranges reuse the
+            # finalized snapshot without re-reading from the database.
+            yield full_range(5)
+
+        data = {}
+        with unittest.mock.patch.object(
+            self.db, "get_object", wraps=self.db.get_object
+        ) as get_object:
+            for resp in self.grpc.BidiReadObject(
+                requests(), context=self.mock_context()
+            ):
+                for r in resp.object_data_ranges:
+                    data.setdefault(r.read_range.read_id, b"")
+                    data[r.read_range.read_id] += r.checksummed_data.content
+        self.assertEqual(
+            data,
+            {
+                1: b"abc",
+                2: b"abcdefg",
+                3: b"fg",
+                4: b"abcdefghi",
+                5: b"abcdefghi",
+            },
+        )
+        # 1 on open + 4 ranges before finalization is observed (ranges 1..4)
+        # + 1 inside `append` (which calls `get_object` twice across 2 appends).
+        # Specifically, range 5 does not call `get_object`:
+        read_gets = [
+            call
+            for call in get_object.call_args_list
+            if call.kwargs.get("generation") == first.resource.generation
+            and "preconditions" not in call.kwargs
+        ]
+        self.assertEqual(len(read_gets), 4)
+
+    def test_bidi_read_object_finalized_object_is_not_reread(self):
+        self._insert_object_for_range_end("object-name", 100)
+        with unittest.mock.patch.object(
+            self.db, "get_object", wraps=self.db.get_object
+        ) as get_object:
+            chunks = self._range_data_by_read_id(
+                "object-name",
+                [storage_pb2.ReadRange(read_id=i) for i in range(1, 4)],
+            )
+        self.assertEqual(len(chunks), 3)
+        # Only the open reads the object; finalized objects never change.
+        self.assertEqual(get_object.call_count, 1)
+
+    def test_bidi_read_object_appendable_object_rereads_per_range(self):
+        r1 = storage_pb2.BidiWriteObjectRequest(
+            write_object_spec=storage_pb2.WriteObjectSpec(
+                resource=storage_pb2.Object(
+                    name="object-name", bucket="projects/_/buckets/bucket-name"
+                ),
+                appendable=True,
+            ),
+            checksummed_data=storage_pb2.ChecksummedData(
+                content=b"abc", crc32c=crc32c.crc32c(b"abc")
+            ),
+            flush=True,
+        )
+        self._bidi_write_appendable([r1])
+        with unittest.mock.patch.object(
+            self.db, "get_object", wraps=self.db.get_object
+        ) as get_object:
+            chunks = self._range_data_by_read_id(
+                "object-name",
+                [storage_pb2.ReadRange(read_id=i) for i in range(1, 4)],
+            )
+        self.assertEqual(chunks, {i: [(0, 3, True)] for i in range(1, 4)})
+        self.assertEqual(get_object.call_count, 4)
+
     def test_bidi_read_object_offset_at_end_returns_one_empty_chunk(self):
         size = self._insert_object_for_range_end("object-name", 1024)
         self._insert_object_for_range_end("empty-object", 0)
