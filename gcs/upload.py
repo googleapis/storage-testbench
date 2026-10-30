@@ -501,9 +501,24 @@ class Upload(types.SimpleNamespace):
                         handle = None
                     if appendable_metadata_in_first_response:
                         obj_len = msg.persisted_size
+                        obj_crc32c = msg.persisted_data_checksums.crc32c
+                        msg.ClearField("persisted_data_checksums")
                         msg.resource.CopyFrom(upload.metadata)
                         msg.resource.size = obj_len
+                        msg.resource.ClearField("checksums")
+                        msg.resource.checksums.crc32c = obj_crc32c
             return msg
+
+        def persisted_state_response():
+            # Appendable objects only report the data persisted by a `flush`,
+            # a `finish_write`, or the close of a previous stream.
+            media = persisted_media if is_appendable else upload.media
+            return storage_pb2.BidiWriteObjectResponse(
+                persisted_size=len(media),
+                persisted_data_checksums=storage_pb2.ObjectChecksums(
+                    crc32c=crc32c.crc32c(media)
+                ),
+            )
 
         def update_upload_checksums(upload_metadata, object_checksums):
             if object_checksums is None:
@@ -525,6 +540,37 @@ class Upload(types.SimpleNamespace):
                     ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
                 else:
                     upload_metadata.metadata["x_emulator_no_md5"] = "true"
+
+        def persist_appendable():
+            # Make the bytes written so far durable and visible to readers.
+            nonlocal blob, persisted_media
+            if len(persisted_media) == len(upload.media):
+                return
+            update_upload_checksums(upload.metadata, object_checksums)
+            media = upload.media
+
+            def update_appendable_blob(db_blob, unused_generation):
+                db_blob.media = media
+                db_blob.metadata.size = len(media)
+                db_blob.metadata.checksums.crc32c = crc32c.crc32c(media)
+                return db_blob
+
+            blob = db.do_update_object(
+                upload.bucket.name,
+                upload.metadata.name,
+                update_fn=update_appendable_blob,
+                context=context,
+                generation=upload.metadata.generation,
+            )
+            persisted_media = media
+
+        persisted_media = b""
+        if is_appendable:
+            persisted_media = blob.media
+            # Closing a stream persists any data written but not yet flushed
+            # by that stream. Account for any such data when a new stream
+            # opens the object.
+            persist_appendable()
 
         for request in request_iterator:
             if request.HasField("first_message"):
@@ -648,31 +694,14 @@ class Upload(types.SimpleNamespace):
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
                 upload.media += content
 
-            persisted_crc32c = crc32c.crc32c(upload.media)
-
-            if data == "checksummed_data":
-                # Update appendable blob size and media here, as part of #720.
-                # TODO(#720): (a) Update crc and update_time in object metadata.
-                # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
-                if is_appendable:
-
-                    update_upload_checksums(upload.metadata, object_checksums)
-
-                    def update_appendable_blob(blob, unused_generation):
-                        blob.media = upload.media
-                        blob.metadata.size = len(upload.media)
-                        blob.metadata.checksums.crc32c = persisted_crc32c
-                        return blob
-
-                    blob = db.do_update_object(
-                        upload.bucket.name,
-                        upload.metadata.name,
-                        update_fn=update_appendable_blob,
-                        context=context,
-                        generation=upload.metadata.generation,
-                    )
             elif data is not None:
                 testbench.error.invalid("Invalid data field in upload", context)
+
+            # Like the real service, data written to appendable objects is only
+            # persisted when the client flushes, finalizes, or closes the stream.
+            # TODO(#720): Update update_time in object metadata.
+            if is_appendable and request.flush and not request.finish_write:
+                persist_appendable()
 
             if request.finish_write:
                 upload.complete = True
@@ -682,14 +711,7 @@ class Upload(types.SimpleNamespace):
                 # For uploads that are complete, finalize the upload outside the request loop by
                 # storing full object checksums, creating new object, and yielding response with
                 # object metadata.
-                yield response(
-                    storage_pb2.BidiWriteObjectResponse(
-                        persisted_size=len(upload.media),
-                        persisted_data_checksums=storage_pb2.ObjectChecksums(
-                            crc32c=persisted_crc32c
-                        ),
-                    )
-                )
+                yield response(persisted_state_response())
 
         if not upload.complete:
             error_code = testbench.common.get_return_error_code_on_half_close(
@@ -715,6 +737,7 @@ class Upload(types.SimpleNamespace):
                         datetime.datetime.now(datetime.timezone.utc)
                     )
                     blob.metadata.size = len(upload.media)
+                    blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
                     blob.upload = None
                     blob.upload_gen = 0
                     return blob
@@ -743,7 +766,12 @@ class Upload(types.SimpleNamespace):
                     preconditions=upload.preconditions,
                 )
             yield response(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
-        elif not is_resumable and not is_appendable:
+        elif is_appendable:
+            # The client closed the stream without finalizing. The service
+            # persists the written data and responds with the persisted size.
+            persist_appendable()
+            yield response(persisted_state_response())
+        elif not is_resumable:
             testbench.error.missing("finish_write in request", context)
 
     def resumable_status_rest(self, override_308=False):
