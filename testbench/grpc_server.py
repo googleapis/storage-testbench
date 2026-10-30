@@ -13,13 +13,17 @@
 # limitations under the License.
 
 import base64
+import binascii
 import copy
 import datetime
 import functools
+import hashlib
+import hmac
 import itertools
 import json
 import math
 import re
+import secrets
 import sys
 import threading
 import time
@@ -79,6 +83,59 @@ class _IdleTimeout:
                 return
             if self._done.wait(remaining):
                 return
+
+
+# Signs the read handles issued by this testbench instance. Like the real
+# service, read handles are opaque to clients and cannot be forged.
+_READ_HANDLE_KEY = secrets.token_bytes(32)
+_READ_HANDLE_MAC_SIZE = hashlib.sha256().digest_size
+
+
+def _make_read_handle(bucket_name, object_name, generation):
+    """Returns an opaque read handle for one object generation."""
+    payload = json.dumps(
+        {
+            "bucket": bucket_name,
+            "object": object_name,
+            "generation": generation,
+            "nonce": secrets.token_hex(8),
+        }
+    ).encode("utf-8")
+    mac = hmac.new(_READ_HANDLE_KEY, payload, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac + payload)
+
+
+def _parse_read_handle(handle):
+    """Returns the contents of a read handle, or None if it is not valid."""
+    try:
+        raw = base64.urlsafe_b64decode(handle)
+    except (binascii.Error, ValueError):
+        return None
+    mac, payload = raw[:_READ_HANDLE_MAC_SIZE], raw[_READ_HANDLE_MAC_SIZE:]
+    expected = hmac.new(_READ_HANDLE_KEY, payload, hashlib.sha256).digest()
+    if not hmac.compare_digest(mac, expected):
+        return None
+    return json.loads(payload)
+
+
+def _read_handle_generation(obj_spec):
+    """Returns the generation from a valid `read_handle` in `obj_spec`.
+
+    Returns None if there is no handle, or if the handle is not valid for this
+    bucket, object, and (if set) generation. Like the real service, invalid
+    handles are ignored and the object is opened as if there was no handle.
+    """
+    if not obj_spec.HasField("read_handle"):
+        return None
+    handle = _parse_read_handle(obj_spec.read_handle.handle)
+    if handle is None:
+        return None
+    bucket_name = testbench.common.bucket_name_from_proto(obj_spec.bucket)
+    if (handle["bucket"], handle["object"]) != (bucket_name, obj_spec.object):
+        return None
+    if obj_spec.generation not in (0, handle["generation"]):
+        return None
+    return handle["generation"]
 
 
 def _should_stall_after_bytes(bytes_yielded, chunk_len, stall_after_bytes):
@@ -755,14 +812,30 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             return
 
         obj_spec = first_message.read_object_spec
-        blob = self.db.get_object(
-            obj_spec.bucket,
-            obj_spec.object,
-            context=context,
-            generation=obj_spec.generation,
-            preconditions=testbench.common.make_grpc_preconditions(obj_spec),
-        )
+        # Like the real service, a valid read handle reopens the same
+        # generation, skips the preconditions, and returns no metadata.
+        handle_generation = _read_handle_generation(obj_spec)
+        if handle_generation is None:
+            blob = self.db.get_object(
+                obj_spec.bucket,
+                obj_spec.object,
+                context=context,
+                generation=obj_spec.generation,
+                preconditions=testbench.common.make_grpc_preconditions(obj_spec),
+            )
+        else:
+            blob = self.db.get_object(
+                obj_spec.bucket,
+                obj_spec.object,
+                context=context,
+                generation=handle_generation,
+            )
         metadata = blob.metadata
+        read_handle = _make_read_handle(
+            testbench.common.bucket_name_from_proto(obj_spec.bucket),
+            metadata.name,
+            metadata.generation,
+        )
 
         # Check retry test broken-stream instructions.
         test_id = testbench.common.get_retry_test_id_from_context(context)
@@ -795,8 +868,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             nonlocal first_response
             if first_response:
                 first_response = False
-                resp.metadata.CopyFrom(metadata)
-                resp.read_handle.handle = b"an-opaque-handle"
+                if handle_generation is None:
+                    resp.metadata.CopyFrom(metadata)
+                resp.read_handle.handle = read_handle
             # We ignore the read_mask for this test server
             return resp
 
