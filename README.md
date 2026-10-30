@@ -200,13 +200,19 @@ Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
 In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-send-handle-and-token-tokenval`.
 Testbench will fail redirectable RPCs with `routing_token` set to the value `T`
 (`tokenval` in the example) and a `write_handle` or `read_handle` depending on the method called( `storage.objects.insert` or `storage.objects.get` ).
+For `BidiReadObject`, the status message is "The object is not available from
+this location.", and the `read_handle` is valid: clients can reopen the object
+with it.
 
 ### redirect-expect-token-T
 
 In gRPC, set initial metadata with `x-goog-emulator-instructions: redirect-expect-token-tokenval`.
 Testbench will consume the instruction if the RPC also specifies
 `x-goog-request-params: routing_token=T` (`routing_token=tokenval` in the
-example).
+example). For `storage.objects.get` (`BidiReadObject`), setting
+`read_object_spec.routing_token` to `T` also consumes the instruction.
+
+Redirect tokens (`T`) may contain lowercase letters, digits, and `-`.
 
 Note that `x-goog-request-params` supports multiple key-value pairs, encoded
 like URL query parameters.

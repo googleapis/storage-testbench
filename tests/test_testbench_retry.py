@@ -1901,6 +1901,156 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         # Verify the early break occurred during first message only.
         self.assertEqual(len(responses), 0)
 
+    def test_grpc_bidiread_redirect_handle_and_expect_token(self):
+        media = self._create_block(256 * 1024)
+        response = self.rest_client.put(
+            "/bucket-name/object-name", content_type="text/plain", data=media
+        )
+        self.assertEqual(response.status_code, 200)
+        # Tokens may contain digits.
+        token = "token-123"
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            f"redirect-send-handle-and-token-{token}",
+                            f"redirect-expect-token-{token}",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        id = json.loads(response.data).get("id")
+
+        def make_context(request_params=None):
+            context = unittest.mock.Mock()
+            context.abort_with_status = unittest.mock.MagicMock()
+            context.abort_with_status.side_effect = RpcError()
+            metadata = [("x-retry-test-id", id)]
+            if request_params:
+                metadata.append(("x-goog-request-params", request_params))
+            context.invocation_metadata = unittest.mock.Mock(
+                return_value=tuple(metadata)
+            )
+            return context
+
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object="object-name"
+        )
+        context = make_context()
+        with self.assertRaises(RpcError):
+            list(
+                self.grpc.BidiReadObject(
+                    [storage_pb2.BidiReadObjectRequest(read_object_spec=spec)],
+                    context=context,
+                )
+            )
+        status = context.abort_with_status.call_args.args[0]
+        self.assertEqual(status.code, StatusCode.ABORTED)
+        self.assertEqual(
+            status.details, "The object is not available from this location."
+        )
+        redirect_error = storage_pb2.BidiReadObjectRedirectedError()
+        self._unpack_details(status, redirect_error)
+        self.assertEqual(redirect_error.routing_token, token)
+        self.assertGreater(len(redirect_error.read_handle.handle), 0)
+
+        # A different token (even a prefix) does not consume the instruction.
+        context = make_context(
+            f"bucket=projects/_/buckets/bucket-name&routing_token={token}4"
+        )
+        list(
+            self.grpc.BidiReadObject(
+                [storage_pb2.BidiReadObjectRequest(read_object_spec=spec)],
+                context=context,
+            )
+        )
+        self.assertIsNotNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.get")
+        )
+
+        # Reconnect with the redirect handle and token: the instruction is
+        # consumed and the handle is honored (no metadata in the response).
+        retry_spec = storage_pb2.BidiReadObjectSpec()
+        retry_spec.CopyFrom(spec)
+        retry_spec.read_handle.CopyFrom(redirect_error.read_handle)
+        retry_spec.routing_token = redirect_error.routing_token
+        responses = list(
+            self.grpc.BidiReadObject(
+                [
+                    storage_pb2.BidiReadObjectRequest(
+                        read_object_spec=retry_spec,
+                        read_ranges=[storage_pb2.ReadRange(read_id=1)],
+                    )
+                ],
+                context=make_context(),
+            )
+        )
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.get")
+        )
+        self.assertFalse(responses[0].HasField("metadata"))
+        data = b"".join(
+            r.checksummed_data.content
+            for resp in responses
+            for r in resp.object_data_ranges
+        )
+        self.assertEqual(len(data), len(media))
+
+    def test_grpc_bidiread_redirect_expect_token_in_request_params(self):
+        response = self.rest_client.put(
+            "/bucket-name/object-name",
+            content_type="text/plain",
+            data=self._create_block(256 * 1024),
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.rest_client.post(
+            "/retry_test",
+            data=json.dumps(
+                {
+                    "instructions": {
+                        "storage.objects.get": [
+                            "redirect-expect-token-t1",
+                            "return-broken-stream-after-128K",
+                        ],
+                    },
+                    "transport": "GRPC",
+                }
+            ),
+        )
+        id = json.loads(response.data).get("id")
+        context = unittest.mock.Mock()
+        context.abort.side_effect = RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                ("x-retry-test-id", id),
+                ("x-goog-request-params", "bucket=b&routing_token=t1"),
+            )
+        )
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object="object-name"
+        )
+        with self.assertRaises(RpcError):
+            list(
+                self.grpc.BidiReadObject(
+                    [
+                        storage_pb2.BidiReadObjectRequest(
+                            read_object_spec=spec,
+                            read_ranges=[storage_pb2.ReadRange(read_id=1)],
+                        )
+                    ],
+                    context=context,
+                )
+            )
+        context.abort.assert_called_once_with(StatusCode.UNAVAILABLE, unittest.mock.ANY)
+        self.assertIsNone(
+            rest_server.db.peek_next_instruction(id, "storage.objects.get")
+        )
+
     def test_grpc_retry_return_error_if_dp_enforced(self):
         # Setup a retry test with 'return-503-if-dp-enforced'
         response = self.rest_client.post(
