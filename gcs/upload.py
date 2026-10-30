@@ -14,10 +14,14 @@
 
 """Helper class to hold data during an upload."""
 
+import base64
+import binascii
 import datetime
 import hashlib
+import hmac
 import itertools
 import json
+import secrets
 import types
 import uuid
 
@@ -32,6 +36,39 @@ from grpc_status import rpc_status
 import gcs
 import testbench
 from google.storage.v2 import storage_pb2
+
+# Signs the write handles issued by this testbench instance. Like the real
+# service, handles are opaque to clients and cannot be forged.
+_WRITE_HANDLE_KEY = secrets.token_bytes(32)
+_WRITE_HANDLE_MAC_SIZE = hashlib.sha256().digest_size
+
+
+def make_write_handle(blob):
+    """Returns an opaque write handle for the current writer of `blob`."""
+    payload = json.dumps(
+        {
+            "bucket": testbench.common.bucket_name_from_proto(blob.bucket.name),
+            "object": blob.metadata.name,
+            "generation": blob.metadata.generation,
+            "upload_gen": blob.upload_gen,
+            "nonce": secrets.token_hex(8),
+        }
+    ).encode("utf-8")
+    mac = hmac.new(_WRITE_HANDLE_KEY, payload, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac + payload)
+
+
+def parse_write_handle(handle):
+    """Returns the contents of a write handle, or None if it is not valid."""
+    try:
+        raw = base64.urlsafe_b64decode(handle)
+    except (binascii.Error, ValueError):
+        return None
+    mac, payload = raw[:_WRITE_HANDLE_MAC_SIZE], raw[_WRITE_HANDLE_MAC_SIZE:]
+    expected = hmac.new(_WRITE_HANDLE_KEY, payload, hashlib.sha256).digest()
+    if not hmac.compare_digest(mac, expected):
+        return None
+    return json.loads(payload)
 
 
 class Upload(types.SimpleNamespace):
@@ -356,6 +393,51 @@ class Upload(types.SimpleNamespace):
         )
 
     @classmethod
+    def _process_replayed_finalize_grpc(
+        cls, blob, request_iterator, abort_invalid_write_offset, context
+    ):
+        """Process a BidiWriteObject stream resuming a finalized appendable object.
+
+        The data is immutable: the stream may only repeat data that is already
+        part of the object, query its state, or retry `finish_write`.
+        """
+        size = len(blob.media)
+        crc = blob.metadata.checksums.crc32c
+        first_response = True
+        for request in request_iterator:
+            content = request.checksummed_data.content
+            if request.write_offset > size:
+                abort_invalid_write_offset(request.write_offset, size)
+            if request.write_offset + len(content) > size:
+                context.abort(
+                    grpc.StatusCode.FAILED_PRECONDITION,
+                    "The upload is currently immutable due to a previous attempt "
+                    "to complete the write and cannot be appended anymore. "
+                    "Completing the upload may be retried by setting "
+                    "`finish_write` to true.",
+                )
+            if request.finish_write:
+                checksums = request.object_checksums
+                if checksums.HasField("crc32c") and checksums.crc32c != crc:
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "Object crc32c mismatch: server computed: '%08x', "
+                        "client provided: '%08x'." % (crc, checksums.crc32c),
+                    )
+                yield storage_pb2.BidiWriteObjectResponse(resource=blob.metadata)
+                return
+            if request.state_lookup or first_response:
+                first_response = False
+                yield storage_pb2.BidiWriteObjectResponse(
+                    persisted_size=size,
+                    persisted_data_checksums=storage_pb2.ObjectChecksums(crc32c=crc),
+                )
+        yield storage_pb2.BidiWriteObjectResponse(
+            persisted_size=size,
+            persisted_data_checksums=storage_pb2.ObjectChecksums(crc32c=crc),
+        )
+
+    @classmethod
     def process_bidi_write_object_grpc(cls, db, request_iterator, context):
         """Process a BidiWriteObject streaming RPC, and yield a stream of responses."""
 
@@ -370,10 +452,18 @@ class Upload(types.SimpleNamespace):
             detail.Pack(err)
             status_proto = status_pb2.Status(
                 code=grpc.StatusCode.ABORTED.value[0],
-                message=grpc.StatusCode.ABORTED.value[1],
+                message="The object is not available from this location.",
                 details=[detail],
             )
             context.abort_with_status(rpc_status.to_status(status_proto))
+
+        def abort_invalid_write_offset(request_offset, expected_offset):
+            context.abort(
+                grpc.StatusCode.OUT_OF_RANGE,
+                "Write request to appendable object at offset '%d', which does "
+                "not match the object's current size '%d'."
+                % (request_offset, expected_offset),
+            )
 
         # Many tests use a list as the request_iterator
         request_iterator = iter(request_iterator)
@@ -392,6 +482,7 @@ class Upload(types.SimpleNamespace):
 
         write_type = first_msg.WhichOneof("first_message")
         handle = None
+        resumed_with_handle = False
         if write_type == "upload_id":  # resumable upload
             upload = db.get_upload(first_msg.upload_id, context)
             if upload.complete:
@@ -413,12 +504,26 @@ class Upload(types.SimpleNamespace):
                 )
                 upload.blob = blob
                 db.insert_upload(upload)
-                handle = str(1).encode("utf-8")
+                handle = make_write_handle(blob)
         elif write_type == "append_object_spec":
             is_appendable = True
-            preconditions = testbench.common.make_grpc_preconditions(
-                first_msg.append_object_spec
-            )
+            spec = first_msg.append_object_spec
+            write_handle = None
+            if spec.HasField("write_handle"):
+                # The real service rejects handles it cannot decrypt, or that
+                # were issued for a different object, before opening it.
+                write_handle = parse_write_handle(spec.write_handle.handle)
+                bucket_name = testbench.common.bucket_name_from_proto(spec.bucket)
+                if write_handle is None or (
+                    write_handle["bucket"],
+                    write_handle["object"],
+                    write_handle["generation"],
+                ) != (bucket_name, spec.object, spec.generation):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "Invalid 'write_handle' on the first request.",
+                    )
+            preconditions = testbench.common.make_grpc_preconditions(spec)
             blob = db.get_object(
                 first_msg.append_object_spec.bucket,
                 first_msg.append_object_spec.object,
@@ -426,8 +531,16 @@ class Upload(types.SimpleNamespace):
                 generation=first_msg.append_object_spec.generation,
                 preconditions=preconditions,
             )
-            # TODO: consider handling replayed finalizes. The real service can
-            # handle them, but for simplicity we always error in the testbench.
+            if blob.metadata.HasField("finalize_time") and write_handle is not None:
+                # Like the real service, a writer resuming with its handle can
+                # retry the finalize, e.g., if the response was lost.
+                yield from cls._process_replayed_finalize_grpc(
+                    blob,
+                    itertools.chain([first_msg], request_iterator),
+                    abort_invalid_write_offset,
+                    context,
+                )
+                return
             if blob.metadata.HasField("finalize_time"):
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
@@ -443,7 +556,7 @@ class Upload(types.SimpleNamespace):
                     if gen != blob.metadata.generation:
                         return db_blob
                     db_blob.upload_gen += 1
-                    handle = str(db_blob.upload_gen).encode("utf-8")
+                    handle = make_write_handle(db_blob)
                     return db_blob
 
                 blob = db.do_update_object(
@@ -454,15 +567,13 @@ class Upload(types.SimpleNamespace):
                     generation=blob.metadata.generation,
                 )
                 appendable_metadata_in_first_response = True
-            elif (
-                int(first_msg.append_object_spec.write_handle.handle.decode("utf-8"))
-                != blob.upload_gen
-            ):
+            elif write_handle["upload_gen"] != blob.upload_gen:
                 # Someone else took over!
                 context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
                     "A different writer has become the exclusive writer of this object.",
                 )
+            resumed_with_handle = write_handle is not None
             upload = blob.upload
         else:
             testbench.error.invalid("Upload missing a first_message field", context)
@@ -475,7 +586,7 @@ class Upload(types.SimpleNamespace):
         )
         if return_redirect_token:
             if handle is None:
-                handle = str(blob.upload_gen).encode("utf-8")
+                handle = make_write_handle(blob)
             abort_with_redirect_error(
                 return_redirect_token,
                 handle=handle,
@@ -501,9 +612,24 @@ class Upload(types.SimpleNamespace):
                         handle = None
                     if appendable_metadata_in_first_response:
                         obj_len = msg.persisted_size
+                        obj_crc32c = msg.persisted_data_checksums.crc32c
+                        msg.ClearField("persisted_data_checksums")
                         msg.resource.CopyFrom(upload.metadata)
                         msg.resource.size = obj_len
+                        msg.resource.ClearField("checksums")
+                        msg.resource.checksums.crc32c = obj_crc32c
             return msg
+
+        def persisted_state_response():
+            # Appendable objects only report the data persisted by a `flush`,
+            # a `finish_write`, or the close of a previous stream.
+            media = persisted_media if is_appendable else upload.media
+            return storage_pb2.BidiWriteObjectResponse(
+                persisted_size=len(media),
+                persisted_data_checksums=storage_pb2.ObjectChecksums(
+                    crc32c=crc32c.crc32c(media)
+                ),
+            )
 
         def update_upload_checksums(upload_metadata, object_checksums):
             if object_checksums is None:
@@ -525,6 +651,37 @@ class Upload(types.SimpleNamespace):
                     ] = testbench.common.rest_md5_from_proto(object_checksums.md5_hash)
                 else:
                     upload_metadata.metadata["x_emulator_no_md5"] = "true"
+
+        def persist_appendable():
+            # Make the bytes written so far durable and visible to readers.
+            nonlocal blob, persisted_media
+            if len(persisted_media) == len(upload.media):
+                return
+            update_upload_checksums(upload.metadata, object_checksums)
+            media = upload.media
+
+            def update_appendable_blob(db_blob, unused_generation):
+                db_blob.media = media
+                db_blob.metadata.size = len(media)
+                db_blob.metadata.checksums.crc32c = crc32c.crc32c(media)
+                return db_blob
+
+            blob = db.do_update_object(
+                upload.bucket.name,
+                upload.metadata.name,
+                update_fn=update_appendable_blob,
+                context=context,
+                generation=upload.metadata.generation,
+            )
+            persisted_media = media
+
+        persisted_media = b""
+        if is_appendable:
+            persisted_media = blob.media
+            # Closing a stream persists any data written but not yet flushed
+            # by that stream. Account for any such data when a new stream
+            # opens the object.
+            persist_appendable()
 
         for request in request_iterator:
             if request.HasField("first_message"):
@@ -550,7 +707,7 @@ class Upload(types.SimpleNamespace):
                 )
                 if return_redirect_token_finish:
                     if handle is None:
-                        handle = str(blob.upload_gen).encode("utf-8")
+                        handle = make_write_handle(blob)
                     abort_with_redirect_error(
                         return_redirect_token_finish,
                         handle=handle,
@@ -589,11 +746,20 @@ class Upload(types.SimpleNamespace):
                 # The testbench should ignore any request bytes that have already been persisted,
                 # thus we validate write_offset against persisted_size.
                 # https://github.com/googleapis/googleapis/blob/15b48f9ed0ae8b034e753c6895eb045f436e257c/google/storage/v2/storage.proto#L320-L329
+                # The real service requires the exact offset for appendable
+                # objects, unless the writer resumes with its write handle.
+                if is_appendable and not resumed_with_handle:
+                    if request.write_offset != len(upload.media):
+                        abort_invalid_write_offset(
+                            request.write_offset, len(upload.media)
+                        )
                 if request.write_offset < len(upload.media):
                     range_start = len(upload.media) - request.write_offset
                     content = testbench.common.partial_media(
                         content, range_end=len(content), range_start=range_start
                     )
+                if request.write_offset > len(upload.media) and is_appendable:
+                    abort_invalid_write_offset(request.write_offset, len(upload.media))
                 if request.write_offset > len(upload.media):
                     context.abort(
                         grpc.StatusCode.OUT_OF_RANGE,
@@ -648,31 +814,14 @@ class Upload(types.SimpleNamespace):
                 # TODO(#592): Refactor testbench checkpointing to more closely follow GCS server behavior.
                 upload.media += content
 
-            persisted_crc32c = crc32c.crc32c(upload.media)
-
-            if data == "checksummed_data":
-                # Update appendable blob size and media here, as part of #720.
-                # TODO(#720): (a) Update crc and update_time in object metadata.
-                # TODO(#720): (b) Decide if the testbench checks for flush or/and performs a background force-close.
-                if is_appendable:
-
-                    update_upload_checksums(upload.metadata, object_checksums)
-
-                    def update_appendable_blob(blob, unused_generation):
-                        blob.media = upload.media
-                        blob.metadata.size = len(upload.media)
-                        blob.metadata.checksums.crc32c = persisted_crc32c
-                        return blob
-
-                    blob = db.do_update_object(
-                        upload.bucket.name,
-                        upload.metadata.name,
-                        update_fn=update_appendable_blob,
-                        context=context,
-                        generation=upload.metadata.generation,
-                    )
             elif data is not None:
                 testbench.error.invalid("Invalid data field in upload", context)
+
+            # Like the real service, data written to appendable objects is only
+            # persisted when the client flushes, finalizes, or closes the stream.
+            # TODO(#720): Update update_time in object metadata.
+            if is_appendable and request.flush and not request.finish_write:
+                persist_appendable()
 
             if request.finish_write:
                 upload.complete = True
@@ -682,14 +831,7 @@ class Upload(types.SimpleNamespace):
                 # For uploads that are complete, finalize the upload outside the request loop by
                 # storing full object checksums, creating new object, and yielding response with
                 # object metadata.
-                yield response(
-                    storage_pb2.BidiWriteObjectResponse(
-                        persisted_size=len(upload.media),
-                        persisted_data_checksums=storage_pb2.ObjectChecksums(
-                            crc32c=persisted_crc32c
-                        ),
-                    )
-                )
+                yield response(persisted_state_response())
 
         if not upload.complete:
             error_code = testbench.common.get_return_error_code_on_half_close(
@@ -715,6 +857,7 @@ class Upload(types.SimpleNamespace):
                         datetime.datetime.now(datetime.timezone.utc)
                     )
                     blob.metadata.size = len(upload.media)
+                    blob.metadata.checksums.crc32c = crc32c.crc32c(upload.media)
                     blob.upload = None
                     blob.upload_gen = 0
                     return blob
@@ -743,7 +886,12 @@ class Upload(types.SimpleNamespace):
                     preconditions=upload.preconditions,
                 )
             yield response(storage_pb2.BidiWriteObjectResponse(resource=blob.metadata))
-        elif not is_resumable and not is_appendable:
+        elif is_appendable:
+            # The client closed the stream without finalizing. The service
+            # persists the written data and responds with the persisted size.
+            persist_appendable()
+            yield response(persisted_state_response())
+        elif not is_resumable:
             testbench.error.missing("finish_write in request", context)
 
     def resumable_status_rest(self, override_308=False):
