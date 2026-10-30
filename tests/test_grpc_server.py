@@ -1901,6 +1901,40 @@ class TestGrpc(unittest.TestCase):
         retry_test = self.db.insert_retry_test(
             {"storage.objects.insert": ["stall-for-1s-after-0K"]}, transport="GRPC"
         )
+
+        # Replace the stall with one that lasts until the server sees the
+        # client cancel the RPC. A fixed-length stall is flaky on slow machines:
+        # the stall can end before the cancellation arrives.
+        contexts = []
+        stall_done = threading.Event()
+        original_stall = testbench.common.handle_stall_uploads_after_bytes
+
+        def stall(*args, **kwargs):
+            contexts.append(kwargs["context"])
+            try:
+                return original_stall(*args, **kwargs)
+            finally:
+                stall_done.set()
+
+        def sleep_until_cancelled(unused_seconds):
+            deadline = time.monotonic() + 10
+            while contexts[-1].is_active() and time.monotonic() < deadline:
+                threading.Event().wait(0.01)
+
+        stall_patch = unittest.mock.patch.object(
+            testbench.common, "handle_stall_uploads_after_bytes", stall
+        )
+        sleep_patch = unittest.mock.patch.object(
+            testbench.common,
+            "time",
+            # Keep every other `time` attribute working.
+            unittest.mock.Mock(wraps=time, sleep=sleep_until_cancelled),
+        )
+        stall_patch.start()
+        sleep_patch.start()
+        self.addCleanup(stall_patch.stop)
+        self.addCleanup(sleep_patch.stop)
+
         port, server = testbench.grpc_server.run(0, self.db)
         self.addCleanup(server.stop, grace=0)
         stub = storage_pb2_grpc.StorageStub(
@@ -1945,8 +1979,9 @@ class TestGrpc(unittest.TestCase):
         call.cancel()
         release.set()
 
-        # Wait past the end of the stall.
-        time.sleep(1.5)
+        # The stall ends only after the server sees the cancellation, so the
+        # test does not depend on how fast the machine is.
+        self.assertTrue(stall_done.wait(10), "the stall never ended")
         status = stub.QueryWriteStatus(
             storage_pb2.QueryWriteStatusRequest(upload_id=start.upload_id)
         )
