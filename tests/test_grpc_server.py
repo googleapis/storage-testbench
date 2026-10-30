@@ -2841,6 +2841,87 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(chunks, {i: [(0, 3, True)] for i in range(1, 4)})
         self.assertEqual(get_object.call_count, 4)
 
+    def _bidi_read_abort(self, requests):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        responses = []
+        with self.assertRaises(grpc.RpcError):
+            for resp in self.grpc.BidiReadObject(iter(requests), context=context):
+                responses.append(resp)
+        context.abort.assert_called_once()
+        return context.abort.call_args.args, responses
+
+    def test_bidi_read_object_invalid_first_message(self):
+        self._insert_object_for_range_end("object-name", 10)
+        cases = [
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_ranges=[storage_pb2.ReadRange(read_id=1)]
+                ),
+                "The 'read_object_spec' must be specified on the first request.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        object="object-name"
+                    )
+                ),
+                "Field `read_object_spec.bucket` is required.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        bucket="projects/_/buckets/bucket-name"
+                    )
+                ),
+                "Field `read_object_spec.object` is required.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        bucket="bucket-name", object="object-name"
+                    )
+                ),
+                "Invalid bucket name 'bucket-name'.",
+            ),
+        ]
+        for request, message in cases:
+            args, responses = self._bidi_read_abort([request])
+            self.assertEqual(
+                args, (grpc.StatusCode.INVALID_ARGUMENT, message), msg=message
+            )
+            self.assertEqual(responses, [], msg=message)
+
+    def test_bidi_read_object_spec_on_later_message(self):
+        self._insert_object_for_range_end("object-name", 10)
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object="object-name"
+        )
+        args, responses = self._bidi_read_abort(
+            [
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=spec,
+                    read_ranges=[storage_pb2.ReadRange(read_id=1)],
+                ),
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=spec,
+                    read_ranges=[storage_pb2.ReadRange(read_id=2)],
+                ),
+            ]
+        )
+        self.assertEqual(
+            args,
+            (
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "The 'read_object_spec' must only be specified on the first request.",
+            ),
+        )
+        # The first range is served; the second is not.
+        read_ids = [
+            r.read_range.read_id for resp in responses for r in resp.object_data_ranges
+        ]
+        self.assertEqual(read_ids, [1])
+
     def test_bidi_read_object_offset_at_end_returns_one_empty_chunk(self):
         size = self._insert_object_for_range_end("object-name", 1024)
         self._insert_object_for_range_end("empty-object", 0)

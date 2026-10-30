@@ -811,7 +811,25 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # ok if no messages arrive from the client.
             return
 
+        # Like the real service, reject invalid first messages with plain-text
+        # INVALID_ARGUMENT errors before looking up the object.
+        if not first_message.HasField("read_object_spec"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "The 'read_object_spec' must be specified on the first request.",
+            )
         obj_spec = first_message.read_object_spec
+        for field in ("bucket", "object"):
+            if not getattr(obj_spec, field):
+                context.abort(
+                    grpc.StatusCode.INVALID_ARGUMENT,
+                    f"Field `read_object_spec.{field}` is required.",
+                )
+        if not obj_spec.bucket.startswith("projects/_/buckets/"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid bucket name '{obj_spec.bucket}'.",
+            )
         # Like the real service, a valid read handle reopens the same
         # generation, skips the preconditions, and returns no metadata.
         handle_generation = _read_handle_generation(obj_spec)
@@ -842,6 +860,7 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         broken_stream_after_bytes = 0
         stall_time = 0
         stall_after_bytes = 0
+        corrupt_next_chunk = False
         method = "storage.objects.get"
         testbench.common.consume_expect_redirect_token(
             self.db, context, method, routing_token=obj_spec.routing_token
@@ -850,6 +869,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             test_id, method, transport="GRPC"
         ):
             next_instruction = self.db.peek_next_instruction(test_id, method)
+            if next_instruction == "return-corrupted-data":
+                self.db.dequeue_next_instruction(test_id, method)
+                corrupt_next_chunk = True
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
@@ -868,7 +890,16 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         first_response = True
 
         def response(resp):
-            nonlocal first_response
+            nonlocal first_response, corrupt_next_chunk
+            for data in resp.object_data_ranges:
+                content = data.checksummed_data.content
+                if corrupt_next_chunk and content:
+                    # Corrupt the data but keep the original CRC32C, as if
+                    # it was corrupted after the service computed it.
+                    corrupt_next_chunk = False
+                    data.checksummed_data.content = (
+                        bytes([content[0] ^ 0xFF]) + content[1:]
+                    )
             if first_response:
                 first_response = False
                 if handle_generation is None:
@@ -1007,6 +1038,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             yield from responses_for_range_batch(first_message.read_ranges)
             for request in request_iterator:
                 idle_timeout.touch()
+                if request.HasField("read_object_spec"):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "The 'read_object_spec' must only be specified on the"
+                        " first request.",
+                    )
                 yield from responses_for_range_batch(request.read_ranges)
 
         bytes_yielded = 0
