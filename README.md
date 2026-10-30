@@ -117,6 +117,11 @@ curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=888
 - `bidi-read-idle-timeout`: seconds a `BidiReadObject` stream may stay idle (no request received
   and no response sent) before the testbench cancels it. Defaults to 10. Active streams are not
   cancelled.
+- `strict-bucket-modes`: set to `true` to emulate the differences between RAPID buckets
+  (`storageClass: RAPID`) and standard buckets in `BidiReadObject`. Defaults to `false`.
+  - RAPID buckets reject a `read_mask` that does not include `object_data_ranges`.
+  - Standard buckets require `x-goog-request-params` with `bucket=` set to the bucket in the
+    request, never return a `read_handle`, and ignore any `read_handle` sent by clients.
 
 ### Check that the testbench is running
 
@@ -164,6 +169,10 @@ Testbench will fail after sending 1024*1024 bytes.
 
 Set request headers with `x-goog-emulator-instructions: return-corrupted-data`.
 Testbench will return corrupted data.
+
+In gRPC, use the Retry Test API with `return-corrupted-data` for
+`storage.objects.get`. `BidiReadObject` corrupts the next chunk with data, but
+keeps the CRC32C of the original data, so clients see a checksum mismatch.
 
 ### stall-always
 

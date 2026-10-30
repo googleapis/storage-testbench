@@ -28,6 +28,7 @@ import sys
 import threading
 import time
 import types
+import urllib.parse
 import uuid
 from collections.abc import Iterable
 from concurrent import futures
@@ -136,6 +137,47 @@ def _read_handle_generation(obj_spec):
     if obj_spec.generation not in (0, handle["generation"]):
         return None
     return handle["generation"]
+
+
+# `read_mask` paths that include the object data, as required by RAPID buckets.
+_RAPID_READ_MASK_DATA_PATHS = {
+    "*",
+    "object_data_ranges",
+    "object_data_ranges.checksummed_data",
+    "object_data_ranges.checksummed_data.content",
+}
+
+
+def _validate_rapid_read_mask(obj_spec, context):
+    """RAPID buckets reject a `read_mask` that excludes the object data."""
+    if not obj_spec.HasField("read_mask"):
+        return
+    paths = obj_spec.read_mask.paths
+    if _RAPID_READ_MASK_DATA_PATHS.isdisjoint(paths):
+        context.abort(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "The 'read_mask' field must include object_data_ranges, but was "
+            f"'{','.join(paths)}'.",
+        )
+
+
+def _validate_request_params_bucket(bucket, context):
+    """Standard buckets require `x-goog-request-params` with the same bucket."""
+    params = testbench.common.get_context_request_params(context)
+    if not params:
+        context.abort(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "An x-goog-request-params request metadata property must be "
+            "provided for this request.",
+        )
+    params_bucket = urllib.parse.parse_qs(params).get("bucket", [""])[0]
+    if params_bucket != bucket:
+        context.abort(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "The x-goog-request-params must specify the same bucket as the "
+            f"resource in the request. Request bucket was '{bucket}' but "
+            f"x-goog-request-params specified '{params_bucket}'",
+        )
 
 
 def _should_stall_after_bytes(bytes_yielded, chunk_len, stall_after_bytes):
@@ -377,8 +419,10 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         db,
         echo_metadata=False,
         bidi_read_idle_timeout=_BIDI_READ_IDLE_TIMEOUT_SECONDS,
+        strict_bucket_modes=False,
     ):
         self.db = db
+        self.strict_bucket_modes = strict_bucket_modes
         self.db.insert_test_bucket()
         self.echo_metadata = echo_metadata
         self.bidi_read_idle_timeout = bidi_read_idle_timeout
@@ -811,10 +855,39 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             # ok if no messages arrive from the client.
             return
 
+        # Like the real service, reject invalid first messages with plain-text
+        # INVALID_ARGUMENT errors before looking up the object.
+        if not first_message.HasField("read_object_spec"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "The 'read_object_spec' must be specified on the first request.",
+            )
         obj_spec = first_message.read_object_spec
+        for field in ("bucket", "object"):
+            if not getattr(obj_spec, field):
+                context.abort(
+                    grpc.StatusCode.INVALID_ARGUMENT,
+                    f"Field `read_object_spec.{field}` is required.",
+                )
+        if not obj_spec.bucket.startswith("projects/_/buckets/"):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid bucket name '{obj_spec.bucket}'.",
+            )
+        # With `strict_bucket_modes`, emulate the two GCS serving paths. RAPID
+        # buckets check the `read_mask` and use read handles. Standard buckets
+        # check `x-goog-request-params` and never use read handles.
+        is_rapid = True
+        if self.strict_bucket_modes:
+            bucket = self.db.get_bucket(obj_spec.bucket, context)
+            is_rapid = bucket.metadata.storage_class == "RAPID"
+            if is_rapid:
+                _validate_rapid_read_mask(obj_spec, context)
+            else:
+                _validate_request_params_bucket(obj_spec.bucket, context)
         # Like the real service, a valid read handle reopens the same
         # generation, skips the preconditions, and returns no metadata.
-        handle_generation = _read_handle_generation(obj_spec)
+        handle_generation = _read_handle_generation(obj_spec) if is_rapid else None
         if handle_generation is None:
             blob = self.db.get_object(
                 obj_spec.bucket,
@@ -831,17 +904,20 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
                 generation=handle_generation,
             )
         metadata = blob.metadata
-        read_handle = _make_read_handle(
-            testbench.common.bucket_name_from_proto(obj_spec.bucket),
-            metadata.name,
-            metadata.generation,
-        )
+        read_handle = None
+        if is_rapid:
+            read_handle = _make_read_handle(
+                testbench.common.bucket_name_from_proto(obj_spec.bucket),
+                metadata.name,
+                metadata.generation,
+            )
 
         # Check retry test broken-stream instructions.
         test_id = testbench.common.get_retry_test_id_from_context(context)
         broken_stream_after_bytes = 0
         stall_time = 0
         stall_after_bytes = 0
+        corrupt_next_chunk = False
         method = "storage.objects.get"
         testbench.common.consume_expect_redirect_token(
             self.db, context, method, routing_token=obj_spec.routing_token
@@ -850,6 +926,9 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             test_id, method, transport="GRPC"
         ):
             next_instruction = self.db.peek_next_instruction(test_id, method)
+            if next_instruction == "return-corrupted-data":
+                self.db.dequeue_next_instruction(test_id, method)
+                corrupt_next_chunk = True
             broken_stream_after_bytes = testbench.common.get_broken_stream_after_bytes(
                 next_instruction
             )
@@ -868,12 +947,22 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
         first_response = True
 
         def response(resp):
-            nonlocal first_response
+            nonlocal first_response, corrupt_next_chunk
+            for data in resp.object_data_ranges:
+                content = data.checksummed_data.content
+                if corrupt_next_chunk and content:
+                    # Corrupt the data but keep the original CRC32C, as if
+                    # it was corrupted after the service computed it.
+                    corrupt_next_chunk = False
+                    data.checksummed_data.content = (
+                        bytes([content[0] ^ 0xFF]) + content[1:]
+                    )
             if first_response:
                 first_response = False
                 if handle_generation is None:
                     resp.metadata.CopyFrom(metadata)
-                resp.read_handle.handle = read_handle
+                if read_handle is not None:
+                    resp.read_handle.handle = read_handle
             # We ignore the read_mask for this test server
             return resp
 
@@ -881,7 +970,11 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             detail = any_pb2.Any()
             detail.Pack(
                 storage_pb2.BidiReadObjectRedirectedError(
-                    read_handle=storage_pb2.BidiReadHandle(handle=read_handle),
+                    read_handle=(
+                        storage_pb2.BidiReadHandle(handle=read_handle)
+                        if read_handle is not None
+                        else None
+                    ),
                     routing_token=return_redirect_token,
                 )
             )
@@ -1007,6 +1100,12 @@ class StorageServicer(storage_pb2_grpc.StorageServicer):
             yield from responses_for_range_batch(first_message.read_ranges)
             for request in request_iterator:
                 idle_timeout.touch()
+                if request.HasField("read_object_spec"):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "The 'read_object_spec' must only be specified on the"
+                        " first request.",
+                    )
                 yield from responses_for_range_batch(request.read_ranges)
 
         bytes_yielded = 0
@@ -1513,10 +1612,14 @@ def run(
     echo_metadata=False,
     max_workers=_GRPC_SERVER_THREAD_COUNT,
     bidi_read_idle_timeout=_BIDI_READ_IDLE_TIMEOUT_SECONDS,
+    strict_bucket_modes=False,
 ):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     storage_pb2_grpc.add_StorageServicer_to_server(
-        StorageServicer(database, echo_metadata, bidi_read_idle_timeout), server
+        StorageServicer(
+            database, echo_metadata, bidi_read_idle_timeout, strict_bucket_modes
+        ),
+        server,
     )
     storage_control_pb2_grpc.add_StorageControlServicer_to_server(
         StorageControlServicer(database, echo_metadata), server
