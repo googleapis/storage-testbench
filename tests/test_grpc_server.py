@@ -30,6 +30,7 @@ import crc32c
 import grpc
 import grpc_status
 from google.protobuf import field_mask_pb2, timestamp_pb2
+from google.rpc import status_pb2
 
 import gcs
 import testbench
@@ -2841,6 +2842,250 @@ class TestGrpc(unittest.TestCase):
         self.assertEqual(chunks, {i: [(0, 3, True)] for i in range(1, 4)})
         self.assertEqual(get_object.call_count, 4)
 
+    def _bidi_read_abort(self, requests):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        responses = []
+        with self.assertRaises(grpc.RpcError):
+            for resp in self.grpc.BidiReadObject(iter(requests), context=context):
+                responses.append(resp)
+        context.abort.assert_called_once()
+        return context.abort.call_args.args, responses
+
+    def test_bidi_read_object_invalid_first_message(self):
+        self._insert_object_for_range_end("object-name", 10)
+        cases = [
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_ranges=[storage_pb2.ReadRange(read_id=1)]
+                ),
+                "The 'read_object_spec' must be specified on the first request.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        object="object-name"
+                    )
+                ),
+                "Field `read_object_spec.bucket` is required.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        bucket="projects/_/buckets/bucket-name"
+                    )
+                ),
+                "Field `read_object_spec.object` is required.",
+            ),
+            (
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=storage_pb2.BidiReadObjectSpec(
+                        bucket="bucket-name", object="object-name"
+                    )
+                ),
+                "Invalid bucket name 'bucket-name'.",
+            ),
+        ]
+        for request, message in cases:
+            args, responses = self._bidi_read_abort([request])
+            self.assertEqual(
+                args, (grpc.StatusCode.INVALID_ARGUMENT, message), msg=message
+            )
+            self.assertEqual(responses, [], msg=message)
+
+    def test_bidi_read_object_spec_on_later_message(self):
+        self._insert_object_for_range_end("object-name", 10)
+        spec = storage_pb2.BidiReadObjectSpec(
+            bucket="projects/_/buckets/bucket-name", object="object-name"
+        )
+        args, responses = self._bidi_read_abort(
+            [
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=spec,
+                    read_ranges=[storage_pb2.ReadRange(read_id=1)],
+                ),
+                storage_pb2.BidiReadObjectRequest(
+                    read_object_spec=spec,
+                    read_ranges=[storage_pb2.ReadRange(read_id=2)],
+                ),
+            ]
+        )
+        self.assertEqual(
+            args,
+            (
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "The 'read_object_spec' must only be specified on the first request.",
+            ),
+        )
+        # The first range is served; the second is not.
+        read_ids = [
+            r.read_range.read_id for resp in responses for r in resp.object_data_ranges
+        ]
+        self.assertEqual(read_ids, [1])
+
+    def _strict_servicer_with_rapid_bucket(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps({"name": "rapid-bucket", "storageClass": "RAPID"}),
+        )
+        bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.db.insert_bucket(bucket, None)
+        for name in ("bucket-name", "rapid-bucket"):
+            blob, _ = gcs.object.Object.init_media(
+                testbench.common.FakeRequest(
+                    args={"name": "object-name"},
+                    data=b"0123456789",
+                    headers={},
+                    environ={},
+                ),
+                self.db.get_bucket(name, None).metadata,
+            )
+            self.db.insert_object(name, blob, None)
+        return testbench.grpc_server.StorageServicer(self.db, strict_bucket_modes=True)
+
+    def _strict_read(self, servicer, bucket, request_params=None, **spec_args):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        metadata = ()
+        if request_params is not None:
+            metadata = (("x-goog-request-params", request_params),)
+        context.invocation_metadata = unittest.mock.Mock(return_value=metadata)
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket=f"projects/_/buckets/{bucket}", object="object-name", **spec_args
+            ),
+            read_ranges=[storage_pb2.ReadRange(read_id=1)],
+        )
+        return list(servicer.BidiReadObject([r1], context=context)), context
+
+    def test_bidi_read_object_strict_standard_bucket_request_params(self):
+        servicer = self._strict_servicer_with_rapid_bucket()
+        # A matching bucket (URL-encoded or not) is accepted.
+        for params in (
+            "bucket=projects/_/buckets/bucket-name",
+            "bucket=projects%2F_%2Fbuckets%2Fbucket-name&routing_token=t",
+        ):
+            responses, context = self._strict_read(
+                servicer, "bucket-name", request_params=params
+            )
+            context.abort.assert_not_called()
+            self.assertEqual(
+                responses[0].object_data_ranges[0].checksummed_data.content,
+                b"0123456789",
+            )
+
+    def test_bidi_read_object_strict_standard_bucket_request_params_messages(self):
+        servicer = self._strict_servicer_with_rapid_bucket()
+        _, context = self._strict_read_abort(servicer, None)
+        self.assertEqual(
+            context.abort.call_args.args,
+            (
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "An x-goog-request-params request metadata property must be "
+                "provided for this request.",
+            ),
+        )
+        _, context = self._strict_read_abort(
+            servicer, "bucket=projects/_/buckets/other"
+        )
+        self.assertEqual(
+            context.abort.call_args.args[0], grpc.StatusCode.INVALID_ARGUMENT
+        )
+        self.assertIn(
+            "Request bucket was 'projects/_/buckets/bucket-name' but "
+            "x-goog-request-params specified 'projects/_/buckets/other'",
+            context.abort.call_args.args[1],
+        )
+
+    def _strict_read_abort(self, servicer, params):
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        context.invocation_metadata = unittest.mock.Mock(
+            return_value=(
+                () if params is None else (("x-goog-request-params", params),)
+            )
+        )
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/bucket-name", object="object-name"
+            )
+        )
+        with self.assertRaises(grpc.RpcError):
+            list(servicer.BidiReadObject([r1], context=context))
+        return None, context
+
+    def test_bidi_read_object_strict_standard_bucket_has_no_read_handle(self):
+        servicer = self._strict_servicer_with_rapid_bucket()
+        params = "bucket=projects/_/buckets/bucket-name"
+        responses, _ = self._strict_read(servicer, "bucket-name", params)
+        self.assertTrue(responses[0].HasField("metadata"))
+        self.assertFalse(responses[0].HasField("read_handle"))
+        # A read handle issued for a RAPID bucket is ignored on standard
+        # buckets: the object is looked up and metadata is returned.
+        rapid, _ = self._strict_read(servicer, "rapid-bucket")
+        self.assertTrue(rapid[0].HasField("read_handle"))
+        responses, _ = self._strict_read(
+            servicer, "bucket-name", params, read_handle=rapid[0].read_handle
+        )
+        self.assertTrue(responses[0].HasField("metadata"))
+
+    def test_bidi_read_object_strict_rapid_bucket(self):
+        servicer = self._strict_servicer_with_rapid_bucket()
+        # No x-goog-request-params needed; read handles are used.
+        first, context = self._strict_read(servicer, "rapid-bucket")
+        context.abort.assert_not_called()
+        self.assertTrue(first[0].HasField("read_handle"))
+        again, _ = self._strict_read(
+            servicer, "rapid-bucket", read_handle=first[0].read_handle
+        )
+        self.assertFalse(again[0].HasField("metadata"))
+        # A read_mask must include the object data.
+        for paths in (
+            ["*"],
+            ["object_data_ranges"],
+            ["metadata", "object_data_ranges"],
+        ):
+            _, context = self._strict_read(
+                servicer,
+                "rapid-bucket",
+                read_mask=field_mask_pb2.FieldMask(paths=paths),
+            )
+            context.abort.assert_not_called()
+        with self.assertRaises(grpc.RpcError):
+            self._strict_read(
+                servicer,
+                "rapid-bucket",
+                read_mask=field_mask_pb2.FieldMask(paths=["metadata", "read_handle"]),
+            )
+
+    def test_bidi_read_object_strict_rapid_bucket_read_mask_message(self):
+        servicer = self._strict_servicer_with_rapid_bucket()
+        context = self.mock_context()
+        context.abort.side_effect = grpc.RpcError()
+        context.invocation_metadata = unittest.mock.Mock(return_value=())
+        r1 = storage_pb2.BidiReadObjectRequest(
+            read_object_spec=storage_pb2.BidiReadObjectSpec(
+                bucket="projects/_/buckets/rapid-bucket",
+                object="object-name",
+                read_mask=field_mask_pb2.FieldMask(paths=["metadata", "read_handle"]),
+            )
+        )
+        with self.assertRaises(grpc.RpcError):
+            list(servicer.BidiReadObject([r1], context=context))
+        context.abort.assert_called_once_with(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            "The 'read_mask' field must include object_data_ranges, but was "
+            "'metadata,read_handle'.",
+        )
+
+    def test_bidi_read_object_not_strict_ignores_bucket_modes(self):
+        self._strict_servicer_with_rapid_bucket()
+        # The default servicer has no strict modes: no header is needed and
+        # standard buckets still return read handles.
+        responses, context = self._strict_read(self.grpc, "bucket-name")
+        context.abort.assert_not_called()
+        self.assertTrue(responses[0].HasField("read_handle"))
+
     def test_bidi_read_object_offset_at_end_returns_one_empty_chunk(self):
         size = self._insert_object_for_range_end("object-name", 1024)
         self._insert_object_for_range_end("empty-object", 0)
@@ -3084,7 +3329,46 @@ class TestGrpc(unittest.TestCase):
         self.assertIn(grpc.StatusCode.OUT_OF_RANGE, abort_status)
         self.assertIn(b"BidiReadObjectError", grpc_status_details_bin)
 
+    def test_bidi_read_out_of_range_messages(self):
+        self._insert_object_for_range_end("object-name", 100)
+        generation = self.db.get_object(
+            "bucket-name", "object-name"
+        ).metadata.generation
+        name = f"bucket-name/object-name#{generation}"
+        cases = [
+            (
+                storage_pb2.ReadRange(read_offset=101, read_id=7),
+                f"Invalid read offset '101' for object '{name}'. The read offset"
+                " must not be greater than the object's size (100 bytes).",
+            ),
+            (
+                storage_pb2.ReadRange(read_offset=0, read_length=-5, read_id=7),
+                f"Invalid read limit '-5' for object '{name}'. The read limit"
+                " must be non-negative.",
+            ),
+        ]
+        for read_range, message in cases:
+            context = self.mock_context()
+            context.abort_with_status.side_effect = grpc.RpcError()
+            r1 = storage_pb2.BidiReadObjectRequest(
+                read_object_spec=storage_pb2.BidiReadObjectSpec(
+                    bucket="projects/_/buckets/bucket-name", object="object-name"
+                ),
+                read_ranges=[read_range],
+            )
+            with self.assertRaises(grpc.RpcError):
+                list(self.grpc.BidiReadObject([r1], context=context))
+            status = context.abort_with_status.call_args.args[0]
+            self.assertEqual(status.code, grpc.StatusCode.OUT_OF_RANGE)
+            self.assertEqual(status.details, message)
+            status_proto = status_pb2.Status.FromString(status.trailing_metadata[0][1])
+            error = storage_pb2.BidiReadObjectError()
+            status_proto.details[0].Unpack(error)
+            self.assertEqual(error.read_range_errors[0].read_id, 7)
+            self.assertEqual(error.read_range_errors[0].status.message, message)
+
     def test_list_buckets_partial_success_retry(self):
+
         self.db.clear()
         self.db.insert_supported_methods(["storage.buckets.list"])
 
