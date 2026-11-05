@@ -2273,6 +2273,9 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         context.abort_with_status.assert_called()
         status = context.abort_with_status.call_args.args[0]
         self.assertEqual(status.code, StatusCode.ABORTED)
+        self.assertEqual(
+            status.details, "The object is not available from this location."
+        )
         redirect_error = storage_pb2.BidiWriteObjectRedirectedError()
         self._unpack_details(status, redirect_error)
 
@@ -2349,6 +2352,9 @@ class TestTestbenchRetryGrpc(unittest.TestCase):
         context.abort_with_status.assert_called()
         status = context.abort_with_status.call_args.args[0]
         self.assertEqual(status.code, StatusCode.ABORTED)
+        self.assertEqual(
+            status.details, "The object is not available from this location."
+        )
         redirect_error = storage_pb2.BidiWriteObjectRedirectedError()
         self._unpack_details(status, redirect_error)
 
