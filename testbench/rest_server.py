@@ -195,12 +195,17 @@ def start_grpc():
             return testbench.error.invalid("bidi-read-idle-timeout", None)
         if not math.isfinite(bidi_read_idle_timeout) or bidi_read_idle_timeout <= 0:
             return testbench.error.invalid("bidi-read-idle-timeout", None)
+        # Emulate the differences between RAPID and standard buckets.
+        strict_bucket_modes = (
+            flask.request.args.get("strict-bucket-modes", "false").lower() == "true"
+        )
         grpc_port, grpc_service = testbench.grpc_server.run(
             int(port),
             db,
             echo_metadata=echo_metadata,
             max_workers=max_workers,
             bidi_read_idle_timeout=bidi_read_idle_timeout,
+            strict_bucket_modes=strict_bucket_modes,
         )
     return str(grpc_port)
 
