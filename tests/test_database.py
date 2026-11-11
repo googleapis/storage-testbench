@@ -334,6 +334,156 @@ class TestDatabaseObject(unittest.TestCase):
         )
         self.assertEqual(set(), {o.name for o in items})
 
+    def test_list_object_versions_false_query_string(self):
+        # The Go storage client sends versions=false as a nonempty query value.
+        # Parsing with type=bool treats that as True; only the live generation
+        # must be returned when versions is explicitly false.
+        self.bucket.metadata.versioning.enabled = True
+        bodies = (b"one", b"two", b"three")
+        inserted = []
+        for body in bodies:
+            request = testbench.common.FakeRequest(
+                args={"name": "versioned-obj"}, data=body, headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.database.insert_object("bucket-name", blob, context=None)
+            inserted.append((blob.metadata.generation, body))
+
+        live_only, _ = self.database.list_object(
+            Request(create_environ(query_string={"versions": "false"})),
+            "bucket-name",
+            None,
+        )
+        live_gens = [o.generation for o in live_only if o.name == "versioned-obj"]
+        self.assertEqual(live_gens, [inserted[-1][0]])
+        live = self.database.get_object(
+            "bucket-name", "versioned-obj", context=None, generation=live_gens[0]
+        )
+        self.assertEqual(live.media, bodies[-1])
+
+        all_versions, _ = self.database.list_object(
+            Request(create_environ(query_string={"versions": "true"})),
+            "bucket-name",
+            None,
+        )
+        all_gens = [o.generation for o in all_versions if o.name == "versioned-obj"]
+        self.assertCountEqual(all_gens, [gen for gen, _ in inserted])
+        for gen, body in inserted:
+            blob = self.database.get_object(
+                "bucket-name", "versioned-obj", context=None, generation=gen
+            )
+            self.assertEqual(blob.media, body)
+
+    def test_list_object_include_trailing_delimiter_false_query_string(self):
+        # includeTrailingDelimiter=false must not be treated as enabled.
+        names = (
+            "a/a/",
+            "a/a/test-0",
+            "a/b/",
+            "a/b/test-1",
+            "a/c/test-2",
+            "a/test-3",
+        )
+        for name in names:
+            request = testbench.common.FakeRequest(
+                args={"name": name}, data=b"media", headers={}, environ={}
+            )
+            blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+            self.database.insert_object("bucket-name", blob, context=None)
+
+        without_trailing, prefixes = self.database.list_object(
+            Request(
+                create_environ(
+                    query_string={
+                        "prefix": "a/",
+                        "delimiter": "/",
+                        "includeTrailingDelimiter": "false",
+                    }
+                )
+            ),
+            "bucket-name",
+            None,
+        )
+        self.assertEqual(prefixes, ["a/a/", "a/b/", "a/c/"])
+        self.assertEqual([o.name for o in without_trailing], ["a/test-3"])
+
+        with_trailing, prefixes = self.database.list_object(
+            Request(
+                create_environ(
+                    query_string={
+                        "prefix": "a/",
+                        "delimiter": "/",
+                        "includeTrailingDelimiter": "true",
+                    }
+                )
+            ),
+            "bucket-name",
+            None,
+        )
+        self.assertEqual(prefixes, ["a/a/", "a/b/", "a/c/"])
+        self.assertEqual([o.name for o in with_trailing], ["a/a/", "a/b/", "a/test-3"])
+
+    def test_list_object_soft_deleted_false_query_string(self):
+        # softDeleted=false must not be treated as true (bool("false") is True).
+        # Without a soft-delete policy that misparse would reject the list call.
+        request = testbench.common.FakeRequest(
+            args={"name": "live-obj"}, data=b"live", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        self.database.insert_object("bucket-name", blob, context=None)
+
+        live_items, _ = self.database.list_object(
+            Request(create_environ(query_string={"softDeleted": "false"})),
+            "bucket-name",
+            None,
+        )
+        self.assertEqual([o.name for o in live_items], ["live-obj"])
+
+        with self.assertRaises(testbench.error.RestException) as rest:
+            self.database.list_object(
+                Request(create_environ(query_string={"softDeleted": "true"})),
+                "bucket-name",
+                None,
+            )
+        self.assertEqual(rest.exception.code, 400)
+
+    def test_list_object_soft_deleted_true_query_string(self):
+        request = testbench.common.FakeRequest(
+            args={},
+            data=json.dumps(
+                {
+                    "name": "sd-bucket-name",
+                    "softDeletePolicy": {"retentionDurationSeconds": 7 * 24 * 60 * 60},
+                }
+            ),
+        )
+        sd_bucket, _ = gcs.bucket.Bucket.init(request, None)
+        self.database.insert_bucket(sd_bucket, None)
+
+        request = testbench.common.FakeRequest(
+            args={"name": "soft-obj"}, data=b"soft", headers={}, environ={}
+        )
+        blob, _ = gcs.object.Object.init_media(request, sd_bucket.metadata)
+        self.database.insert_object("sd-bucket-name", blob, context=None)
+        soft_gen = blob.metadata.generation
+        self.database.delete_object("sd-bucket-name", "soft-obj", context=None)
+
+        after_delete, _ = self.database.list_object(
+            Request(create_environ(query_string={"softDeleted": "false"})),
+            "sd-bucket-name",
+            None,
+        )
+        self.assertEqual([o.name for o in after_delete], [])
+
+        soft_items, _ = self.database.list_object(
+            Request(create_environ(query_string={"softDeleted": "true"})),
+            "sd-bucket-name",
+            None,
+        )
+        soft_only = [o for o in soft_items if o.name == "soft-obj"]
+        self.assertEqual(len(soft_only), 1)
+        self.assertEqual(soft_only[0].generation, soft_gen)
+
     def test_get_object_not_found(self):
         with self.assertRaises(testbench.error.RestException) as rest:
             _ = self.database.get_object("bucket-name", "object-name", context=None)
