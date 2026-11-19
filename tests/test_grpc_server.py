@@ -1896,42 +1896,23 @@ class TestGrpc(unittest.TestCase):
         self.assertNotEqual(start.upload_id, "")
         server.stop(grace=0)
 
-    def test_format_bind_address(self):
-        self.assertEqual(
-            testbench.grpc_server._format_bind_address("localhost", 8888),
-            "localhost:8888",
-        )
-        self.assertEqual(
-            testbench.grpc_server._format_bind_address("127.0.0.1", 0),
-            "127.0.0.1:0",
-        )
-        self.assertEqual(
-            testbench.grpc_server._format_bind_address("0.0.0.0", 9000),
-            "0.0.0.0:9000",
-        )
-        self.assertEqual(
-            testbench.grpc_server._format_bind_address("::1", 8888),
-            "[::1]:8888",
-        )
-        self.assertEqual(
-            testbench.grpc_server._format_bind_address("[::1]", 8888),
-            "[::1]:8888",
-        )
-
     def test_run_bind_host(self):
         fake_server = unittest.mock.MagicMock()
         fake_server.add_insecure_port.return_value = 12345
+        cases = [
+            ({}, "localhost:0"),
+            ({"host": "127.0.0.1"}, "127.0.0.1:0"),
+            ({"host": "0.0.0.0"}, "0.0.0.0:0"),
+            ({"host": "::1"}, "[::1]:0"),
+            ({"host": "[::1]"}, "[::1]:0"),
+        ]
         with unittest.mock.patch.object(grpc, "server", return_value=fake_server):
-            port, server = testbench.grpc_server.run(0, self.db)
-            self.assertEqual(port, 12345)
-            self.assertIs(server, fake_server)
-            fake_server.add_insecure_port.assert_called_with("localhost:0")
-
-            testbench.grpc_server.run(0, self.db, host="127.0.0.1")
-            fake_server.add_insecure_port.assert_called_with("127.0.0.1:0")
-
-            testbench.grpc_server.run(0, self.db, host="::1")
-            fake_server.add_insecure_port.assert_called_with("[::1]:0")
+            for kwargs, expected_addr in cases:
+                with self.subTest(kwargs=kwargs):
+                    port, server = testbench.grpc_server.run(0, self.db, **kwargs)
+                    self.assertEqual(port, 12345)
+                    self.assertIs(server, fake_server)
+                    fake_server.add_insecure_port.assert_called_with(expected_addr)
 
     def test_bidi_write_object_stall_cancelled_does_not_append(self):
         # A client that cancels a stalled BidiWriteObject stream and moves on
