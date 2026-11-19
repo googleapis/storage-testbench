@@ -113,10 +113,20 @@ def headers():
     )
 
 
+_RESERVED_RESPONSE_HEADERS = frozenset(
+    {"content-type", "content-length", "x-content-type-options"}
+)
+
+
 @_echo.route("/response-headers", methods=["GET", "POST"])
 def response_headers():
-    payload = {key: value for key, value in flask.request.args.items()}
+    payload = {
+        key: value
+        for key, value in flask.request.args.items()
+        if key.lower() not in _RESERVED_RESPONSE_HEADERS
+    }
     payload["content-type"] = "application/json"
+    payload["x-content-type-options"] = "nosniff"
     payload["content-length"] = "%d"
     length = len(json.dumps(payload))
     # Consider the case where `length` has more than two digits.

@@ -18,6 +18,7 @@
 
 import os
 import unittest
+from unittest import mock
 
 from testbench import rest_server
 
@@ -54,6 +55,41 @@ class TestTestbenchRoot(unittest.TestCase):
                 )
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(rest_server.grpc_port, 0)
+
+    def test_start_grpc_uses_configured_host(self):
+        cases = [
+            (None, "localhost"),
+            ("", "localhost"),
+            ("127.0.0.1", "127.0.0.1"),
+            ("0.0.0.0", "0.0.0.0"),
+        ]
+        for env_host, expected_host in cases:
+            with self.subTest(env_host=env_host):
+                env_patch = (
+                    {} if env_host is None else {"STORAGE_TESTBENCH_HOST": env_host}
+                )
+                with mock.patch.dict(
+                    os.environ, env_patch, clear=False
+                ), mock.patch.object(
+                    rest_server.testbench.grpc_server,
+                    "run",
+                    return_value=(12345, mock.MagicMock()),
+                ) as mock_run:
+                    if env_host is None:
+                        os.environ.pop("STORAGE_TESTBENCH_HOST", None)
+                    rest_server.grpc_port = 0
+                    rest_server.grpc_service = None
+                    try:
+                        response = self.client.get("/start_grpc")
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(response.data, b"12345")
+                        mock_run.assert_called_once()
+                        self.assertEqual(
+                            mock_run.call_args.kwargs["host"], expected_host
+                        )
+                    finally:
+                        rest_server.grpc_port = 0
+                        rest_server.grpc_service = None
 
 
 if __name__ == "__main__":

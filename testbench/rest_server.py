@@ -17,6 +17,7 @@ import datetime
 import json
 import logging
 import math
+import os
 import time
 
 import flask
@@ -199,6 +200,7 @@ def start_grpc():
         strict_bucket_modes = (
             flask.request.args.get("strict-bucket-modes", "false").lower() == "true"
         )
+        host = os.environ.get("STORAGE_TESTBENCH_HOST") or "localhost"
         grpc_port, grpc_service = testbench.grpc_server.run(
             int(port),
             db,
@@ -206,6 +208,7 @@ def start_grpc():
             max_workers=max_workers,
             bidi_read_idle_timeout=bidi_read_idle_timeout,
             strict_bucket_modes=strict_bucket_modes,
+            host=host,
         )
     return str(grpc_port)
 

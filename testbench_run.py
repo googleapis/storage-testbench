@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import platform
 import subprocess
 import sys
@@ -32,6 +33,7 @@ def start_server():
         sock_port = int(sys.argv[2])
         num_of_threads = int(sys.argv[3])
         sys.argv.clear()
+        os.environ["STORAGE_TESTBENCH_HOST"] = sock_host
 
         if platform.system().lower() == "windows":
             print("Starting waitress server")
