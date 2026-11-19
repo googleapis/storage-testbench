@@ -272,6 +272,7 @@ class TestEcho(unittest.TestCase):
             response.headers.getlist("content-length"), [str(len(response.data))]
         )
         self.assertEqual(response.headers.get("x-goog-custom"), "ok")
+        self.assertNotIn("x-content-type-options", json.loads(response.data))
 
     def test_delete_anything(self):
         expected_args = {"arg1": "value1", "arg2": "value2"}

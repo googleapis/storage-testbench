@@ -126,7 +126,6 @@ def response_headers():
         if key.lower() not in _RESERVED_RESPONSE_HEADERS
     }
     payload["content-type"] = "application/json"
-    payload["x-content-type-options"] = "nosniff"
     payload["content-length"] = "%d"
     length = len(json.dumps(payload))
     # Consider the case where `length` has more than two digits.
@@ -140,7 +139,8 @@ def response_headers():
         if length == actual:
             break
         length = actual
-    return flask.make_response(json.dumps(payload), 200, payload)
+    headers = {**payload, "x-content-type-options": "nosniff"}
+    return flask.make_response(json.dumps(payload), 200, headers)
 
 
 def _streamer(payload, count):

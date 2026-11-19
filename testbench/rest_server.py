@@ -210,6 +210,10 @@ def start_grpc():
             strict_bucket_modes=strict_bucket_modes,
             host=host,
         )
+        logging.info(
+            "gRPC server listening on %s",
+            testbench.grpc_server._format_bind_address(host, grpc_port),
+        )
     return str(grpc_port)
 
 
