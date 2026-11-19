@@ -1632,6 +1632,12 @@ class StorageControlServicer(storage_control_pb2_grpc.StorageControlServicer):
         return layout
 
 
+def _format_bind_address(host, port):
+    if ":" in host and not host.startswith("["):
+        return "[%s]:%d" % (host, port)
+    return "%s:%d" % (host, port)
+
+
 def run(
     port,
     database,
@@ -1639,6 +1645,7 @@ def run(
     max_workers=_GRPC_SERVER_THREAD_COUNT,
     bidi_read_idle_timeout=_BIDI_READ_IDLE_TIMEOUT_SECONDS,
     strict_bucket_modes=False,
+    host="localhost",
 ):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     storage_pb2_grpc.add_StorageServicer_to_server(
@@ -1650,6 +1657,6 @@ def run(
     storage_control_pb2_grpc.add_StorageControlServicer_to_server(
         StorageControlServicer(database, echo_metadata), server
     )
-    port = server.add_insecure_port("0.0.0.0:%d" % port)
+    port = server.add_insecure_port(_format_bind_address(host, port))
     server.start()
     return port, server

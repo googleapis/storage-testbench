@@ -14,6 +14,7 @@
 FROM python:3.12@sha256:9e615ab2a4e8c67f9638fa93002ac364647c2c2c1b66925ef3f8832fda354cd9
 
 EXPOSE 9000
+ENV STORAGE_TESTBENCH_HOST=0.0.0.0
 WORKDIR /opt/storage-testbench
 
 COPY . /opt/storage-testbench/

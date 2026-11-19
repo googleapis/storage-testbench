@@ -17,6 +17,7 @@
 """Unit test for testbench_waitress"""
 
 import io
+import os
 import platform
 import subprocess
 import sys
@@ -47,9 +48,11 @@ class TestTestbenchRun(unittest.TestCase):
         mock_platform_system = unittest.mock.Mock(return_value="windows")
         mock_waitress_serve = unittest.mock.Mock(return_value=None)
 
-        with patch.object(sys, "argv", test_three_argv), patch.object(
-            platform, "system", mock_platform_system
-        ), patch.object(waitress, "serve", mock_waitress_serve):
+        with patch.object(sys, "argv", test_three_argv), patch.dict(
+            os.environ, {}, clear=False
+        ), patch.object(platform, "system", mock_platform_system), patch.object(
+            waitress, "serve", mock_waitress_serve
+        ):
             import testbench_run
 
             capturedOutput = io.StringIO()
@@ -61,15 +64,18 @@ class TestTestbenchRun(unittest.TestCase):
                 capturedOutput.getvalue(),
                 "Starting waitress server\n",
             )
+            self.assertEqual(os.environ.get("STORAGE_TESTBENCH_HOST"), "localhost")
 
     def test_start_server_starts_gunicorn_on_non_windows_platform(self):
         test_three_argv = ["testbench_run.py", "localhost", "0", "10"]
         mock_platform_system = unittest.mock.Mock(return_value="linux")
         mock_gunicorn_subprocess_run = unittest.mock.Mock(return_value=None)
 
-        with patch.object(sys, "argv", test_three_argv), patch.object(
-            platform, "system", mock_platform_system
-        ), patch.object(subprocess, "run", mock_gunicorn_subprocess_run):
+        with patch.object(sys, "argv", test_three_argv), patch.dict(
+            os.environ, {}, clear=False
+        ), patch.object(platform, "system", mock_platform_system), patch.object(
+            subprocess, "run", mock_gunicorn_subprocess_run
+        ):
             import testbench_run
 
             capturedOutput = io.StringIO()
@@ -81,6 +87,7 @@ class TestTestbenchRun(unittest.TestCase):
                 capturedOutput.getvalue(),
                 "Starting gunicorn server\n",
             )
+            self.assertEqual(os.environ.get("STORAGE_TESTBENCH_HOST"), "localhost")
 
 
 if __name__ == "__main__":

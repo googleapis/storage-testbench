@@ -113,9 +113,18 @@ def headers():
     )
 
 
+_RESERVED_RESPONSE_HEADERS = frozenset(
+    {"content-type", "content-length", "x-content-type-options"}
+)
+
+
 @_echo.route("/response-headers", methods=["GET", "POST"])
 def response_headers():
-    payload = {key: value for key, value in flask.request.args.items()}
+    payload = {
+        key: value
+        for key, value in flask.request.args.items()
+        if key.lower() not in _RESERVED_RESPONSE_HEADERS
+    }
     payload["content-type"] = "application/json"
     payload["content-length"] = "%d"
     length = len(json.dumps(payload))
@@ -130,7 +139,8 @@ def response_headers():
         if length == actual:
             break
         length = actual
-    return flask.make_response(json.dumps(payload), 200, payload)
+    headers = {**payload, "x-content-type-options": "nosniff"}
+    return flask.make_response(json.dumps(payload), 200, headers)
 
 
 def _streamer(payload, count):

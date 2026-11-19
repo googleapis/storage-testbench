@@ -111,6 +111,13 @@ curl -s --retry 5 --retry-max-time 40 "http://localhost:9000/start_grpc?port=888
 > ⚠️ The HTTP server must be kept running to start the gRPC server and to make calls to the testbench,
 >  even after you start the gRPC server. Run this command in a different terminal window.
 
+By default, `/start_grpc` binds the gRPC server to the host specified by the
+`STORAGE_TESTBENCH_HOST` environment variable, falling back to `localhost` when unset.
+`testbench_run.py` sets `STORAGE_TESTBENCH_HOST` to the `<hostname>` argument it was
+started with, and the `Dockerfile` sets `STORAGE_TESTBENCH_HOST=0.0.0.0`. If you invoke
+`gunicorn` directly outside `testbench_run.py` or Docker and need remote/cross-container
+access to gRPC, set `STORAGE_TESTBENCH_HOST=0.0.0.0` explicitly.
+
 `/start_grpc` also accepts these optional parameters:
 
 - `max-workers`: size of the gRPC server thread pool (each open stream holds one worker).

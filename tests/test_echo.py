@@ -252,6 +252,28 @@ class TestEcho(unittest.TestCase):
         actual_headers = {key.lower(): value for key, value in response.headers.items()}
         self.assertEqual(actual_headers, {**actual_headers, **expected_headers})
 
+    def test_response_headers_ignores_reserved_header_overrides(self):
+        response = self.client.get(
+            "/httpbin/response-headers",
+            query_string=[
+                ("content-type", "text/plain"),
+                ("Content-Type", "text/html"),
+                ("Content-Length", "1"),
+                ("X-Content-Type-Options", "invalid"),
+                ("x-goog-custom", "ok"),
+            ],
+        )
+        self.assertEqual(response.status_code, 200, msg=response.data)
+        self.assertEqual(response.headers.getlist("content-type"), ["application/json"])
+        self.assertEqual(
+            response.headers.getlist("x-content-type-options"), ["nosniff"]
+        )
+        self.assertEqual(
+            response.headers.getlist("content-length"), [str(len(response.data))]
+        )
+        self.assertEqual(response.headers.get("x-goog-custom"), "ok")
+        self.assertNotIn("x-content-type-options", json.loads(response.data))
+
     def test_delete_anything(self):
         expected_args = {"arg1": "value1", "arg2": "value2"}
         expected_headers = {
