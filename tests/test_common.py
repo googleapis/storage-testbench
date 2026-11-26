@@ -1362,6 +1362,34 @@ class TestCommonUtils(unittest.TestCase):
         self.assertEqual(rest.exception.code, 413)
         self.assertIn("exceeds maximum allowed size", rest.exception.msg)
 
+    def test_decompress_gzip_bounded_concatenated_exceeds_limit(self):
+        compressed = gzip.compress(b"a" * 80) + gzip.compress(b"b" * 80)
+        with self.assertRaises(testbench.error.RestException) as rest:
+            testbench.common.decompress_gzip_bounded(compressed, max_bytes=128)
+        self.assertEqual(rest.exception.code, 413)
+        self.assertIn("exceeds maximum allowed size", rest.exception.msg)
+
+    def test_decompress_gzip_bounded_truncated_raises_eof(self):
+        compressed = gzip.compress(b"hello world" * 10)
+        with self.assertRaises(EOFError):
+            testbench.common.decompress_gzip_bounded(compressed[:-4], max_bytes=1024)
+
+    def test_handle_gzip_request_exceeds_limit(self):
+        compressed = gzip.compress(b"a" * 1024)
+        request = testbench.common.FakeRequest(
+            args={},
+            headers={"Content-Encoding": "gzip"},
+            data=compressed,
+            environ={},
+        )
+        with unittest.mock.patch.object(
+            testbench.common, "MAX_GZIP_DECOMPRESSED_BYTES", 128
+        ):
+            with self.assertRaises(testbench.error.RestException) as rest:
+                testbench.common.handle_gzip_request(request)
+        self.assertEqual(rest.exception.code, 413)
+        self.assertIn("exceeds maximum allowed size", rest.exception.msg)
+
 
 if __name__ == "__main__":
     unittest.main()

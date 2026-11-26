@@ -1221,6 +1221,8 @@ def decompress_gzip_bounded(data, max_bytes=None):
     """Decompress gzip data while enforcing a maximum decompressed output size."""
     if max_bytes is None:
         max_bytes = MAX_GZIP_DECOMPRESSED_BYTES
+    if not data:
+        return b""
     decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
     chunks = []
     total = 0
@@ -1240,14 +1242,10 @@ def decompress_gzip_bounded(data, max_bytes=None):
                 decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
         else:
             remaining = decompressor.unconsumed_tail
-    tail = decompressor.flush()
-    total += len(tail)
-    if total > max_bytes:
-        raise testbench.error.RestException(
-            f"Decompressed payload exceeds maximum allowed size of {max_bytes} bytes",
-            413,
+    if not decompressor.eof:
+        raise EOFError(
+            "Compressed file ended before the end-of-stream marker was reached"
         )
-    chunks.append(tail)
     return b"".join(chunks)
 
 

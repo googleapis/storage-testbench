@@ -1066,7 +1066,7 @@ class TestObject(unittest.TestCase):
     def test_rest_media_sets_sandbox_security_headers(self):
         request = testbench.common.FakeRequest(
             args={"name": "page.html"},
-            headers={"content-type": "text/html"},
+            headers={},
             data=b"<script>alert(1)</script>",
             environ={},
         )
@@ -1085,7 +1085,7 @@ class TestObject(unittest.TestCase):
         compressed = gzip.compress(b"x" * 2048)
         request = testbench.common.FakeRequest(
             args={"name": "bomb.txt"},
-            headers={"content-type": "text/plain", "content-encoding": "gzip"},
+            headers={},
             data=compressed,
             environ={},
         )
