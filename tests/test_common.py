@@ -1334,6 +1334,34 @@ class TestCommonUtils(unittest.TestCase):
                 grpc.StatusCode.CANCELLED, unittest.mock.ANY
             )
 
+    def test_decompress_gzip_bounded_within_limit(self):
+        payload = b"hello world" * 10
+        compressed = gzip.compress(payload)
+        self.assertEqual(
+            testbench.common.decompress_gzip_bounded(
+                compressed, max_bytes=len(payload)
+            ),
+            payload,
+        )
+
+    def test_decompress_gzip_bounded_concatenated_streams(self):
+        part1 = b"first-" * 5
+        part2 = b"second-" * 5
+        compressed = gzip.compress(part1) + gzip.compress(part2)
+        self.assertEqual(
+            testbench.common.decompress_gzip_bounded(
+                compressed, max_bytes=len(part1) + len(part2)
+            ),
+            part1 + part2,
+        )
+
+    def test_decompress_gzip_bounded_exceeds_limit(self):
+        compressed = gzip.compress(b"a" * 1024)
+        with self.assertRaises(testbench.error.RestException) as rest:
+            testbench.common.decompress_gzip_bounded(compressed, max_bytes=128)
+        self.assertEqual(rest.exception.code, 413)
+        self.assertIn("exceeds maximum allowed size", rest.exception.msg)
+
 
 if __name__ == "__main__":
     unittest.main()

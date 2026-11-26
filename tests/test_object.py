@@ -18,6 +18,7 @@
 
 import base64
 import datetime
+import gzip
 import hashlib
 import json
 import unittest
@@ -1061,6 +1062,44 @@ class TestObject(unittest.TestCase):
         return testbench.common.FakeRequest(
             args={}, headers=headers, data=payload, environ={}
         )
+
+    def test_rest_media_sets_sandbox_security_headers(self):
+        request = testbench.common.FakeRequest(
+            args={"name": "page.html"},
+            headers={"content-type": "text/html"},
+            data=b"<script>alert(1)</script>",
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        blob.metadata.content_type = "text/html"
+        download_req = Request(
+            create_environ(base_url="http://localhost:8080", data=b"")
+        )
+        response = blob.rest_media(download_req)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("Content-Type"), "text/html")
+        self.assertEqual(response.headers.get("Content-Security-Policy"), "sandbox")
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+
+    def test_rest_media_bounded_gzip_transcode(self):
+        compressed = gzip.compress(b"x" * 2048)
+        request = testbench.common.FakeRequest(
+            args={"name": "bomb.txt"},
+            headers={"content-type": "text/plain", "content-encoding": "gzip"},
+            data=compressed,
+            environ={},
+        )
+        blob, _ = gcs.object.Object.init_media(request, self.bucket.metadata)
+        blob.metadata.content_encoding = "gzip"
+        download_req = Request(
+            create_environ(base_url="http://localhost:8080", data=b"")
+        )
+        with unittest.mock.patch.object(
+            testbench.common, "MAX_GZIP_DECOMPRESSED_BYTES", 512
+        ):
+            with self.assertRaises(testbench.error.RestException) as rest:
+                blob.rest_media(download_req)
+        self.assertEqual(rest.exception.code, 413)
 
 
 if __name__ == "__main__":

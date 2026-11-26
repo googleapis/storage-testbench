@@ -15,7 +15,6 @@
 """Common utils"""
 
 import base64
-import gzip
 import io
 import json
 import platform
@@ -26,6 +25,7 @@ import struct
 import time
 import types
 import urllib.parse
+import zlib
 from functools import wraps
 
 import flask
@@ -1214,6 +1214,43 @@ def consume_expect_redirect_token(db, context, method, routing_token):
         db.dequeue_next_instruction(test_id, method)
 
 
+MAX_GZIP_DECOMPRESSED_BYTES = 128 * 1024 * 1024
+
+
+def decompress_gzip_bounded(data, max_bytes=None):
+    """Decompress gzip data while enforcing a maximum decompressed output size."""
+    if max_bytes is None:
+        max_bytes = MAX_GZIP_DECOMPRESSED_BYTES
+    decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    chunks = []
+    total = 0
+    remaining = data
+    while remaining:
+        out = decompressor.decompress(remaining, max_bytes - total + 1)
+        total += len(out)
+        if total > max_bytes:
+            raise testbench.error.RestException(
+                f"Decompressed payload exceeds maximum allowed size of {max_bytes} bytes",
+                413,
+            )
+        chunks.append(out)
+        if decompressor.eof:
+            remaining = decompressor.unused_data
+            if remaining:
+                decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        else:
+            remaining = decompressor.unconsumed_tail
+    tail = decompressor.flush()
+    total += len(tail)
+    if total > max_bytes:
+        raise testbench.error.RestException(
+            f"Decompressed payload exceeds maximum allowed size of {max_bytes} bytes",
+            413,
+        )
+    chunks.append(tail)
+    return b"".join(chunks)
+
+
 def handle_gzip_request(request):
     """
     Handle gzip compressed JSON payloads when Content-Encoding: gzip is present on metadata requests.
@@ -1223,7 +1260,7 @@ def handle_gzip_request(request):
         request.headers.get("Content-Encoding", None) == "gzip"
         and request.args.get("contentEncoding", None) != "gzip"
     ):
-        request.data = gzip.decompress(request.data)
+        request.data = decompress_gzip_bounded(request.data)
         request.environ["wsgi.input"] = io.BytesIO(request.data)
 
 

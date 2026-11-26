@@ -19,7 +19,11 @@ WORKDIR /opt/storage-testbench
 
 COPY . /opt/storage-testbench/
 
-RUN python3 -m pip install -e .
+RUN python3 -m pip install -e . && \
+    useradd --create-home --shell /usr/sbin/nologin testbench && \
+    chown -R testbench:testbench /opt/storage-testbench
+
+USER testbench
 
 CMD ["python3", \
       "testbench_run.py", \
