@@ -16,7 +16,6 @@
 
 import base64
 import datetime
-import gzip
 import hashlib
 import json
 import re
@@ -506,7 +505,9 @@ class Object:
     def rest_media(self, request, delay=time.sleep):
         is_decompressive_transcode = self._decompress_on_download(request)
         response_payload = (
-            gzip.decompress(self.media) if is_decompressive_transcode else self.media
+            testbench.common.decompress_gzip_bounded(self.media)
+            if is_decompressive_transcode
+            else self.media
         )
         range_header = request.headers.get("range")
         begin, end, length, response_payload = self._download_range(
@@ -516,7 +517,10 @@ class Object:
         if range_header is not None and begin >= length:
             testbench.error.range_not_satisfiable()
 
-        headers = {}
+        headers = {
+            "Content-Security-Policy": "sandbox",
+            "X-Content-Type-Options": "nosniff",
+        }
         content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
 
         instructions = testbench.common.extract_instruction(request, None)
